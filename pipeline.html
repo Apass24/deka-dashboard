@@ -1,0 +1,3136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEKA | Sales Pipeline</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#0a0a0f; --card:#13131a; --card2:#1a1a24; --border:rgba(255,255,255,0.08);
+  --accent:#e63946; --green:#4ade80; --blue:#60a5fa; --yellow:#fbbf24;
+  --purple:#a78bfa; --orange:#fb923c; --text:#f0f0f5; --text-dim:#6b7280; --text-mid:#9ca3af;
+  --stage-lead:#4b5563; --stage-contacted:#3b82f6; --stage-nurture:#0d9488; --stage-discovery:#f59e0b;
+  --stage-proposal:#f97316; --stage-negotiating:#a78bfa; --stage-signed:#4ade80; --stage-lost:#374151;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:14px;min-height:100vh}
+a{color:inherit;text-decoration:none}
+
+/* ── HEADER ── */
+.header{padding:18px 28px 16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(230,57,70,0.05) 0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.header-left h1{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+.header-left h1 span{color:var(--accent)}
+.header-left p{color:var(--text-dim);font-size:12px;margin-top:2px}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all 0.15s;white-space:nowrap}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-dim)}
+.btn-ghost:hover{border-color:var(--text-dim);color:var(--text)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-green{background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:var(--green)}
+.btn-blue{background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:var(--blue)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;gap:2px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--card)}
+.nav-tab{padding:11px 18px;font-size:12px;font-weight:500;color:var(--text-dim);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--text);border-bottom-color:var(--accent)}
+
+/* ── TOOLBAR ── */
+.toolbar{padding:12px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card)}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.search-wrap input{width:100%;padding:7px 10px 7px 32px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none}
+.search-wrap input:focus{border-color:var(--blue)}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:13px;pointer-events:none}
+.flt{padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-mid);font-size:12px;cursor:pointer;outline:none}
+.flt:focus{border-color:var(--blue)}
+.toolbar-spacer{flex:1}
+
+/* ── MAIN ── */
+.main{padding:20px 28px}
+
+/* ── KANBAN BOARD ── */
+.board-wrap{overflow-x:auto;padding-bottom:8px}
+.board{display:flex;gap:14px;min-width:max-content;align-items:flex-start}
+.board-col{width:240px;flex-shrink:0}
+.col-header{padding:10px 12px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.col-body{min-height:80px;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:8px;background:rgba(255,255,255,0.01)}
+.col-body.drag-over{background:rgba(96,165,250,0.07);border-color:var(--blue)}
+
+/* Stage colors */
+.col-lead .col-header{background:rgba(75,85,99,0.3);color:#9ca3af}
+.col-contacted .col-header{background:rgba(59,130,246,0.2);color:var(--blue)}
+.col-discovery .col-header{background:rgba(245,158,11,0.2);color:var(--yellow)}
+.col-proposal .col-header{background:rgba(249,115,22,0.2);color:var(--orange)}
+.col-negotiating .col-header{background:rgba(167,139,250,0.2);color:var(--purple)}
+.col-signed .col-header{background:rgba(74,222,128,0.2);color:var(--green)}
+.col-lost .col-header{background:rgba(55,65,81,0.3);color:var(--text-dim)}
+
+/* Prospect card */
+.p-card{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px 11px;margin-bottom:8px;cursor:grab;transition:border-color 0.15s,box-shadow 0.15s}
+.p-card:hover{border-color:rgba(255,255,255,0.15);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.p-card.dragging{opacity:0.4;cursor:grabbing}
+.p-card-name{font-size:13px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-card-sub{font-size:11px;color:var(--text-dim);margin-bottom:7px}
+.p-card-meta{font-size:11px;color:var(--text-mid);margin-bottom:2px}
+.p-card-actions{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.priority-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;letter-spacing:0.5px;margin-bottom:5px}
+.pri-hot{background:rgba(230,57,70,0.2);color:var(--accent)}
+.pri-warm{background:rgba(251,191,36,0.2);color:var(--yellow)}
+.pri-cold{background:rgba(96,165,250,0.15);color:var(--blue)}
+.overdue{color:var(--accent)!important;font-weight:600}
+
+/* ── PROSPECT LIST TABLE ── */
+.tbl-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.p-table{width:100%;border-collapse:collapse;font-size:12px}
+.p-table th{padding:9px 12px;text-align:left;background:var(--card2);color:var(--text-dim);font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+.p-table th:hover{color:var(--text)}
+.p-table th.sort-asc::after{content:' ▲'}
+.p-table th.sort-desc::after{content:' ▼'}
+.p-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.p-table tr:last-child td{border-bottom:none}
+.p-table tr:hover td{background:rgba(255,255,255,0.02);cursor:pointer}
+.stage-pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;letter-spacing:0.5px;white-space:nowrap}
+
+/* ── ANALYTICS ── */
+.kpi-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+.kpi-box{flex:1;min-width:130px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.kpi-val{font-size:28px;font-weight:700;line-height:1.1;margin-bottom:4px}
+.kpi-lbl{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px}
+.funnel-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.funnel-label{width:110px;font-size:12px;color:var(--text-mid);text-align:right;flex-shrink:0}
+.funnel-track{flex:1;height:22px;background:var(--card2);border-radius:4px;overflow:hidden}
+.funnel-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:#fff;min-width:30px;transition:width 0.4s}
+.goal-bar-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.goal-track{height:12px;background:var(--card2);border-radius:6px;overflow:hidden;margin:10px 0 6px}
+.goal-fill{height:100%;border-radius:6px;background:var(--green);transition:width 0.4s}
+.territory-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px}
+.territory-state{width:32px;font-weight:700;color:var(--text-mid)}
+.territory-track{flex:1;height:14px;background:var(--card2);border-radius:3px;overflow:hidden}
+.territory-fill{height:100%;border-radius:3px;background:var(--blue);transition:width 0.4s}
+.territory-count{width:60px;color:var(--text-dim);font-size:11px}
+.territory-opp{font-size:10px;color:var(--accent);font-weight:600}
+
+/* ── DETAIL PANEL ── */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500}
+.detail-overlay.open{display:block}
+.detail-panel{position:fixed;right:0;top:0;bottom:0;width:440px;max-width:95vw;background:var(--card);border-left:1px solid var(--border);z-index:501;overflow-y:auto;display:flex;flex-direction:column}
+.detail-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-shrink:0}
+.detail-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0}
+.detail-close:hover{color:var(--text)}
+.detail-body{padding:16px 20px;flex:1}
+.detail-section{margin-bottom:18px}
+.detail-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.d-field{margin-bottom:10px}
+.d-field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px}
+.d-field input,.d-field select,.d-field textarea{width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;font-family:inherit;outline:none}
+.d-field input:focus,.d-field select:focus,.d-field textarea:focus{border-color:var(--blue)}
+.d-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.activity-item{padding:8px 10px;background:var(--card2);border-radius:6px;margin-bottom:6px;font-size:12px}
+.activity-meta{font-size:10px;color:var(--text-dim);margin-bottom:3px;display:flex;gap:8px}
+.activity-notes{color:var(--text-mid)}
+.log-form{background:var(--card2);border-radius:6px;padding:10px;margin-top:8px}
+.detail-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.signed-btn{width:100%;justify-content:center;background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:var(--green);font-size:12px}
+.signed-btn:hover{background:rgba(74,222,128,0.25)}
+
+/* ── ADD MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;align-items:center;justify-content:center}
+#sync-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;z-index:2000;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.4);transition:opacity 0.3s;pointer-events:none;opacity:0}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal-box h3{font-size:16px;font-weight:700;margin-bottom:18px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-full{grid-column:1/-1}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* ── IMPORT SECTION ── */
+.import-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+.drop-zone{border:2px dashed var(--border);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--blue);background:rgba(96,165,250,0.05)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-zone-icon{font-size:32px;margin-bottom:8px}
+.drop-zone-label{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.drop-zone-sub{font-size:12px;color:var(--text-dim)}
+.col-map-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px}
+.col-map-row select{background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:3px 6px;font-size:11px}
+.preview-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
+.preview-table th{background:var(--card2);padding:6px 8px;text-align:left;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--border)}
+.preview-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text)}
+.import-card h4{font-size:13px;font-weight:600;margin-bottom:8px}
+.import-card p{font-size:12px;color:var(--text-mid);line-height:1.6;margin-bottom:12px}
+
+/* ── SHEET TIPS ── */
+.tip-card{background:var(--card);border-left:3px solid var(--yellow);border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:12px}
+.tip-card h4{font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:6px}
+.tip-card p,.tip-card li{font-size:12px;color:var(--text-mid);line-height:1.6}
+.tip-card ul{padding-left:16px;margin-top:4px}
+
+/* ── EMAIL OUTPUT ── */
+.email-output{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;color:var(--text);white-space:pre-wrap;font-family:inherit;line-height:1.6;margin-top:10px;max-height:320px;overflow-y:auto;resize:vertical;width:100%;box-sizing:border-box}
+.email-output:focus{outline:none;border-color:var(--blue)}
+.email-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
+.email-regen-btn{background:none;border:1px dashed var(--border);border-radius:6px;color:var(--text-dim);font-size:11px;padding:4px 10px;cursor:pointer;transition:all 0.15s}
+.email-regen-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── BULK SELECTION ── */
+.p-card{position:relative}
+.p-card-check{position:absolute;top:8px;right:8px;width:15px;height:15px;cursor:pointer;accent-color:var(--blue);z-index:3}
+.p-card.selected{outline:2px solid var(--blue);outline-offset:-2px}
+.col-check-wrap{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-dim);cursor:pointer;margin-left:auto}
+.col-check-all{accent-color:var(--blue);cursor:pointer;width:13px;height:13px;flex-shrink:0}
+.bulk-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(0);background:var(--card);border:1px solid rgba(96,165,250,0.4);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:14px;z-index:900;box-shadow:0 4px 24px rgba(0,0,0,0.6);transition:opacity 0.2s,transform 0.2s;white-space:nowrap}
+.bulk-bar.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px)}
+.bulk-count{font-size:13px;font-weight:600;color:var(--text)}
+
+/* ── PRINT ── */
+@media print{
+  .header-actions,.nav-tabs,.toolbar,.detail-overlay,.modal-overlay,.p-card-actions{display:none!important}
+  body{background:white!important;color:black!important}
+  .board-wrap{overflow:visible!important}
+  .p-card{border:1px solid #ddd!important;background:white!important;break-inside:avoid}
+  .p-card-name{color:black!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ACCESS GATE -->
+<div id="access-gate" style="display:none;position:fixed;inset:0;z-index:9999;background:#0a0a0f;align-items:center;justify-content:center">
+  <div style="background:#13131a;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:40px;max-width:400px;width:90%;text-align:center">
+    <div style="font-size:28px;font-weight:800;color:#e74c3c;letter-spacing:2px;margin-bottom:4px">DEKA</div>
+    <div style="font-size:14px;color:#777;margin-bottom:24px">Sales Pipeline Dashboard</div>
+    <input id="access-code-input" type="text" placeholder="Enter your access code" onkeydown="if(event.key==='Enter')_submitAccessPL()"
+      style="width:100%;padding:12px;background:#1a1a24;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e6edf3;font-size:14px;text-align:center;letter-spacing:1px;box-sizing:border-box;margin-bottom:8px">
+    <div id="access-error" style="display:none;color:#e74c3c;font-size:12px;margin-bottom:8px">Invalid access code. Please try again.</div>
+    <button onclick="_submitAccessPL()" style="width:100%;padding:10px;background:#e74c3c;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px">Unlock Dashboard</button>
+  </div>
+</div>
+<style>.shake{animation:shake .4s}@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}body.locked>*:not(#access-gate){display:none!important}</style>
+
+<div class="header">
+  <div class="header-left">
+    <h1><span>DEKA</span> | Sales Pipeline</h1>
+    <p id="hdr-sub">Affiliate Acquisition Dashboard</p>
+  </div>
+  <div class="header-actions">
+    <a href="deka-northeast-portfolio-analysis.html" class="btn btn-ghost">&#8592; Portfolio Dashboard</a>
+    <button class="btn btn-primary" onclick="openAddModal()">+ Add Prospect</button>
+    <button class="btn btn-ghost" onclick="syncFromSheet()" title="Import from Pipeline Tier 1-3 tab">&#8635; Sync from Sheet</button>
+    <button class="btn btn-ghost" onclick="window.print()">&#128438; Print</button>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="showView('board',this)">&#9632; Pipeline Board</button>
+  <button class="nav-tab" onclick="showView('list',this)">&#9776; Prospect List</button>
+  <button class="nav-tab" onclick="showView('analytics',this)">&#128202; Analytics</button>
+  <button class="nav-tab" onclick="showView('import',this)">&#8593; Import / Sync</button>
+</div>
+
+<div class="toolbar" id="board-toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search-input" placeholder="Search prospects..." oninput="applyFilters()">
+  </div>
+  <select class="flt" id="flt-priority" onchange="applyFilters()">
+    <option value="">All Priorities</option>
+    <option value="hot">&#128293; Hot</option>
+    <option value="warm">&#128516; Warm</option>
+    <option value="cold">&#10052; Cold</option>
+  </select>
+  <select class="flt" id="flt-source" onchange="applyFilters()">
+    <option value="">All Sources</option>
+    <option value="referral">Referral</option>
+    <option value="cold">Cold Outreach</option>
+    <option value="inbound">Inbound</option>
+    <option value="event">Event</option>
+    <option value="social">Social Media</option>
+    <option value="sheet">Sheet Import</option>
+  </select>
+  <select class="flt" id="flt-state" onchange="applyFilters()">
+    <option value="">All States</option>
+  </select>
+  <select class="flt" id="flt-sort" onchange="applyFilters()">
+    <option value="score">⭐ Best Fit First</option>
+    <option value="priority">Priority</option>
+    <option value="stage">Stage</option>
+    <option value="lastActivity">Last Activity</option>
+    <option value="gymName">Name A–Z</option>
+  </select>
+  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;white-space:nowrap">
+    <span id="show-archived" style="display:none"></span>
+  </label>
+  <div class="toolbar-spacer"></div>
+  <span style="font-size:12px;color:var(--text-dim)" id="prospect-count">0 prospects</span>
+</div>
+
+<!-- VIEWS -->
+<div class="main" id="view-board">
+  <!-- Action Queue -->
+  <div id="action-queue" style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+    <div id="action-queue-header" onclick="toggleActionQueue()" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);cursor:pointer;user-select:none">
+      <span style="font-size:13px">📋</span>
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text)">Action Queue</span>
+      <span id="aq-overdue-badge"></span>
+      <span style="font-size:11px;color:var(--text-dim);margin-left:4px" id="aq-summary-text"></span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-dim)" id="aq-toggle-icon">▲</span>
+    </div>
+    <div id="action-queue-body" style="background:var(--card2);border-top:1px solid var(--border)"></div>
+  </div>
+  <div class="board-wrap"><div class="board" id="kanban-board"></div></div>
+</div>
+
+<div class="main" id="view-list" style="display:none">
+  <div class="tbl-wrap">
+    <table class="p-table">
+      <thead><tr>
+        <th onclick="sortList('priority')">Priority</th>
+        <th onclick="sortList('gymName')">Gym</th>
+        <th onclick="sortList('state')">State</th>
+        <th onclick="sortList('ownerName')">Contact</th>
+        <th onclick="sortList('stage')">Stage</th>
+        <th title="Fit Score — higher is better prospect" style="cursor:help">Score</th>
+        <th onclick="sortList('lastActivity')">Last Activity</th>
+        <th onclick="sortList('nextActionDate')">Next Action Due</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody id="list-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="main" id="view-analytics" style="display:none">
+  <div id="analytics-content"></div>
+</div>
+
+<div class="main" id="view-import" style="display:none">
+
+  <!-- Prospect Finder -->
+  <div class="import-card">
+    <h4>&#129302; Run Prospect Finder</h4>
+    <p>Triggers the agentic search system to find new gym prospects across your territory. Uses SerpAPI to search 14 cities, filters out big-box chains, and writes new prospects directly to your CRM sheet.</p>
+    <p style="font-size:12px;color:var(--text-dim)">After running, use the CSV upload or Browse Sheet Tabs below to pull new prospects into the dashboard.</p>
+    <button class="btn btn-ghost" style="border-color:var(--purple);color:var(--purple)" onclick="document.getElementById('agentic-cmd-wrap').style.display='block'">&#9654; Show Run Command</button>
+    <div id="agentic-cmd-wrap" style="display:none;margin-top:14px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px">Paste this into Terminal</div>
+      <div style="position:relative">
+        <pre id="agentic-cmd" style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;color:#e6edf3;margin:0;white-space:pre-wrap">cd /Users/stacktrax/Desktop/deka-agentic-workflow && python3 runtime/orchestrator.py --run-now</pre>
+        <button onclick="copyAgenticCmd()" id="agentic-copy-btn" style="position:absolute;top:6px;right:6px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-size:10px;padding:3px 8px;cursor:pointer">&#128203; Copy</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:8px">Takes ~2 minutes. Searches Boston, NYC, Philadelphia, NJ, and rotating secondary cities. Writes new prospects to your CRM sheet — no duplicates.</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Auto-scheduled: <strong style="color:var(--text)">Mon / Wed / Fri at 6:07 AM</strong>. Use this to run on demand anytime.</div>
+    </div>
+  </div>
+
+  <!-- File Upload -->
+  <div class="import-card">
+    <h4>&#128196; Upload Excel or CSV File</h4>
+    <p>Drop any Excel (.xlsx) or CSV file — exported from Google Sheets, your own tracking sheet, or a trade show lead list. The dashboard will auto-detect your column headers and map them to prospect fields.</p>
+    <div class="drop-zone" id="drop-zone"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleFileDrop(event)">
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(this)">
+      <div class="drop-zone-icon">&#128196;</div>
+      <div class="drop-zone-label">Drop file here or click to browse</div>
+      <div class="drop-zone-sub">Supports .xlsx, .xls, .csv &mdash; exports from Google Sheets or Excel both work</div>
+    </div>
+    <div id="file-status" style="font-size:12px;color:var(--text-dim);margin-top:10px"></div>
+
+    <!-- Column mapping preview -->
+    <div id="file-preview" style="display:none;margin-top:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Detected Columns &mdash; Confirm Mapping</div>
+      <div id="col-map-rows"></div>
+      <div style="overflow-x:auto;max-height:220px;overflow-y:auto;margin-top:10px">
+        <table class="preview-table" id="preview-table-el"></table>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
+        <button class="btn btn-primary" onclick="confirmFileImport()">&#10003; Import These Prospects</button>
+        <button class="btn btn-ghost" onclick="cancelFileImport()">Cancel</button>
+        <span id="file-import-status" style="font-size:12px;color:var(--text-dim)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browse Any Sheet Tab -->
+  <div class="import-card">
+    <h4>&#128279; Sync from Any Tab in Your Google Sheet</h4>
+    <p>Connects to any Google Sheet where you've deployed the Apps Script. Browse all available tabs, pick one, and import its rows. Duplicates are skipped automatically &mdash; matched by gym name and email.</p>
+
+    <!-- Sheet Sources Config -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px">Configured Sheet Sources</div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:4px"><strong style="color:var(--text)">Sheet 1 — DEKA NAM Affiliates</strong> (configured in Portfolio Dashboard)</div>
+      <div id="sheet1-status" style="font-size:11px;color:var(--text-dim);margin-bottom:12px">Loading...</div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:6px"><strong style="color:var(--text)">Sheet 2 — DEKA Affiliate CRM</strong> (paste Apps Script URL below)</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="gs2-url-input" type="text" placeholder="https://script.google.com/macros/s/..." style="flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:12px;outline:none" oninput="saveSheet2Url(true)">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="saveSheet2Url(false)">Save</button>
+        <button class="btn btn-ghost" style="font-size:12px;border-color:var(--blue);color:var(--blue)" onclick="testSheet2()">Test</button>
+      </div>
+      <div id="sheet2-save-status" style="font-size:11px;margin-top:6px;color:var(--text-dim)"></div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Need to set this up? Open the CRM sheet → <strong style="color:var(--text)">Extensions → Apps Script</strong> → paste the script → <strong style="color:var(--text)">Deploy as Web App</strong> → copy the URL here.</div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-ghost" onclick="loadSheetTabs()">&#128196; Browse All Configured Sheet Tabs</button>
+      <span id="tab-list-status" style="font-size:12px;color:var(--text-dim)"></span>
+    </div>
+    <div id="tab-picker" style="display:none;margin-bottom:12px">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;display:block;margin-bottom:6px">Select a Tab</label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="tab-select" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;min-width:220px"></select>
+        <button class="btn btn-primary" onclick="fetchSelectedTab()">&#8595; Load This Tab</button>
+      </div>
+    </div>
+    <!-- Tab data preview (reuses same col-map / preview UI as file upload) -->
+    <div id="tab-preview" style="display:none;margin-top:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Detected Columns &mdash; Confirm Mapping</div>
+      <div id="tab-col-map-rows"></div>
+      <div style="overflow-x:auto;max-height:220px;overflow-y:auto;margin-top:10px">
+        <table class="preview-table" id="tab-preview-table-el"></table>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:var(--card2);border-radius:6px;font-size:12px;color:var(--text-dim)">
+        <strong style="color:var(--text)">Dedup rules:</strong> rows matching an existing prospect by gym name <em>or</em> email will update (not duplicate). Rows with no gym name are skipped.
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
+        <button class="btn btn-primary" onclick="confirmTabImport()">&#10003; Import These Prospects</button>
+        <button class="btn btn-ghost" onclick="cancelTabImport()">Cancel</button>
+        <span id="tab-import-status" style="font-size:12px;color:var(--text-dim)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Tier 1-3 Quick Sync -->
+  <div class="import-card">
+    <h4>&#8635; Quick Sync — "Pipeline Tier 1-3" Tab</h4>
+    <p>One-click pull from the <strong>Pipeline Tier 1-3</strong> tab, filtered to your rows (Sales Manager = your name). Stage auto-detected from CALL ARRANGED? column. Preserves any enrichments you've added here.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="syncFromSheet()">&#8635; Sync Now</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('manual-import-wrap').style.display='block'">&#8679; Paste CSV / JSON Instead</button>
+      <span id="sync-status" style="font-size:12px;color:var(--text-dim)"></span>
+    </div>
+    <div id="manual-import-wrap" style="display:none;margin-top:16px">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;display:block;margin-bottom:6px">Paste sheet data (CSV or JSON array)</label>
+      <textarea id="manual-import-text" style="width:100%;height:120px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:10px;font-family:monospace;outline:none" placeholder="Paste CSV rows or JSON array here..."></textarea>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="parseManualImport()">Parse & Import</button>
+    </div>
+  </div>
+  <div class="import-card">
+    <h4>&#128190; Export Pipeline Data</h4>
+    <p>Download your full prospect pipeline as JSON (for backup) or CSV (for sharing / re-import into Google Sheets).</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="exportPipelineJSON()">&#8595; Export JSON</button>
+      <button class="btn btn-ghost" onclick="exportPipelineCSV()">&#8595; Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<div class="main" id="view-tips" style="display:none">
+  <h3 style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--yellow)">&#128161; Google Sheet Optimizer — Recommended Improvements</h3>
+  <p style="font-size:13px;color:var(--text-mid);margin-bottom:20px;max-width:680px">Your current "Pipeline Tier 1-3" sheet works, but these changes would make syncing cleaner and your day-to-day workflow faster. None of these are required — the dashboard works with the existing layout. These are suggestions if you want to upgrade the sheet itself.</p>
+
+  <div class="tip-card">
+    <h4>1. Add a "Stage" Column</h4>
+    <p>Replace the ambiguous "TIER 3 - call to be arranged" + "CALL ARRANGED?" columns with a single <strong>Stage</strong> column. Use values: Lead, Contacted, Discovery, Proposal, Negotiating, Signed, Lost. The dashboard can sync directly to the kanban column from this one field.</p>
+  </div>
+  <div class="tip-card">
+    <h4>2. Add a "Priority" Column</h4>
+    <p>Add a <strong>Priority</strong> column (values: Hot, Warm, Cold). This is the signal that's most missing from the current sheet — there's no way to see at a glance which prospects need action today vs. which are slow-burn.</p>
+  </div>
+  <div class="tip-card">
+    <h4>3. Rename "LOCATION" to "CITY"</h4>
+    <p>"LOCATION" is ambiguous — it sometimes contains city names, sometimes addresses. Renaming to <strong>CITY</strong> and having a separate <strong>ADDRESS</strong> column makes the data unambiguous and much easier to map.</p>
+  </div>
+  <div class="tip-card">
+    <h4>4. Add "Estimated Annual Revenue" Column</h4>
+    <p>Tracking estimated deal value per prospect makes the Analytics tab much more useful — you can see total pipeline value, not just count. Use a simple number like 4000 (for $4K/year).</p>
+  </div>
+  <div class="tip-card">
+    <h4>5. Add "Last Contacted" Date Column</h4>
+    <p>A <strong>Last Contacted</strong> date column lets the dashboard automatically flag prospects you haven't touched in 14+ days. Right now there's no way to sort or filter by recency.</p>
+  </div>
+  <div class="tip-card">
+    <h4>6. Add a "Dashboard ID" Column</h4>
+    <p>When syncing, the dashboard currently matches prospects by gym name (fuzzy). If a gym name ever changes or is spelled differently between rows, matches can break. Adding a stable <strong>Dashboard ID</strong> column (e.g., <code>prospect_abc123</code>) that the dashboard writes back gives you bulletproof sync matching. Optional but useful at scale.</p>
+  </div>
+  <div class="tip-card">
+    <h4>7. Filter to Your Rows by Default</h4>
+    <p>In the sheet, use Google Sheets' built-in <strong>Filter Views</strong> to create a saved view that filters column J (Sales Manager) = your name. This way when you open the sheet, you only see your rows — no need to scroll past other reps' leads.</p>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div id="sync-toast"></div>
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-head">
+      <div style="flex:1">
+        <div id="dp-priority-badge" class="priority-badge" style="margin-bottom:6px"></div>
+        <div id="dp-name" style="font-size:17px;font-weight:700"></div>
+        <div id="dp-sub" style="font-size:12px;color:var(--text-dim);margin-top:3px"></div>
+      </div>
+      <button class="detail-close" onclick="closeDetail()">&#215;</button>
+    </div>
+    <div class="detail-body" id="dp-body"></div>
+    <div class="detail-footer" id="dp-footer"></div>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal-box">
+    <h3>+ Add New Prospect</h3>
+    <div class="modal-grid">
+      <div class="modal-full d-field">
+        <label>Gym / Business Name *</label>
+        <input type="text" id="new-gymName" placeholder="CrossFit Northampton">
+      </div>
+      <div class="d-field">
+        <label>Owner / Contact Name</label>
+        <input type="text" id="new-ownerName" placeholder="Mike Torres">
+      </div>
+      <div class="d-field">
+        <label>Email</label>
+        <input type="email" id="new-email" placeholder="mike@gym.com">
+      </div>
+      <div class="d-field">
+        <label>Phone</label>
+        <input type="tel" id="new-phone" placeholder="(555) 555-1234">
+      </div>
+      <div class="d-field">
+        <label>City</label>
+        <input type="text" id="new-city" placeholder="Northampton">
+      </div>
+      <div class="d-field">
+        <label>State</label>
+        <input type="text" id="new-state" placeholder="MA" maxlength="2" style="text-transform:uppercase">
+      </div>
+      <div class="d-field">
+        <label>Gym Type</label>
+        <select id="new-gymType">
+          <option value="">-- Select --</option>
+          <option>CrossFit Box</option><option>YMCA</option><option>Boutique Fitness</option>
+          <option>Independent Gym</option><option>Martial Arts / MMA</option>
+          <option>Sports Complex</option><option>University / Rec Center</option><option>Other</option>
+        </select>
+      </div>
+      <div class="d-field">
+        <label>Priority</label>
+        <select id="new-priority">
+          <option value="warm">Warm</option>
+          <option value="hot">&#128293; Hot</option>
+          <option value="cold">&#10052; Cold</option>
+        </select>
+      </div>
+      <div class="d-field">
+        <label>Stage</label>
+        <select id="new-stage">
+          <option value="lead">Lead</option>
+          <option value="contacted">Contacted</option>
+          <option value="discovery">Discovery</option>
+          <option value="proposal">Proposal</option>
+          <option value="negotiating">Negotiating</option>
+        </select>
+      </div>
+      <div class="d-field">
+        <label>Source</label>
+        <select id="new-source">
+          <option value="">-- Select --</option>
+          <option value="referral">Referral</option>
+          <option value="cold">Cold Outreach</option>
+          <option value="inbound">Inbound</option>
+          <option value="event">Event</option>
+          <option value="social">Social Media</option>
+        </select>
+      </div>
+      <div class="d-field">
+        <label>Est. Annual Revenue ($)</label>
+        <input type="number" id="new-revenue" placeholder="4000" min="0">
+      </div>
+      <div class="d-field">
+        <label>Next Action</label>
+        <input type="text" id="new-nextAction" placeholder="Send partnership deck">
+      </div>
+      <div class="d-field">
+        <label>Next Action Due</label>
+        <input type="date" id="new-nextActionDate">
+      </div>
+      <div class="modal-full d-field">
+        <label>Notes</label>
+        <textarea id="new-notes" rows="3" placeholder="How you found them, what they said, key context..."></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewProspect()">&#10003; Add Prospect</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── ACCESS CONTROL + SETTINGS (shared with Portfolio dashboard) ──
+const VALID_CODES = ['DEKA-NE-2026-ANTHONY','DEKA-SE-2026','DEKA-MW-2026','DEKA-SW-2026','DEKA-W-2026'];
+const DEFAULT_SETTINGS = {
+  firstName:'Anthony', fullName:'Anthony Passamonte', region:'Northeast',
+  regionFilter:'North East', calendarLink:'https://calendar.app.google/KtfQhJTg9wmrJhvs6',
+  emailSignature:'Anthony\nDEKA Fitness — Northeast Account Manager',
+  territoryDesc:'Maine to Virginia', states:'CT,MA,NJ,NY,PA,VA,NH,RI,VT,DE,ME,MD'
+};
+window.SETTINGS = JSON.parse(localStorage.getItem('deka_settings')||'null') || {...DEFAULT_SETTINGS};
+function _s(key, fallback) { return (window.SETTINGS && window.SETTINGS[key]) || fallback || ''; }
+
+function _checkAccess() {
+  if (!window.ACCESS_GATE_ENABLED) return true;
+  const stored = localStorage.getItem('deka_access');
+  if (stored && VALID_CODES.includes(stored)) return true;
+  return false;
+}
+window.ACCESS_GATE_ENABLED = false;
+function _submitAccessPL() {
+  const input = document.getElementById('access-code-input');
+  const err = document.getElementById('access-error');
+  const code = (input.value||'').trim().toUpperCase();
+  if (VALID_CODES.includes(code)) {
+    localStorage.setItem('deka_access', code);
+    document.getElementById('access-gate').style.display='none';
+    document.body.classList.remove('locked');
+    init();
+  } else {
+    err.style.display='block';
+    input.style.borderColor='var(--accent,#e74c3c)';
+    input.classList.add('shake');
+    setTimeout(()=>input.classList.remove('shake'),500);
+  }
+}
+
+// ── DATA ──
+const PIPELINE_KEY = 'deka_pipeline';
+const GS_CONFIG_KEY = 'deka_gs_config';
+const GS_SECRET = 'deka-nam-2026';
+const NE_STATES = _s('states','CT,MA,NY,NJ,PA,VA,MD,DC,RI,ME,NH,VT,DE').split(',').map(s=>s.trim());
+const STAGES = ['lead','contacted','proposal','discovery','negotiating','signed','nurture','lost'];
+const ACTIVE_STAGES = ['lead','contacted','proposal','discovery','negotiating'];
+const SECONDARY_STAGES = ['signed','nurture','lost'];
+const STAGE_LABELS = {lead:'Lead',contacted:'Contacted',proposal:'Proposal (Followed Up 2-3x)',discovery:'Discovery Call',negotiating:'Negotiating',signed:'Signed',nurture:'Follow Up Later',lost:'Closed Lost'};
+const STAGE_ICONS = {lead:'🎯',contacted:'📞',proposal:'📋',discovery:'📅',negotiating:'✍️',signed:'✅',nurture:'⏰',lost:'🚫'};
+const STAGE_ORDER = {lead:1,contacted:2,proposal:3,discovery:4,negotiating:5,signed:6,nurture:7,lost:0};
+
+let pipelineData = {prospects:[], goals:{newAffiliates2026:8, targetStates:['NH','VT','DE']}};
+let currentDetailId = null;
+let selectedIds = new Set();
+let listSortCol = 'priority';
+let listSortDir = 'asc';
+
+function loadPipeline() {
+  const raw = localStorage.getItem(PIPELINE_KEY);
+  if (raw) { try { pipelineData = JSON.parse(raw); } catch(e) {} }
+  if (!pipelineData.prospects) pipelineData.prospects = [];
+  if (!pipelineData.goals) pipelineData.goals = {newAffiliates2026:8, targetStates:[]};
+}
+
+function savePipeline() {
+  localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipelineData));
+}
+
+function genId() {
+  return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
+// ── INIT ──
+function init() {
+  // Access gate check
+  if (!_checkAccess()) {
+    document.body.classList.add('locked');
+    document.getElementById('access-gate').style.display='flex';
+    return;
+  }
+  loadPipeline();
+  populateStateFilter();
+  showView('board', document.querySelector('.nav-tab'));
+  updateHeaderSub();
+
+  // Deep-link: auto-open onboarding modal if ?onboard=gymName is in the URL
+  const params = new URLSearchParams(window.location.search);
+  const onboardName = params.get('onboard');
+  if (onboardName) {
+    const match = pipelineData.prospects.find(p =>
+      p.gymName && p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'') === onboardName.toLowerCase().replace(/[^a-z0-9]/g,'')
+    );
+    if (match) {
+      // Ensure onboarding tasks exist
+      if (!match.onboardingTasks || match.onboardingTasks.length === 0) {
+        match.onboardingTasks = JSON.parse(JSON.stringify(DEFAULT_ONBOARDING_TASKS));
+        match.onboardingStart = new Date().toISOString().slice(0,10);
+        savePipeline();
+      }
+      setTimeout(() => openOnboardingModal(match.id), 300);
+    }
+  }
+}
+
+function updateHeaderSub() {
+  const active = pipelineData.prospects.filter(p => p.stage !== 'lost' && p.stage !== 'signed').length;
+  const hot = pipelineData.prospects.filter(p => p.priority === 'hot' && p.stage !== 'lost').length;
+  const signed = pipelineData.prospects.filter(p => p.stage === 'signed').length;
+  document.getElementById('hdr-sub').textContent =
+    `${_s('fullName','Anthony Passamonte')} \u2022 ${_s('region','Northeast')} \u2022 ${active} Active \u2022 ${hot} Hot \u2022 ${signed} Signed`;
+}
+
+function populateStateFilter() {
+  const states = [...new Set(pipelineData.prospects.map(p => p.state).filter(Boolean))].sort();
+  const sel = document.getElementById('flt-state');
+  sel.innerHTML = '<option value="">All States</option>';
+  states.forEach(s => { const o = document.createElement('option'); o.value = o.textContent = s; sel.appendChild(o); });
+}
+
+// ── VIEWS ──
+let currentView = 'board';
+function showView(id, btn) {
+  ['board','list','analytics','import'].forEach(v => {
+    document.getElementById('view-'+v).style.display = v===id ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('board-toolbar').style.display = (id==='board'||id==='list') ? 'flex' : 'none';
+  currentView = id;
+  if (id==='board') renderBoard();
+  else if (id==='list') renderList();
+  else if (id==='analytics') renderAnalytics();
+  else if (id==='import') initSheet2Config();
+}
+
+// ── Bulk selection ──────────────────────────────────────────────────────────
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  const card = document.getElementById('pcard-' + id);
+  if (card) card.classList.toggle('selected', selectedIds.has(id));
+  _syncColCheckbox(id);
+  updateBulkBar();
+}
+
+function toggleSelectAll(stage, cb) {
+  const stageProspects = pipelineData.prospects.filter(p => p.stage === stage);
+  stageProspects.forEach(p => {
+    if (cb.checked) selectedIds.add(p.id);
+    else selectedIds.delete(p.id);
+    const card = document.getElementById('pcard-' + p.id);
+    if (card) card.classList.toggle('selected', cb.checked);
+  });
+  updateBulkBar();
+}
+
+function _syncColCheckbox(id) {
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  const cb = document.getElementById('colcheck-' + p.stage);
+  if (!cb) return;
+  const stageProspects = pipelineData.prospects.filter(x => x.stage === p.stage);
+  cb.checked = stageProspects.length > 0 && stageProspects.every(x => selectedIds.has(x.id));
+  cb.indeterminate = !cb.checked && stageProspects.some(x => selectedIds.has(x.id));
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const cnt = document.getElementById('bulk-count');
+  if (!bar || !cnt) return;
+  bar.classList.toggle('hidden', selectedIds.size === 0);
+  cnt.textContent = selectedIds.size + ' selected';
+}
+
+function clearSelection() {
+  selectedIds.forEach(id => {
+    const card = document.getElementById('pcard-' + id);
+    if (card) card.classList.remove('selected');
+  });
+  selectedIds.clear();
+  document.querySelectorAll('.col-check-all').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+  updateBulkBar();
+}
+
+function batchEmail() {
+  if (selectedIds.size === 0) return;
+
+  const selected = [...selectedIds].map(id => pipelineData.prospects.find(x => x.id === id)).filter(Boolean);
+  const withEmail = selected.filter(p => !!(p.email || '').trim());
+  const noEmail   = selected.filter(p =>  !(p.email || '').trim());
+
+  if (withEmail.length === 0) {
+    alert(`None of the ${selected.length} selected prospect${selected.length !== 1 ? 's have' : ' has'} an email on file.\n\nOpen each card \u2192 Contact Info \u2192 add their email, then try again.`);
+    return;
+  }
+
+  // Open Gmail FIRST — before any DOM work — so Chrome's user gesture is still fresh
+  _sendGmailForProspects(withEmail);
+
+  // THEN log + stage updates
+  const today = new Date().toISOString().slice(0, 10);
+  const followUp = new Date(); followUp.setDate(followUp.getDate() + 3);
+  const followUpStr = followUp.toISOString().slice(0, 10);
+  withEmail.forEach(p => {
+    if (!p.activities) p.activities = [];
+    p.activities.unshift({ date: today, type: 'email', notes: 'Batch email sent \u2014 DEKA Affiliate Partnership outreach' });
+    p.lastActivity = today;
+    p.nextAction = 'Follow up';
+    p.nextActionDate = followUpStr;
+    if (p.stage !== 'contacted') {
+      p.stage = 'contacted';
+      p.activities.unshift({ date: today, type: 'stage', notes: `Moved to ${STAGE_LABELS['contacted']}` });
+    }
+  });
+
+  savePipeline();
+  clearSelection();
+  renderBoard();
+  updateHeaderSub();
+
+  const skippedMsg = noEmail.length ? ` \u00b7 ${noEmail.length} skipped (no email)` : '';
+  showToast(`\u2709 Gmail opened \u2014 ${withEmail.length} recipient${withEmail.length !== 1 ? 's' : ''} in ${withEmail.length > 1 ? 'BCC' : 'TO'}${skippedMsg}`);
+}
+
+// ── FILTERS ──
+// Open territory states (0-1 affiliates) — higher prospect priority
+const OPEN_TERRITORY = ['NH','VT','ME','DE'];
+
+function prospectScore(p) {
+  let score = 0;
+  score += {hot:30, warm:15, cold:5}[p.priority] || 5;
+  score += {lead:5,contacted:10,nurture:3,discovery:15,proposal:20,negotiating:25,signed:0,lost:0}[p.stage] || 0;
+  if (p.email) score += 8;
+  if (p.phone) score += 5;
+  if (p.estimatedRevenue) score += 5;
+  const daysSince = p.lastActivity ? Math.floor((Date.now()-new Date(p.lastActivity+'T12:00:00'))/86400000) : 999;
+  if (daysSince <= 7) score += 10;
+  else if (daysSince <= 14) score += 5;
+  if (OPEN_TERRITORY.includes(p.state)) score += 10;
+  const gt = (p.gymType||'').toLowerCase();
+  if (gt.includes('crossfit') || gt.includes('functional') || gt.includes('hyrox')) score += 10;
+  if (p.notes && p.notes.length > 20) score += 3;
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < today) score -= 5;
+  return score;
+}
+
+function getSorted(list) {
+  const sortCol = document.getElementById('flt-sort')?.value || 'score';
+  return [...list].sort((a,b) => {
+    if (sortCol === 'score') return prospectScore(b) - prospectScore(a);
+    if (sortCol === 'priority') return ({hot:0,warm:1,cold:2}[a.priority]||1) - ({hot:0,warm:1,cold:2}[b.priority]||1);
+    if (sortCol === 'stage') return (STAGE_ORDER[b.stage]||0) - (STAGE_ORDER[a.stage]||0);
+    if (sortCol === 'lastActivity') return (b.lastActivity||'').localeCompare(a.lastActivity||'');
+    return (a.gymName||'').localeCompare(b.gymName||'');
+  });
+}
+
+function getFiltered(includeAll) {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const pri = document.getElementById('flt-priority').value;
+  const src = document.getElementById('flt-source').value;
+  const st = document.getElementById('flt-state').value;
+  return pipelineData.prospects.filter(p => {
+    if (!includeAll && (p.stage === 'lost' || p.stage === 'signed' || p.stage === 'nurture')) return false;
+    if (pri && p.priority !== pri) return false;
+    if (src && p.source !== src) return false;
+    if (st && p.state !== st) return false;
+    if (q) {
+      const hay = [p.gymName, p.ownerName, p.city, p.state, p.email, p.source, p.notes].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function applyFilters() {
+  if (currentView === 'board') renderBoard();
+  else if (currentView === 'list') renderList();
+}
+
+// ── KANBAN BOARD ──
+function renderBoard() {
+  const filtered = getFiltered();
+  const allProspects = getFiltered(true);
+  const activeCount = filtered.length;
+  const signedCount = allProspects.filter(p=>p.stage==='signed').length;
+  const nurtureCount = allProspects.filter(p=>p.stage==='nurture').length;
+  const lostCount = allProspects.filter(p=>p.stage==='lost').length;
+  document.getElementById('prospect-count').textContent = `${activeCount} active of ${pipelineData.prospects.length} prospects`;
+
+  const byStage = {};
+  STAGES.forEach(s => byStage[s] = []);
+  allProspects.forEach(p => { if (byStage[p.stage]) byStage[p.stage].push(p); });
+  // Also add filtered-only active prospects
+  filtered.forEach(p => {
+    if (ACTIVE_STAGES.includes(p.stage) && !byStage[p.stage].includes(p)) byStage[p.stage].push(p);
+  });
+
+  const board = document.getElementById('kanban-board');
+
+  // Sort cards within each column: Hot first, then Warm, then Cold
+  // Within each priority: soonest next-action-date first, overdue at very top, no date last
+  const _priWeight = {hot:1, warm:2, cold:3};
+  const _sortCards = (cards) => {
+    const now = Date.now();
+    return [...cards].sort((a,b) => {
+      const pa = _priWeight[a.priority] || 3;
+      const pb = _priWeight[b.priority] || 3;
+      if (pa !== pb) return pa - pb;
+      // Same priority: sort by next action date (soonest first, no date last)
+      const da = a.nextActionDate ? new Date(a.nextActionDate+'T12:00:00').getTime() : Infinity;
+      const db = b.nextActionDate ? new Date(b.nextActionDate+'T12:00:00').getTime() : Infinity;
+      return da - db;
+    });
+  };
+
+  // Build cards HTML with priority group separators
+  const _buildColumnCards = (cards) => {
+    if (cards.length === 0) return `<div style="text-align:center;padding:20px 8px;color:var(--text-dim);font-size:11px">Drop here</div>`;
+    const sorted = _sortCards(cards);
+    let html = '';
+    let lastPri = '';
+    sorted.forEach(p => {
+      const pri = p.priority || 'cold';
+      if (pri !== lastPri && lastPri !== '') {
+        // Insert separator between priority groups
+        const priLabels = {hot:'\uD83D\uDD25 HOT',warm:'\uD83D\uDE0A WARM',cold:'\u2744\uFE0F COLD'};
+        html += `<div style="text-align:center;padding:4px 0;margin:4px 0"><span style="font-size:9px;letter-spacing:1px;color:var(--text-dim);opacity:0.5">\u2500\u2500 ${priLabels[pri]||pri.toUpperCase()} \u2500\u2500</span></div>`;
+      }
+      lastPri = pri;
+      html += cardHTML(p);
+    });
+    return html;
+  };
+
+  // Active pipeline columns
+  const activeHTML = ACTIVE_STAGES.map(stage => {
+    const cards = byStage[stage];
+    return `<div class="board-col col-${stage}" id="col-${stage}" ondragover="onDragOver(event,'${stage}')" ondrop="onDrop(event,'${stage}')" ondragleave="onDragLeave(event)">
+      <div class="col-header">${STAGE_ICONS[stage]} ${STAGE_LABELS[stage]} <span style="opacity:0.6">${cards.length}</span><label class="col-check-wrap" onclick="event.stopPropagation()" title="Select all in this column"><input type="checkbox" class="col-check-all" id="colcheck-${stage}" onchange="toggleSelectAll('${stage}',this)"><span>All</span></label></div>
+      <div class="col-body" id="colbody-${stage}">
+        ${_buildColumnCards(cards)}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Follow Up Later alert check
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nurtureOverdue = byStage['nurture'].filter(p => p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < today);
+  const nurtureAlertHTML = nurtureOverdue.length > 0
+    ? `<span style="background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;animation:pulse 2s infinite">${nurtureOverdue.length} overdue</span>`
+    : '';
+
+  // Secondary sections
+  const secondaryHTML = `
+    <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px" id="secondary-stages">
+      ${_renderSecondarySection('signed', byStage['signed'], 'rgba(74,222,128,0.15)', 'var(--green)', '')}
+      ${_renderSecondarySection('nurture', byStage['nurture'], 'rgba(13,148,136,0.15)', '#0d9488', nurtureAlertHTML)}
+      ${_renderSecondarySection('lost', byStage['lost'], 'rgba(55,65,81,0.3)', 'var(--text-dim)', '')}
+    </div>`;
+
+  board.innerHTML = `<div class="board" style="display:flex;gap:14px;min-width:max-content;align-items:flex-start">${activeHTML}</div>${secondaryHTML}`;
+  renderActionQueue();
+}
+
+let _aqCollapsed = false;
+let _aqSelectedIds = new Set();
+let _aqSort = 'due';      // 'due' | 'alpha' | 'state' | 'stage' | 'priority'
+let _aqFilterState = '';   // '' = all, or specific state abbreviation
+
+function _sendGmailForProspects(prospects) {
+  const emails = prospects.map(p => (p.email || '').trim()).filter(Boolean);
+  if (emails.length === 0) return false;
+  const subject = 'DEKA Fitness \u2014 Affiliate Partnership Opportunity';
+  const body =
+`Hi,
+
+I\u2019m reaching out about an exciting opportunity to bring DEKA Fitness events to your facility.
+
+DEKA events are structured, standardized functional fitness competitions that drive member engagement, foot traffic, and new revenue for host gyms \u2014 with full support from our team every step of the way.
+
+I\u2019d love to set up a quick 15-minute call to share more. Would you be open to connecting this week?
+
+Looking forward to hearing from you,
+
+${_s('firstName','Anthony')}
+DEKA Fitness \u2014 ${_s('region','Northeast')} Account Manager`;
+
+  const to  = emails.length === 1 ? emails[0] : '';
+  const bcc = emails.length  > 1  ? emails.join(',') : '';
+  let url = `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (to)  url += `&to=${encodeURIComponent(to)}`;
+  if (bcc) url += `&bcc=${encodeURIComponent(bcc)}`;
+  openGmail(url);
+  return true;
+}
+function toggleActionQueue() {
+  _aqCollapsed = !_aqCollapsed;
+  const body = document.getElementById('action-queue-body');
+  const icon = document.getElementById('aq-toggle-icon');
+  if (body) body.style.display = _aqCollapsed ? 'none' : '';
+  if (icon) icon.textContent = _aqCollapsed ? '▼' : '▲';
+}
+
+function renderActionQueue() {
+  const body   = document.getElementById('action-queue-body');
+  const badge  = document.getElementById('aq-overdue-badge');
+  const sumTxt = document.getElementById('aq-summary-text');
+  if (!body) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in7   = new Date(today); in7.setDate(in7.getDate() + 7);
+  const todayStr = today.toISOString().slice(0,10);
+
+  const prospects = pipelineData.prospects.filter(p =>
+    p.stage !== 'lost' && (p.nextAction || p.nextActionDate)
+  );
+
+  const overdue = [], dueToday = [], thisWeek = [], upcoming = [];
+  prospects.forEach(p => {
+    if (!p.nextActionDate) { upcoming.push(p); return; }
+    const d = new Date(p.nextActionDate + 'T12:00:00');
+    if (d < today)                  overdue.push(p);
+    else if (p.nextActionDate === todayStr) dueToday.push(p);
+    else if (d <= in7)              thisWeek.push(p);
+    else                            upcoming.push(p);
+  });
+
+  // Overdue badge
+  if (badge) {
+    badge.innerHTML = overdue.length > 0
+      ? `<span style="background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;animation:pulse 2s infinite">${overdue.length} overdue</span>`
+      : '';
+  }
+  if (sumTxt) {
+    const parts = [];
+    if (dueToday.length) parts.push(`${dueToday.length} today`);
+    if (thisWeek.length) parts.push(`${thisWeek.length} this week`);
+    if (upcoming.length) parts.push(`${upcoming.length} upcoming`);
+    sumTxt.textContent = parts.length ? '· ' + parts.join(' · ') : (prospects.length === 0 ? '· No actions set' : '');
+  }
+
+  if (_aqCollapsed || prospects.length === 0) {
+    body.innerHTML = prospects.length === 0
+      ? `<div style="padding:12px 14px;font-size:11px;color:var(--text-dim)">No next actions set on any active prospects. Open a prospect card and fill in Next Action + Due Date to track follow-ups here.</div>`
+      : '';
+    if (_aqCollapsed) body.style.display = 'none';
+    return;
+  }
+
+  // ── Filter by state ──
+  const allProspects = [...overdue, ...dueToday, ...thisWeek, ...upcoming];
+  const states = [...new Set(allProspects.map(p=>p.state).filter(Boolean))].sort();
+  if (_aqFilterState) {
+    overdue.splice(0, overdue.length, ...overdue.filter(p=>p.state===_aqFilterState));
+    dueToday.splice(0, dueToday.length, ...dueToday.filter(p=>p.state===_aqFilterState));
+    thisWeek.splice(0, thisWeek.length, ...thisWeek.filter(p=>p.state===_aqFilterState));
+    upcoming.splice(0, upcoming.length, ...upcoming.filter(p=>p.state===_aqFilterState));
+  }
+
+  // ── Sort within each group ──
+  const sortFn = (a,b) => {
+    if (_aqSort==='alpha') return (a.gymName||'').localeCompare(b.gymName||'');
+    if (_aqSort==='state') return (a.state||'').localeCompare(b.state||'') || (a.gymName||'').localeCompare(b.gymName||'');
+    if (_aqSort==='stage') return (a.stage||'').localeCompare(b.stage||'') || (a.gymName||'').localeCompare(b.gymName||'');
+    if (_aqSort==='priority') { const w={hot:0,warm:1,cold:2}; return (w[a.priority]??3)-(w[b.priority]??3) || (a.gymName||'').localeCompare(b.gymName||''); }
+    // default 'due' — sort by nextActionDate ascending
+    return (a.nextActionDate||'9999').localeCompare(b.nextActionDate||'9999');
+  };
+  overdue.sort(sortFn); dueToday.sort(sortFn); thisWeek.sort(sortFn); upcoming.sort(sortFn);
+
+  // ── Filter / Sort toolbar ──
+  const sortBtn = (label, key) => `<button onclick="event.stopPropagation();_aqSetSort('${key}')" style="background:${_aqSort===key?'var(--blue)':'none'};border:1px solid ${_aqSort===key?'var(--blue)':'var(--border)'};color:${_aqSort===key?'#fff':'var(--text-dim)'};border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:600">${label}</button>`;
+  const stateOpts = states.map(s=>`<option value="${s}" ${_aqFilterState===s?'selected':''}>${s}</option>`).join('');
+  const filterBar = `<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim)">Sort:</span>
+    ${sortBtn('Due Date','due')}${sortBtn('A–Z','alpha')}${sortBtn('State','state')}${sortBtn('Stage','stage')}${sortBtn('Priority','priority')}
+    <span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span>
+    <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim)">Filter:</span>
+    <select onchange="event.stopPropagation();_aqSetFilter(this.value)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:2px 6px;font-size:10px;cursor:pointer">
+      <option value="">All States</option>${stateOpts}
+    </select>
+    ${_aqFilterState?`<button onclick="event.stopPropagation();_aqSetFilter('')" style="background:none;border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer">✕ Clear</button>`:''}
+  </div>`;
+
+  const priIcon = {hot:'🔥',warm:'😊',cold:'❄️'};
+  const stageLabel = s => STAGE_LABELS[s] || s;
+
+  const rowHTML = (p, color, label) => {
+    const dateStr = p.nextActionDate || '';
+    const checked = _aqSelectedIds.has(p.id) ? 'checked' : '';
+    return `<div id="aqrow-${p.id}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''">
+      <input type="checkbox" ${checked} onclick="event.stopPropagation();_aqToggle('${p.id}')" style="flex-shrink:0;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
+      <span style="font-size:11px;flex-shrink:0">${priIcon[p.priority]||'•'}</span>
+      <span onclick="openDetail('${p.id}')" style="font-size:12px;font-weight:600;color:var(--text);min-width:160px;flex-shrink:0;cursor:pointer">${esc(p.gymName)}</span>
+      <span style="font-size:10px;color:var(--text-dim);flex-shrink:0;min-width:30px">${p.state||''}</span>
+      <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;min-width:90px;cursor:pointer">${stageLabel(p.stage)}</span>
+      <span onclick="openDetail('${p.id}')" style="font-size:11px;color:var(--text-mid);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer">${esc(p.nextAction||'—')}</span>
+      <span onclick="openDetail('${p.id}')" style="font-size:11px;font-weight:600;color:${color};flex-shrink:0;min-width:80px;text-align:right;cursor:pointer">${dateStr ? label + ' ' + dateStr : 'No date'}</span>
+      <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>
+    </div>`;
+  };
+
+  const sectionHeader = (label, color, count) =>
+    `<div style="padding:5px 14px;background:${color}18;border-bottom:1px solid var(--border)">
+      <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color}">${label} (${count})</span>
+    </div>`;
+
+  let html = '';
+  if (overdue.length)   { html += sectionHeader('Overdue', 'var(--accent)', overdue.length);   overdue.forEach(p =>   html += rowHTML(p, 'var(--accent)', '')); }
+  if (dueToday.length)  { html += sectionHeader('Due Today', 'var(--yellow)', dueToday.length); dueToday.forEach(p =>  html += rowHTML(p, 'var(--yellow)', 'Today')); }
+  if (thisWeek.length)  { html += sectionHeader('This Week', 'var(--blue)', thisWeek.length);   thisWeek.forEach(p =>  html += rowHTML(p, 'var(--blue)', '')); }
+  if (upcoming.length)  { html += sectionHeader('Upcoming', 'var(--text-dim)', upcoming.length); upcoming.forEach(p => html += rowHTML(p, 'var(--text-dim)', '')); }
+
+  const filteredTotal = overdue.length + dueToday.length + thisWeek.length + upcoming.length;
+  const filterNote = _aqFilterState ? `<div style="padding:6px 14px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">Showing ${filteredTotal} of ${allProspects.length} prospects in ${_aqFilterState}</div>` : '';
+  const rowsHtml = html || `<div style="padding:12px 14px;font-size:11px;color:var(--text-dim)">${_aqFilterState ? 'No prospects in ' + _aqFilterState + ' with pending actions.' : 'All clear — no overdue or upcoming actions.'}</div>`;
+  const aqActionBar = _aqSelectedIds.size > 0
+    ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--card2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:600;color:var(--text)">${_aqSelectedIds.size} selected</span>
+        <button class="btn btn-blue btn-sm" onclick="aqBatchEmail()" style="font-size:11px">&#9993; Send Batch Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="aqBatchFollowUp()" style="font-size:11px;border-color:var(--yellow);color:var(--yellow)">📅 Follow-up 1 Week</button>
+        <button class="btn btn-ghost btn-sm" onclick="aqBatchAdvanceStage()" style="font-size:11px;border-color:var(--green);color:var(--green)">➡ Advance Stage</button>
+        <button class="btn btn-ghost btn-sm" onclick="_aqClear()" style="font-size:11px">&#10005; Clear</button>
+      </div>`
+    : '';
+  body.innerHTML = filterBar + aqActionBar + filterNote + rowsHtml;
+  body.style.display = '';
+}
+
+function _aqToggle(id) {
+  if (_aqSelectedIds.has(id)) _aqSelectedIds.delete(id);
+  else _aqSelectedIds.add(id);
+  renderActionQueue();
+}
+function _aqClear() {
+  _aqSelectedIds.clear();
+  renderActionQueue();
+}
+function _aqSetSort(key) {
+  _aqSort = key;
+  renderActionQueue();
+}
+function _aqSetFilter(state) {
+  _aqFilterState = state;
+  renderActionQueue();
+}
+
+function aqBatchFollowUp() {
+  if (_aqSelectedIds.size === 0) return;
+  const today = new Date().toISOString().slice(0,10);
+  const fu = new Date(); fu.setDate(fu.getDate()+7);
+  const fuStr = fu.toISOString().slice(0,10);
+  const count = _aqSelectedIds.size;
+  [..._aqSelectedIds].forEach(id => {
+    const p = pipelineData.prospects.find(x => x.id === id);
+    if (!p) return;
+    if (!p.activities) p.activities = [];
+    p.activities.unshift({date:today, type:'note', notes:'Follow-up scheduled (batch action)'});
+    p.lastActivity = today;
+    p.nextAction = 'Follow up';
+    p.nextActionDate = fuStr;
+  });
+  savePipeline();
+  _aqClear();
+  renderBoard();
+  updateHeaderSub();
+  showToast(`📅 ${count} prospect${count!==1?'s':''} — follow-up set for ${fuStr}`);
+}
+
+function aqBatchAdvanceStage() {
+  if (_aqSelectedIds.size === 0) return;
+  const stageSeq = ['lead','contacted','proposal','discovery','negotiating','signed'];
+  const today = new Date().toISOString().slice(0,10);
+  let moved = 0;
+  [..._aqSelectedIds].forEach(id => {
+    const p = pipelineData.prospects.find(x => x.id === id);
+    if (!p) return;
+    const idx = stageSeq.indexOf(p.stage);
+    if (idx < 0 || idx >= stageSeq.length - 1) return; // skip if already signed or not in sequence
+    const newStage = stageSeq[idx + 1];
+    if (!p.activities) p.activities = [];
+    p.activities.unshift({date:today, type:'stage', notes:`Moved to ${STAGE_LABELS[newStage]||newStage} (batch action)`});
+    p.stage = newStage;
+    p.lastActivity = today;
+    moved++;
+  });
+  savePipeline();
+  _aqClear();
+  renderBoard();
+  updateHeaderSub();
+  showToast(`➡ ${moved} prospect${moved!==1?'s':''} advanced to next stage`);
+}
+
+function aqBatchEmail() {
+  if (_aqSelectedIds.size === 0) return;
+  const prospects = [..._aqSelectedIds].map(id => pipelineData.prospects.find(x => x.id === id)).filter(Boolean);
+  const withEmail = prospects.filter(p => !!(p.email || '').trim());
+
+  if (withEmail.length === 0) {
+    alert('None of the selected prospects have an email on file.\n\nOpen each card \u2192 Contact Info \u2192 add their email.');
+    return;
+  }
+
+  // Open Gmail FIRST
+  _sendGmailForProspects(withEmail);
+
+  // Then log activity
+  const today = new Date().toISOString().slice(0,10);
+  const followUp = new Date(); followUp.setDate(followUp.getDate()+7);
+  const followUpStr = followUp.toISOString().slice(0,10);
+  withEmail.forEach(p => {
+    if (!p.activities) p.activities = [];
+    p.activities.unshift({ date: today, type: 'email', notes: 'Batch email sent from Action Queue' });
+    p.lastActivity = today;
+    p.nextAction = 'Follow up';
+    p.nextActionDate = followUpStr;
+    if (p.stage !== 'contacted') {
+      p.stage = 'contacted';
+      p.activities.unshift({ date: today, type: 'stage', notes: `Moved to ${STAGE_LABELS['contacted']}` });
+    }
+  });
+  savePipeline();
+  _aqClear();
+  renderBoard();
+  updateHeaderSub();
+  showToast(`\u2709 Gmail opened \u2014 ${withEmail.length} Action Queue recipient${withEmail.length !== 1 ? 's' : ''}`);
+}
+
+function _renderSecondarySection(stage, cards, bgColor, textColor, alertBadge) {
+  return `
+    <details class="secondary-section" ondragover="onDragOver(event,'${stage}')" ondrop="onDrop(event,'${stage}')" ondragleave="onDragLeave(event)">
+      <summary style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${bgColor};border-radius:8px;cursor:pointer;border:1px solid ${textColor}30;user-select:none;list-style:none" onclick="event.stopPropagation()">
+        <span style="font-size:13px">${STAGE_ICONS[stage]}</span>
+        <span style="font-size:12px;font-weight:700;color:${textColor};letter-spacing:0.5px;text-transform:uppercase">${STAGE_LABELS[stage]}</span>
+        <span style="font-size:11px;color:${textColor};opacity:0.7">${cards.length}</span>
+        ${alertBadge}
+        ${cards.length > 0 ? `<button onclick="event.stopPropagation();clearSecondaryStage('${stage}')" title="Remove all from this list" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid ${textColor}40;background:transparent;color:${textColor};cursor:pointer;font-family:'DM Sans',sans-serif;opacity:0.6">\u2715 Clear All</button>` : ''}
+        <span style="${cards.length > 0 ? '' : 'margin-left:auto;'}font-size:10px;color:var(--text-dim)">\u25BC</span>
+      </summary>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 8px;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;background:var(--card)" id="colbody-${stage}">
+        ${cards.map(p => {
+          const isOverdue = p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < new Date(new Date().setHours(0,0,0,0));
+          return `<div style="position:relative;${isOverdue?'border-left:3px solid var(--accent);':''}">
+            <button onclick="event.stopPropagation();removeProspect('${p.id}','${stage}')" title="Remove ${p.gymName}" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);border:none;color:var(--text-dim);font-size:10px;width:18px;height:18px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;opacity:0.5;transition:opacity 0.15s" onmouseover="this.style.opacity='1';this.style.color='var(--accent)'" onmouseout="this.style.opacity='0.5';this.style.color='var(--text-dim)'">\u2715</button>
+            ${cardHTML(p)}
+          </div>`;
+        }).join('')}
+        ${cards.length === 0 ? `<div style="grid-column:1/-1;text-align:center;padding:16px;color:var(--text-dim);font-size:11px">No prospects in this stage</div>` : ''}
+      </div>
+    </details>`;
+}
+
+function _ensurePortfolioData(p) {
+  // Before removing a signed prospect from the pipeline, ensure their data is preserved
+  // in deka_crm and deka_affiliates_added so the Portfolio Dashboard keeps them
+  if (p.stage !== 'signed') return;
+  const normName = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const crmId = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+
+  // Ensure CRM entry exists with their info
+  const crmData = JSON.parse(localStorage.getItem('deka_crm')||'{}');
+  if (!crmData[crmId]) crmData[crmId] = {};
+  Object.assign(crmData[crmId], {
+    contactName: crmData[crmId].contactName || p.ownerName || '',
+    email: crmData[crmId].email || p.email || '',
+    phone: crmData[crmId].phone || p.phone || '',
+    city: crmData[crmId].city || p.city || '',
+    gymType: crmData[crmId].gymType || p.gymType || '',
+  });
+  // Preserve onboarding codes if they exist
+  if (p.onboardingCodes && !crmData[crmId].onboardingCodes) {
+    crmData[crmId].onboardingCodes = p.onboardingCodes;
+  }
+  localStorage.setItem('deka_crm', JSON.stringify(crmData));
+
+  // Ensure they're in the affiliates_added list (skip if already in default roster)
+  const roster = JSON.parse(localStorage.getItem('deka_affiliate_roster')||'[]');
+  const inRoster = roster.some(r => normName(r.name) === normName(p.gymName));
+  if (!inRoster) {
+    const added = JSON.parse(localStorage.getItem('deka_affiliates_added')||'[]');
+    if (!added.some(a => normName(a.name) === normName(p.gymName))) {
+      added.push({
+        id: crmId, name: p.gymName, state: p.state||'??', tier: 'd',
+        signYear: new Date().getFullYear(), events: 0, participants: 0, revenue: 0,
+        eventHistory: [], upcomingEvents: [], city: p.city||'', gymType: p.gymType||'',
+      });
+      localStorage.setItem('deka_affiliates_added', JSON.stringify(added));
+    }
+  }
+}
+
+function removeProspect(id, stage) {
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  const msg = p.stage === 'signed'
+    ? 'Remove ' + p.gymName + ' from the sales pipeline?\n\nTheir data is preserved in the Portfolio Dashboard.'
+    : 'Remove ' + p.gymName + ' from the pipeline? This cannot be undone.';
+  if (!confirm(msg)) return;
+  _ensurePortfolioData(p);
+  pipelineData.prospects = pipelineData.prospects.filter(x => x.id !== id);
+  savePipeline();
+  renderBoard();
+  updateHeaderSub();
+  if (p.stage === 'signed') showToast(p.gymName + ' removed from pipeline \u2014 preserved in Portfolio');
+}
+
+function clearSecondaryStage(stage) {
+  const label = STAGE_LABELS[stage] || stage;
+  const prospects = pipelineData.prospects.filter(p => p.stage === stage);
+  if (prospects.length === 0) return;
+  const msg = stage === 'signed'
+    ? 'Remove all ' + prospects.length + ' signed gyms from the pipeline?\n\nTheir data is preserved in the Portfolio Dashboard.'
+    : 'Remove all ' + prospects.length + ' prospects from "' + label + '"? This cannot be undone.';
+  if (!confirm(msg)) return;
+  // Ensure all signed prospects have their portfolio data preserved
+  prospects.forEach(p => _ensurePortfolioData(p));
+  pipelineData.prospects = pipelineData.prospects.filter(p => p.stage !== stage);
+  savePipeline();
+  renderBoard();
+  updateHeaderSub();
+  if (stage === 'signed') showToast(prospects.length + ' gyms removed from pipeline \u2014 all preserved in Portfolio');
+}
+
+function cardHTML(p) {
+  const priClass = {hot:'pri-hot',warm:'pri-warm',cold:'pri-cold'}[p.priority] || 'pri-cold';
+  const priLabel = {hot:'🔥 HOT',warm:'😊 WARM',cold:'❄ COLD'}[p.priority] || p.priority;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isOverdue = p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < today;
+  const daysSince = p.lastActivity ? Math.floor((Date.now()-new Date(p.lastActivity+'T12:00:00'))/86400000) : null;
+  const gmailUrl = p.email ? `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent('DEKA Affiliate Partnership')}` : '';
+
+  return `<div class="p-card${selectedIds.has(p.id)?' selected':''}" id="pcard-${p.id}" draggable="true"
+    ondragstart="onDragStart(event,'${p.id}')"
+    ondragend="onDragEnd(event)">
+    <input type="checkbox" class="p-card-check" ${selectedIds.has(p.id)?'checked':''} onclick="event.stopPropagation();toggleSelect('${p.id}')" title="Select for batch action">
+    <span class="priority-badge ${priClass}">${priLabel}</span>
+    <div class="p-card-name">${esc(p.gymName)}</div>
+    <div class="p-card-sub">${[p.city, p.state].filter(Boolean).join(', ')}${p.ownerName ? ' · '+esc(p.ownerName) : ''}</div>
+    ${p.estimatedRevenue ? `<div class="p-card-meta">Est: $${Number(p.estimatedRevenue).toLocaleString()}/yr</div>` : ''}
+    ${daysSince !== null ? `<div class="p-card-meta" style="color:${daysSince>14?'var(--accent)':'var(--text-dim)'}">Activity: ${daysSince===0?'Today':daysSince+'d ago'}</div>` : ''}
+    ${p.nextAction ? `<div class="p-card-meta ${isOverdue?'overdue':''}">&#8594; ${esc(p.nextAction)}${p.nextActionDate?' · '+p.nextActionDate:''}</div>` : ''}
+    <div class="p-card-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openDetail('${p.id}');event.stopPropagation()">View</button>
+      <select class="flt" style="font-size:11px;padding:3px 6px" onchange="moveStage('${p.id}',this.value);event.stopPropagation()" title="Move stage">
+        <option value="">Move &#8594;</option>
+        ${STAGES.filter(s=>s!==p.stage).map(s=>`<option value="${s}">${STAGE_LABELS[s]}</option>`).join('')}
+      </select>
+      ${gmailUrl ? `<button class="btn btn-blue btn-sm" onclick="openGmail('${gmailUrl}');event.stopPropagation()">&#9993;</button>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── DRAG & DROP ──
+let draggingId = null;
+function onDragStart(e, id) { draggingId = id; document.getElementById('pcard-'+id)?.classList.add('dragging'); }
+function onDragEnd(e) { document.querySelectorAll('.p-card').forEach(c=>c.classList.remove('dragging')); }
+function onDragOver(e, stage) { e.preventDefault(); document.getElementById('colbody-'+stage)?.classList.add('drag-over'); }
+function onDragLeave(e) { document.querySelectorAll('.col-body').forEach(c=>c.classList.remove('drag-over')); }
+function onDrop(e, stage) {
+  e.preventDefault();
+  document.querySelectorAll('.col-body').forEach(c=>c.classList.remove('drag-over'));
+  if (draggingId) { moveStage(draggingId, stage); draggingId = null; }
+}
+function moveStage(id, stage) {
+  const p = pipelineData.prospects.find(x=>x.id===id);
+  if (p && p.stage !== stage) {
+    p.stage = stage;
+    p.lastActivity = new Date().toISOString().slice(0,10);
+    if (!p.activities) p.activities = [];
+    p.activities.unshift({date:p.lastActivity, type:'stage', notes:`Moved to ${STAGE_LABELS[stage]}`});
+    savePipeline();
+    renderBoard();
+    updateHeaderSub();
+    if (currentDetailId === id) openDetail(id);
+  }
+}
+
+// ── PROSPECT LIST ──
+function renderList() {
+  const filtered = getFiltered(true);
+  const active = filtered.filter(p => p.stage !== 'lost');
+  const lost = filtered.filter(p => p.stage === 'lost');
+  document.getElementById('prospect-count').textContent = `${active.length} active \u00b7 ${lost.length} closed lost`;
+  const sorted = getSorted(active);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const rowHTML = (p, dim) => {
+    const priClass = {hot:'pri-hot',warm:'pri-warm',cold:'pri-cold'}[p.priority]||'pri-cold';
+    const stageColor = `var(--stage-${p.stage})`;
+    const isOverdue = p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < today;
+    const daysSince = p.lastActivity ? Math.floor((Date.now()-new Date(p.lastActivity+'T12:00:00'))/86400000) : null;
+    const score = prospectScore(p);
+    return `<tr onclick="openDetail('${p.id}')" style="${dim?'opacity:0.5':''}">
+      <td><span class="priority-badge ${priClass}" style="font-size:10px">${{hot:'🔥',warm:'😊',cold:'❄'}[p.priority]||''} ${p.priority||'—'}</span></td>
+      <td><strong>${esc(p.gymName)}</strong>${p.gymType?'<br><span style="font-size:10px;color:var(--text-dim)">'+esc(p.gymType)+'</span>':''}</td>
+      <td style="color:var(--text-dim)">${p.state||'—'}</td>
+      <td>${p.ownerName?esc(p.ownerName):'<span style="color:var(--text-dim)">—</span>'}${p.email?'<br><span style="font-size:10px;color:var(--blue)">'+esc(p.email)+'</span>':''}</td>
+      <td><span class="stage-pill" style="background:${stageColor}22;color:${stageColor}">${STAGE_LABELS[p.stage]||p.stage}</span></td>
+      <td style="color:var(--text-dim);font-size:11px">${score}</td>
+      <td style="color:${daysSince!==null&&daysSince>14?'var(--accent)':'var(--text-dim)'}">${daysSince!==null?(daysSince===0?'Today':daysSince+'d ago'):'—'}</td>
+      <td style="color:${isOverdue?'var(--accent)':'var(--text-mid)'}">${p.nextAction?esc(p.nextAction):'—'}${p.nextActionDate?'<br><span style="font-size:10px">'+p.nextActionDate+'</span>':''}</td>
+      <td onclick="event.stopPropagation()">
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-sm" onclick="openDetail('${p.id}')">View</button>
+          ${p.email?`<button class="btn btn-blue btn-sm" onclick="openGmail('https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent('DEKA Affiliate Partnership')}')">&#9993;</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  };
+
+  const lostRows = lost.length ? `
+    <tr onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'" style="cursor:pointer;background:var(--card2)">
+      <td colspan="9" style="padding:10px 14px;font-size:12px;color:var(--text-dim);font-weight:600">
+        🚫 Closed Lost (${lost.length}) — click to expand
+      </td>
+    </tr>
+    ${lost.map(p => `<tr style="display:none">${rowHTML(p,true).replace('<tr ','<tr-inner ')}</tr>`).join('')}` : '';
+
+  // Simpler lost section
+  const lostSection = lost.length ? `
+    <tr style="background:var(--card2)">
+      <td colspan="9" style="padding:0">
+        <details style="padding:0">
+          <summary style="padding:10px 14px;font-size:12px;color:var(--text-dim);font-weight:600;cursor:pointer;list-style:none">
+            🚫 Closed Lost (${lost.length}) &nbsp;▸ click to show
+          </summary>
+          <table style="width:100%;border-collapse:collapse">
+            ${lost.map(p => rowHTML(p, true)).join('')}
+          </table>
+        </details>
+      </td>
+    </tr>` : '';
+
+  document.getElementById('list-body').innerHTML =
+    (sorted.length ? sorted.map(p => rowHTML(p, false)).join('') : '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-dim)">No active prospects match your filters.</td></tr>') +
+    lostSection;
+}
+
+function sortList(col) {
+  if (listSortCol === col) listSortDir = listSortDir === 'asc' ? 'desc' : 'asc';
+  else { listSortCol = col; listSortDir = 'asc'; }
+  renderList();
+}
+
+// ── ANALYTICS ──
+function renderAnalytics() {
+  loadPipeline();
+  const all = pipelineData.prospects;
+  const active = all.filter(p => p.stage !== 'lost');
+  const signed = all.filter(p => p.stage === 'signed');
+  const hot = all.filter(p => p.priority === 'hot' && p.stage !== 'lost');
+  const totalPipelineValue = active.reduce((s,p) => s + (Number(p.estimatedRevenue)||0), 0);
+  const goal = pipelineData.goals?.newAffiliates2026 || 8;
+  const goalPct = Math.min(Math.round((signed.length/goal)*100), 100);
+
+  // Stage counts
+  const stageCounts = {};
+  STAGES.forEach(s => stageCounts[s] = all.filter(p=>p.stage===s).length);
+  const maxStage = Math.max(...Object.values(stageCounts), 1);
+
+  // Source breakdown
+  const sources = {};
+  all.forEach(p => { if (p.source) sources[p.source] = (sources[p.source]||0)+1; });
+
+  // Territory coverage — current affiliates by state (from portfolio dashboard via localStorage)
+  const crmData = JSON.parse(localStorage.getItem('deka_crm')||'{}');
+  const affiliateStates = {CT:3,MA:5,NY:3,NJ:2,PA:9,VA:3,MD:1,DC:1,RI:1,ME:1,NH:1,VT:0,DE:1};
+  const maxAff = Math.max(...Object.values(affiliateStates), 1);
+
+  document.getElementById('analytics-content').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-box"><div class="kpi-val" style="color:var(--blue)">${active.length}</div><div class="kpi-lbl">Active Prospects</div></div>
+      <div class="kpi-box"><div class="kpi-val" style="color:var(--accent)">${hot.length}</div><div class="kpi-lbl">Hot Leads</div></div>
+      <div class="kpi-box"><div class="kpi-val" style="color:var(--green)">${signed.length}</div><div class="kpi-lbl">Signed in 2026</div></div>
+      <div class="kpi-box"><div class="kpi-val" style="color:var(--yellow);font-size:20px">$${totalPipelineValue.toLocaleString()}</div><div class="kpi-lbl">Pipeline Value (Est.)</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+      <div>
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:14px">Pipeline Funnel</h3>
+        ${STAGES.filter(s=>s!=='lost').map(s => `
+          <div class="funnel-bar">
+            <div class="funnel-label">${STAGE_ICONS[s]} ${STAGE_LABELS[s]}</div>
+            <div class="funnel-track">
+              <div class="funnel-fill" style="width:${Math.max((stageCounts[s]/maxStage)*100,4)}%;background:var(--stage-${s})">
+                ${stageCounts[s]>0?stageCounts[s]:''}
+              </div>
+            </div>
+          </div>`).join('')}
+        <div class="funnel-bar">
+          <div class="funnel-label">🚫 Closed Lost</div>
+          <div class="funnel-track">
+            <div class="funnel-fill" style="width:${Math.max((stageCounts.lost/maxStage)*100,4)}%;background:var(--stage-lost);opacity:0.5">
+              ${stageCounts.lost>0?stageCounts.lost:''}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="goal-bar-wrap" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-size:13px;font-weight:700">2026 Signing Goal</div>
+            <div style="font-size:22px;font-weight:700;color:var(--green)">${signed.length}<span style="font-size:13px;color:var(--text-dim)"> / ${goal}</span></div>
+          </div>
+          <div class="goal-track"><div class="goal-fill" style="width:${goalPct}%"></div></div>
+          <div style="font-size:11px;color:var(--text-dim)">${goalPct}% to goal &nbsp;·&nbsp; ${Math.max(goal-signed.length,0)} more to reach target</div>
+          <div style="margin-top:12px;font-size:12px;color:var(--text-dim)">
+            <span style="cursor:pointer;text-decoration:underline" onclick="promptGoal()">Change goal (currently ${goal})</span>
+          </div>
+        </div>
+
+        <h4 style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--text-mid)">Source Breakdown</h4>
+        ${Object.entries(sources).sort((a,b)=>b[1]-a[1]).map(([src,cnt]) =>
+          `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text-mid)">${src}</span>
+            <strong>${cnt}</strong>
+          </div>`).join('') || '<div style="color:var(--text-dim);font-size:12px">No data yet.</div>'}
+      </div>
+    </div>
+
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:14px">Territory Coverage (Signed Affiliates)</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px">
+      ${NE_STATES.map(st => {
+        const count = affiliateStates[st]||0;
+        const pcts = Math.round((count/maxAff)*100);
+        const isOpp = count === 0 || count === 1;
+        return `<div class="territory-row">
+          <div class="territory-state">${st}</div>
+          <div class="territory-track"><div class="territory-fill" style="width:${Math.max(pcts,2)}%"></div></div>
+          <div class="territory-count">${count} affiliate${count!==1?'s':''}</div>
+          ${isOpp?'<div class="territory-opp">OPEN</div>':''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function promptGoal() {
+  const g = prompt('Set 2026 signing goal (number of new affiliates):', pipelineData.goals?.newAffiliates2026 || 8);
+  if (g && !isNaN(parseInt(g))) {
+    if (!pipelineData.goals) pipelineData.goals = {};
+    pipelineData.goals.newAffiliates2026 = parseInt(g);
+    savePipeline();
+    renderAnalytics();
+  }
+}
+
+// ── DETAIL PANEL ──
+function openDetail(id) {
+  loadPipeline();
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  currentDetailId = id;
+
+  const priClass = {hot:'pri-hot',warm:'pri-warm',cold:'pri-cold'}[p.priority]||'pri-cold';
+  const priLabel = {hot:'🔥 HOT',warm:'😊 WARM',cold:'❄ COLD'}[p.priority]||'—';
+  document.getElementById('dp-priority-badge').className = `priority-badge ${priClass}`;
+  document.getElementById('dp-priority-badge').textContent = priLabel;
+  document.getElementById('dp-name').textContent = p.gymName;
+  document.getElementById('dp-sub').textContent = [p.city, p.state, p.gymType].filter(Boolean).join(' · ');
+
+  const activities = (p.activities||[]).slice(0,8);
+  const actIcons = {call:'📞',email:'✉',note:'📝',stage:'→',meeting:'🤝'};
+  const gmailUrl = p.email ? `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent('DEKA Affiliate Partnership')}` : '';
+
+  document.getElementById('dp-body').innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-title">Stage & Priority</div>
+      <div class="d-row">
+        <div class="d-field">
+          <label>Stage</label>
+          <select id="dp-stage" onchange="dpSave()">
+            ${STAGES.map(s=>`<option value="${s}"${p.stage===s?' selected':''}>${STAGE_ICONS[s]} ${STAGE_LABELS[s]}</option>`).join('')}
+          </select>
+        </div>
+        <div class="d-field">
+          <label>Priority</label>
+          <select id="dp-priority" onchange="dpSave()">
+            <option value="hot"${p.priority==='hot'?' selected':''}>🔥 Hot</option>
+            <option value="warm"${p.priority==='warm'?' selected':''}>😊 Warm</option>
+            <option value="cold"${p.priority==='cold'?' selected':''}>❄ Cold</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Contact Info</div>
+      <div class="d-row">
+        <div class="d-field"><label>Owner / Contact</label><input id="dp-ownerName" value="${esc(p.ownerName||'')}" oninput="dpSave()" placeholder="Name"></div>
+        <div class="d-field"><label>Email</label><input type="email" id="dp-email" value="${esc(p.email||'')}" oninput="dpSave()" placeholder="email@gym.com"></div>
+        <div class="d-field"><label>Phone</label><input type="tel" id="dp-phone" value="${esc(p.phone||'')}" oninput="dpSave()" placeholder="(555) 555-1234"></div>
+        <div class="d-field"><label>Gym Type</label>
+          <select id="dp-gymType" onchange="dpSave()">
+            <option value="">--</option>
+            ${['CrossFit Box','YMCA','Boutique Fitness','Independent Gym','Martial Arts / MMA','Sports Complex','University / Rec Center','Other'].map(t=>`<option${p.gymType===t?' selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="d-field"><label>City</label><input id="dp-city" value="${esc(p.city||'')}" oninput="dpSave()"></div>
+        <div class="d-field"><label>State</label><input id="dp-state" value="${esc(p.state||'')}" oninput="dpSave()" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title" style="display:flex;align-items:center">Deal Info <span id="dp-save-flash" style="font-size:10px;color:var(--green);margin-left:8px;opacity:0;transition:opacity 0.5s;font-weight:600;text-transform:none;letter-spacing:0">✓ Saved</span></div>
+      <div class="d-row">
+        <div class="d-field"><label>Source</label>
+          <select id="dp-source" onchange="dpSave()">
+            <option value="">--</option>
+            ${['referral','cold','inbound','event','social','sheet'].map(s=>`<option value="${s}"${p.source===s?' selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="d-field"><label>Est. Revenue / yr ($)</label><input type="number" id="dp-revenue" value="${p.estimatedRevenue||''}" oninput="dpSave()" placeholder="4000"></div>
+        <div class="d-field"><label>Next Action</label><input id="dp-nextAction" value="${esc(p.nextAction||'')}" oninput="dpSave()" placeholder="Send partnership deck"></div>
+        <div class="d-field">
+          <label>Due Date</label>
+          <input type="date" id="dp-nextActionDate" value="${p.nextActionDate||''}" oninput="dpSave()">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px" onclick="setFollowUpDate(3)">+3 Days</button>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px" onclick="setFollowUpDate(7)">+1 Week</button>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px" onclick="setFollowUpDate(14)">+2 Weeks</button>
+            <select class="flt" style="font-size:11px;padding:3px 6px" onchange="setFollowUpDate(this.value*30);this.selectedIndex=0" title="Set months out">
+              <option value="">+ Months...</option>
+              ${[1,2,3,4,5,6,9,12].map(m=>`<option value="${m}">${m} Month${m>1?'s':''}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Notes</div>
+      <div class="d-field"><textarea id="dp-notes" rows="3" oninput="dpSave()" placeholder="Context, objections, connections...">${esc(p.notes||'')}</textarea></div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Activity Log (${activities.length} entries)</div>
+      ${activities.map(a => `
+        <div class="activity-item">
+          <div class="activity-meta"><span>${actIcons[a.type]||'•'} ${a.type||'note'}</span><span>${a.date||''}</span></div>
+          <div class="activity-notes">${esc(a.notes||'')}</div>
+        </div>`).join('') || '<div style="color:var(--text-dim);font-size:12px;margin-bottom:10px">No activity logged yet.</div>'}
+      <div class="log-form">
+        <div class="detail-section-title" style="margin-bottom:8px">+ Log Activity</div>
+        <div class="d-row" style="margin-bottom:8px">
+          <div class="d-field"><label>Type</label>
+            <select id="log-type">
+              <option value="call">📞 Call</option>
+              <option value="email">✉ Email</option>
+              <option value="meeting">🤝 Meeting</option>
+              <option value="note">📝 Note</option>
+            </select>
+          </div>
+          <div class="d-field"><label>Date</label><input type="date" id="log-date" value="${new Date().toISOString().slice(0,10)}"></div>
+        </div>
+        <div class="d-field"><textarea id="log-notes" rows="2" placeholder="What happened? What did they say?"></textarea></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:6px" onclick="logActivity()">Log Activity</button>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Email Templates</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="genEmail('cold')" title="🎯 Pain Call-Out + 💥 Big Promise — first touch">Cold Intro</button>
+        <button class="btn btn-ghost btn-sm" onclick="genEmail('called')" title="🏅 Authority + Before/After Transformation — post-call">Called + Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="genEmail('followup')" title="🔓 Secret/Hack + 📋 Framework — nurture">Post-Call Follow-up</button>
+        <button class="btn btn-ghost btn-sm" onclick="genEmail('discovery')" title="💥 Big Promise + ⏰ Urgency — close">Discovery Recap</button>
+      </div>
+      <div id="hook-indicator" style="display:none;margin-bottom:8px;padding:6px 10px;border-radius:6px;font-size:10px;line-height:1.5;border:1px solid #2C2C2C;background:#1C1C1C">
+        <span id="hook-label" style="font-weight:600;letter-spacing:0.5px"></span>
+        <span id="hook-why" style="color:#888;margin-left:6px"></span>
+      </div>
+      <div id="email-output-wrap" style="display:none">
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+          <span id="email-type-label" style="font-weight:600;text-transform:uppercase;letter-spacing:0.5px"></span>
+          <button class="email-regen-btn" onclick="regenEmail()" title="Generate a fresh variation of this email">↻ Regenerate</button>
+        </div>
+        <textarea class="email-output" id="email-output" rows="12" spellcheck="true"></textarea>
+        <div class="email-actions">
+          <button class="btn btn-ghost btn-sm" onclick="copyEmail()">📋 Copy</button>
+          ${p.email ? `<button class="btn btn-blue btn-sm" onclick="openEmailInGmail('${p.id}')">✉ Open in Gmail</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('dp-footer').innerHTML = `
+    <button class="btn btn-ghost btn-sm" style="color:var(--accent)" onclick="archiveProspect('${p.id}')">🚫 Close Lost</button>
+    <button class="btn btn-ghost btn-sm" onclick="deleteProspect('${p.id}')">🗑 Delete</button>
+    <div style="flex:1"></div>
+    ${p.stage !== 'signed'
+      ? `<button class="btn btn-primary signed-btn" onclick="markSigned('${p.id}')">✅ Mark as Signed → Add to Portfolio</button>`
+      : `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+           <div style="color:var(--green);font-size:12px;font-weight:600">✅ Signed</div>
+           <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;border-color:var(--green);color:var(--green)" onclick="openOnboardingFromDetail('${p.id}')">📋 Onboarding Checklist</button>
+         </div>`
+    }`;
+
+  document.getElementById('detail-overlay').classList.add('open');
+}
+
+function closeDetail(e) {
+  if (!e || e.target === document.getElementById('detail-overlay')) {
+    document.getElementById('detail-overlay').classList.remove('open');
+    currentDetailId = null;
+  }
+}
+
+function setFollowUpDate(days) {
+  const input = document.getElementById('dp-nextActionDate');
+  if (!input) return;
+  const d = new Date();
+  d.setDate(d.getDate() + Math.round(Number(days)));
+  input.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  dpSave();
+}
+
+function dpSave() {
+  if (!currentDetailId) return;
+  const p = pipelineData.prospects.find(x => x.id === currentDetailId);
+  if (!p) return;
+  const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const newStage = get('dp-stage');
+  if (newStage && newStage !== p.stage) {
+    if (!p.activities) p.activities = [];
+    p.activities.unshift({date:new Date().toISOString().slice(0,10), type:'stage', notes:`Moved to ${STAGE_LABELS[newStage]}`});
+  }
+  Object.assign(p, {
+    stage: newStage||p.stage, priority: get('dp-priority')||p.priority,
+    ownerName: get('dp-ownerName'), email: get('dp-email'), phone: get('dp-phone'),
+    gymType: get('dp-gymType'), city: get('dp-city'), state: get('dp-state').toUpperCase(),
+    source: get('dp-source'), estimatedRevenue: get('dp-revenue')||p.estimatedRevenue,
+    nextAction: get('dp-nextAction'), nextActionDate: get('dp-nextActionDate'),
+    notes: get('dp-notes'),
+  });
+  savePipeline();
+  if (currentView === 'board') renderBoard();
+  else if (currentView === 'list') renderList();
+  // Flash save confirmation
+  const _flash = document.getElementById('dp-save-flash');
+  if (_flash) {
+    clearTimeout(_flash._t);
+    _flash.style.opacity = '1';
+    _flash._t = setTimeout(() => { _flash.style.opacity = '0'; }, 1500);
+  }
+  // Update header badge in detail panel
+  const priClass = {hot:'pri-hot',warm:'pri-warm',cold:'pri-cold'}[p.priority]||'pri-cold';
+  const priLabel = {hot:'🔥 HOT',warm:'😊 WARM',cold:'❄ COLD'}[p.priority]||'—';
+  const badge = document.getElementById('dp-priority-badge');
+  if (badge) { badge.className = `priority-badge ${priClass}`; badge.textContent = priLabel; }
+  updateHeaderSub();
+}
+
+function logActivity() {
+  if (!currentDetailId) return;
+  const p = pipelineData.prospects.find(x => x.id === currentDetailId);
+  if (!p) return;
+  const notes = document.getElementById('log-notes')?.value?.trim();
+  const type = document.getElementById('log-type')?.value || 'note';
+  const date = document.getElementById('log-date')?.value || new Date().toISOString().slice(0,10);
+  if (!notes) return;
+  if (!p.activities) p.activities = [];
+  p.activities.unshift({date, type, notes});
+  p.lastActivity = date;
+  savePipeline();
+  document.getElementById('log-notes').value = '';
+  openDetail(currentDetailId);
+}
+
+function archiveProspect(id) {
+  moveStage(id, 'lost');
+  closeDetail();
+}
+
+function deleteProspect(id) {
+  if (!confirm('Permanently delete this prospect?')) return;
+  pipelineData.prospects = pipelineData.prospects.filter(p => p.id !== id);
+  savePipeline();
+  closeDetail();
+  renderBoard();
+  updateHeaderSub();
+}
+
+// markSigned() is now defined above near the onboarding modal code
+
+// ── EMAIL GENERATORS ──
+let _currentEmailType = 'cold';
+let _emailVariant = 0;
+const CALENDAR_LINK = _s('calendarLink','https://calendar.app.google/KtfQhJTg9wmrJhvs6');
+
+function genEmail(type) {
+  _currentEmailType = type;
+  _emailVariant = 0;
+  _renderEmail();
+}
+function regenEmail() {
+  _emailVariant++;
+  _renderEmail();
+}
+
+function _pick(arr, seed) {
+  return arr[(seed || _emailVariant) % arr.length];
+}
+
+function _renderEmail() {
+  const p = pipelineData.prospects.find(x => x.id === currentDetailId);
+  if (!p) return;
+
+  const firstName  = (p.ownerName||'').split(' ')[0] || 'there';
+  const gym        = p.gymName || 'your gym';
+  const city       = p.city   || '';
+  const state      = p.state  || 'the ' + _s('region','Northeast');
+  const gymType    = (p.gymType||'').toLowerCase();
+  const isCF       = gymType.includes('crossfit') || gymType.includes('cf ');
+  const isFunctional = gymType.includes('functional') || gymType.includes('hybrid') || gymType.includes('strength');
+  const isHYROX    = gymType.includes('hyrox');
+  const loc        = [city, state].filter(Boolean).join(', ');
+
+  // Gym-type-aware angle line
+  const gymLine = isCF
+    ? `CrossFit communities are a natural fit. The competitive mindset is already there -- DEKA just gives it an official stage.`
+    : isHYROX
+    ? `Given that your members are already training for HYROX, hosting a DEKA event is a natural next step -- same audience, different badge, more revenue staying local.`
+    : isFunctional
+    ? `Functional fitness gyms are exactly the profile we look for. Your members are already training the right way -- DEKA gives that training a measurable outcome.`
+    : `The gyms that do best with this already have a strong, engaged community. From what I can see, ${gym} fits that profile.`;
+
+  // Local event hook (makes email feel researched)
+  const localHook = city
+    ? `people in ${city} are already registering for DEKA events in the ${_s('region','Northeast')}`
+    : `members from gyms across the region are already signing up for DEKA events`;
+
+  let subject = '', body = '';
+
+  if (_currentEmailType === 'cold') {
+    const openings = [
+      `Hi ${firstName},\n\nMy name is ${_s('firstName','Anthony')}. I am the ${_s('region','Northeast')} Affiliate Manager for DEKA.\n\nI'm reaching out because ${localHook} -- across the ${_s('region','Northeast')}.`,
+      `Hi ${firstName},\n\nI'll keep this brief. My name is ${_s('firstName','Anthony')} -- I run affiliate partnerships for DEKA across the ${_s('region','Northeast')}.\n\nI reached out because ${localHook}, and ${gym} kept coming up as a facility worth talking to.`,
+      `Hi ${firstName},\n\nQuick note. I'm ${_s('firstName','Anthony')}, the ${_s('region','Northeast')} Affiliate Manager for DEKA.\n\n${gym} came across my radar when I was mapping out which gyms in ${state||'the region'} have the right profile for what we're building here.`,
+    ];
+    const hooks = [
+      `If you are not familiar with DEKA yet, it's from the creators of Spartan Race and Tough Mudder, and it's fast becoming the go-to Hybrid Fitness Event around the globe.\n\nThis also tells us something important.\n\nPeople that you train already are:\n• Training for a hybrid style events, like DEKA + HYROX\n• Signing up for competitive fitness events around your area\n• And investing in experiences outside your four walls\n\nThe question is: are you capturing that momentum inside your facility?`,
+      `DEKA is from the creators of Spartan Race and Tough Mudder. But here's what matters for you:\n\nYour members are already signing up for hybrid fitness events. The training happens in your gym. The revenue goes somewhere else.\n\nHosting a DEKA event changes that dynamic. You become the event -- not just the preparation for it.`,
+      `You may have seen DEKA or HYROX events picking up in the area. That's not a trend -- it's a permanent shift in how gym members want to train and compete.\n\nThe gyms that position early as local hosts lock in the community gravity. The ones that wait end up watching members drive 45 minutes to compete at someone else's facility.`,
+    ];
+    const closes = [
+      `This is why you should consider becoming a DEKA Affiliate. Because by doing so, you can:\n\n• Create a standardized benchmark your members can train toward\n• Gain hosting rights for OFFICIAL DEKA STRONG / MILE / and ATLAS events\n• Generate a new revenue stream (60% event revenue stays with you)\n• Build a retention system around measurable progression\n\nInstead of your members traveling to compete elsewhere, you become the centralized hub.\n\nYou already have the community...\nDEKA simply gives it structure, visibility, and monetization.\n\nIf you're open to it, I'd love to schedule a short discovery call. No pressure -- just clarity.\n\nSchedule a time to talk today: ${CALENDAR_LINK}\n\nLooking to connect soon,\n${_s('emailSignature','Anthony\\nDEKA Northeast Affiliate Manager')}`,
+      `${gymLine}\n\nWhat the affiliate program gives you:\n• Hosting rights for Official DEKA STRONG / MILE / and ATLAS events\n• 60% of event revenue stays with your gym\n• A benchmark your members can actually train toward\n• Retention built around progression, not just motivation\n\nIf you're open to a 20-minute call, I'll walk you through exactly what it looks like for a gym like yours. No commitment -- just a conversation.\n\nBook a time here: ${CALENDAR_LINK}\n\nLooking forward to connecting,\n${_s('emailSignature','Anthony\\nDEKA Northeast Affiliate Manager')}`,
+      `${gymLine}\n\nHere's the short version of what this looks like:\n\n• You host 1-2 DEKA events per year inside your facility\n• 60% of ticket revenue goes directly to you\n• We handle the event infrastructure, scoring, and certification\n• Your members get an official competitive outlet -- without leaving your gym\n\nWorth a quick call to see if it fits? Schedule here: ${CALENDAR_LINK}\n\nNo pressure. Worst case, you'll know exactly what your members are signing up for when they drive 40 minutes to compete in someone else's gym.\n\n${_s('emailSignature','Anthony\\nDEKA Northeast Affiliate Manager')}`,
+    ];
+    subject = `DEKA Affiliate Opportunity -- ${gym}`;
+    body = `${_pick(openings)}\n\n${_pick(hooks)}\n\n${_pick(closes)}`;
+
+  } else if (_currentEmailType === 'called') {
+    const opens = [
+      `Hi ${firstName},\n\nMy name is ${_s('firstName','Anthony')}. I am the ${_s('region','Northeast')} Affiliate Manager for DEKA.\n\nIf you're not yet familiar with DEKA -- it's from the creators of Spartan Race and Tough Mudder, and it's fast becoming the go-to Hybrid Fitness Event around the globe.\n\nI called earlier to touch base on the hybrid fitness events your members are signing up for.`,
+      `Hi ${firstName},\n\n${_s('firstName','Anthony')} here -- I tried to reach you earlier. I'm the ${_s('region','Northeast')} Affiliate Manager for DEKA.\n\nI'll give you the short version since I couldn't catch you on the phone.`,
+      `Hi ${firstName},\n\nJust tried you on the phone -- wanted to follow up in writing since this is easier to forward or revisit.\n\nI'm ${_s('firstName','Anthony')}, the ${_s('region','Northeast')} Affiliate Manager for DEKA (from the creators of Spartan Race and Tough Mudder).`,
+    ];
+    subject = `I called earlier -- DEKA Affiliate Opportunity for ${gym}`;
+    body = `${_pick(opens)}\n\nBecause your members are registering for events like DEKA FIT and HYROX, it tells us something important.\n\nPeople that you train already are:\n• Training for hybrid style events\n• Signing up for competitive fitness events around your area\n• Investing in experiences outside your four walls\n\nThe question is: are you capturing that momentum inside your facility?\n\nIt's also why ${gym} keeps appearing on our radar as a strong fit. We're currently looking for a few high-caliber "Anchor Hubs" in ${state||'the region'} to host official DEKA STRONG, MILE, and ATLAS events.\n\nWhich means you can:\n\n• Create a standardized benchmark your members can train toward\n• Gain hosting rights for Official DEKA events\n• Generate a new revenue stream (60% event revenue stays with you)\n• Build a retention system around measurable progression\n\nInstead of your members traveling to compete elsewhere, you become the hub.\n\nYou already have the community.\nDEKA gives it structure, visibility, and monetization.\n\nIf you're open to it, I'd love a short discovery call:\n• Learn more about you and your gym\n• Share what we're seeing in the growth of hybrid fitness in ${state||'the Northeast'}\n• Walk through the affiliate model\n• See if it fits your facility and growth goals\n\nNo pressure -- just clarity. Schedule a time here: ${CALENDAR_LINK}\n\nLooking forward to connecting,\n${_s('emailSignature','Anthony\\nDEKA Northeast Affiliate Manager')}`;
+
+  } else if (_currentEmailType === 'followup') {
+    const opens = [
+      `Hi ${firstName},\n\nGreat connecting today.\n\nJust to recap -- I work with DEKA (the fitness event series Spartan Race created) and part of my role is helping identify gyms that might be a good fit to host our official DEKA Hybrid fitness events locally.`,
+      `Hi ${firstName},\n\nReally appreciate you making time today.\n\nQuick recap on my end: I work with DEKA to build out our affiliate network across the ${_s('region','Northeast')}, and part of that is finding gyms that have the community and setup to actually pull off what we do well.`,
+      `Hi ${firstName},\n\nGood talking earlier.\n\nTo put context around the conversation -- my role at DEKA is to identify the right gyms in the ${_s('region','Northeast')} that can host our official events locally.`,
+    ];
+    const middles = [
+      `When I came across ${gym}, it looked like the kind of facility that could actually pull something like this off.\n\nNot every gym can.\n\nWhat we've been seeing lately is that members love having something measurable to train for, and gyms hosting these events end up creating a lot of energy -- both leading up to and after the event. It becomes part competition, part community event.\n\nI'm currently looking for a few new affiliates in the region and your facility checks all the boxes.`,
+      `${gymLine}\n\nThe gyms that do this well aren't the biggest or the most equipped -- they're the ones with a coach who gives a damn and a community that shows up for each other. That's what I saw when I looked at ${gym}.\n\nHosting a DEKA event becomes a moment for your gym, not just a workout. It creates energy, drives new member interest, and gives your regulars something to build toward.`,
+      `Here's what I've seen consistently across the gyms that run these events: the energy it creates inside the facility is as valuable as the revenue. Members who compete together stay together.\n\n${gymLine}\n\nThe revenue split (60% to you) is real -- but the retention play is what most owners tell me they didn't expect.`,
+    ];
+    subject = `Good connecting today -- next steps for ${gym}`;
+    body = `${_pick(opens)}\n\n${_pick(middles)}\n\nThe next step is to grab a 20-30 minute call to dig into the program a bit more.\n\nBook a call here: ${CALENDAR_LINK}\n\nWorst case, you'll leave knowing exactly whether something like this makes sense for your gym or not.\n\nLooking forward to connecting,\n${_s('emailSignature','Anthony\\nDEKA Northeast Affiliate Manager')}`;
+
+  } else if (_currentEmailType === 'discovery') {
+    subject = `CONGRATULATIONS -- ${gym} Has Been Approved for DEKA Affiliation`;
+    body = `CONGRATULATIONS, YOUR FACILITY HAS BEEN APPROVED FOR DEKA AFFILIATION! WE'RE DELIGHTED TO WELCOME YOU TO THE DEKA FAMILY.\n\nHey ${firstName},\n\nThank you for your time today -- it was really great to chat with you!\n\nAs mentioned on the call, I'm attaching a copy of our slide deck below which will explain all things DEKA. Please let me know if you have any questions after reading through it.\n\nHere are the next steps to become an official DEKA affiliate:\n\n#1 CONNECT AN AFFILIATE MONTHLY PAYMENT WITH STRIPE | $159 (USD) / month\nPlease note it is important that the "Name on Card" is filled in as: "Affiliate Gym Name -- First Name Last Name"\nStripe link: https://ct5v-04.na1.hs-sales-engage.com/Ctc/GE+23284/cT5V-04/JkM2-6qcW6N1vHY6lZ3lKW37S0_h3hJPKpW4qV_l-87Bn46W8D95GH3NnpBbW6RP1dl4T8cTdW2HxfCj7RhB5wW54njXH7yqwMtW3ctFNn1l9RK4W7HWXmM4Gk0szW8K0nF89lBJRwVqp3Nv2xCvBrW14PSj52r2kVmW8FCB6p8yTt48W7B33-z7NJjMHW2VxwSx2km9lvW6kpq3s8nDB7bN93m0j2V4fZZW4fhF-q4qztd1W8qxH8r2yXnw3W8ZK8xQ3QYdBHW3_YfWM2B7P74W7XRsL783sR1XW33sK_Y7p7Wfyf21tNqW04\n\n#2 SIGN THE DEKA AFFILIATE AGREEMENT - NAM\nAgreement link: https://ct5v-04.na1.hs-sales-engage.com/Ctc/GE+23284/cT5V-04/Jl22-6qcW7lCdLW6lZ3l2W4MVxQH5zT1K9W5538Kc5VMqGyW183Ws-6XqqXhW6yQ2Lg5qpnnDN7PQRN1rq9k_N3_w3hCMQn3fW7bQLgk1ngKyJW5yB5bB7hJ947W4TzCK38f0LFWVkPfL141Jj15W1qfQ0w2ZlwFtW1yRtZL3sRn8BW2qQx-Z2kr4_GW9gjqgk5dCrFyW59fqj_4Hsq4SN4MQ8X949YHfW7hYM4V6rp7-WW4pDFL779MjzvN656gc2vV3JsW5pH1q38NtGSjVvF9526xkMNLVR_CKW2DdHnLW4SMFHp7R9PTdW9dC54c8NbZqsf2BDF4s04\n\n#3 REVENUE SHARE INFORMATION FORM\nForm link: https://ct5v-04.na1.hs-sales-engage.com/Ctc/GE+23284/cT5V-04/Jl22-6qcW7lCdLW6lZ3nsW4cbV0v7jpdh-W3WLrqY2g4LqLW5XzLvG2Hj3p5W85q0r18bY84hW5nb0Hz24fZPyW7MkfYj2vk8kjW4LbV_h4nKthQW1pwGXY74NlXnW1wc_DL8TN7-kW364WtG5Q772zW7tZhPh5kT6zsN3kl9_3hc_YjW7dSHP55Tw8VYW39YkNh1wg7-ZW7wMY_z1ZfXkqW8c-qmD6p5CDjW7YRMVX8NLbNVV11lyj4bRp88N1dCYzxgrtvfW8pfvKn6BT2_6W20yf4-7Q7Z5FW3Sblx854BzYJVxzgzh2yFwhmVccR5y7rW0Hgf7m9V4H04\n\n#4 REQUEST FOR TAXPAYER INFORMATION\nDownload the W-9 form and email to affiliateSupport@spartan.com\nForm link: https://ct5v-04.na1.hs-sales-engage.com/Ctc/GE+23284/cT5V-04/JjT4YGXpW50kH_H6lZ3mrN8F3k8_T-NZCW6kkZZq4VdhflW1hLnJg4klj_-W5nkzYM4vyLhyW6HqntK6prk4zN12vRgF7srPSW4hbzFx2SFcBlW8gt0YD3Djj1mW7rCLST4_SKmgW2vTXlx7vlVfcW3_6NDt39-6y8W12n4p97nx9k1N3vyVC8GD0YLW2TPln39gjjlYVVJ22Y2YWYF6W3VD7M21wQHPnW7ThCWJ8Npj29W4VM-631Jr3ZyW82F9kn7XdLbLVyMVQD2VMBh_W7KgdCb6J0SzZW17Jl6w73JzzxW8r5m4m5nJrP9N8-XjGBBZq2yW2JtSMM5g0w9qN4KGDv0WSMKqW5Wkbrx72WGYWW1PQ14X63RF37W4pqPvk1wfSwZW7f-WQN3mPHscW3Lt5hQ59M3DzW5BK8J02dQ2Gwf6xk-5b04\n\nHere are a couple videos that give a good overview of what to expect:\n• DEKA STRONG & MILE: https://ct5v-04.na1.hs-sales-engage.com/Ctc/GE+23284/cT5V-04/Jll2-6qcW7Y8-PT6lZ3ksW3M_r9p43fgL8W9lR5QQ98mWRgW2KcKk21TT78WN3PCKqKfYXFmW2yvppP4wWPJTW2Qm2PY7rpmNjW8t6y2G8_BTHbW1yB2Sd36b7FCMFh8wL8Bn7nW8JJhpT4JxR61W3pNzDg5Blh6FW5mTVbr3vNkpyW5dY3jx71ZtN5W3YVN7C4Plg3KW6J4RK65WygfjW41wSPh3QB5-nW7dcYpC6Ps9wsN1-x0qJYxrTQW65KHTB3jB-2yW3cpW2S7fp-djW5XMtM13V0xr6W2rNc212DTwmTW8DX-Fh4Rz887W5QWwzM2t4d5fW7H086S8TggN8W4j7_VR35p7l7f9cYkdn04\n• DEKA ATLAS: https://ct5v-04.na1.hs-sales-engage.com/Ctc/GE+23284/cT5V-04/Jll2-6qcW7Y8-PT6lZ3lmW6Jdt4K7lTnfSN2HW1hDtGq0zW1B2W7j7Gpkw_W84qW1W7kWhnxW6ZkG7s59T_fPW85d10Q4XSgBZW1dJr_x8V1nZYW17K7W13V-YJXW8ccn4k4p7FTGW5QtNH558S5ygW1WTjJj7cdXQnW39wp6w3yVfNvW2df3dB4HkPLbW52r8cR3bGl1DW8XNtxn63jT8MW1lKRZr58cwYJVCzjK_4MjP8lW6WvhKQ2v412zVR5hTq5m3xb_W5Rv2qF5WJbX1W6QzMdy4tl1qJW7c_T3Z5d8hGMW2BDGWq7Q5LLNW4XrTwK47tG9vW3QRnZz87KVvBW4gvBrs3ckDj9f8HS0GK04\n\n** Attach DEKA Slide Deck in PDF format\n\nI'm excited to see how far you and your team can take the DEKA affiliate program.\n\nI'll follow up with you most likely early next week to check in. Don't hesitate to reach out if you have any questions or if anything comes up.\n\n${_s('emailSignature','Anthony\\nDEKA Northeast Affiliate Manager')}`;
+  }
+
+  const typeLabels = {cold:'Cold Intro', called:'Called + Email', followup:'Post-Call Follow-up', discovery:'Discovery Recap'};
+  const hookMeta = {
+    cold:      {label:'🎯 Pain Call-Out + 💥 Big Promise', color:'#E02020', why:'Leads with the gym owner\'s exact struggle (members competing elsewhere) then pivots to tangible results (60% revenue, retention lift).'},
+    called:    {label:'🏅 Authority + 🔥 Transformation', color:'#2B7FE0', why:'Establishes credibility through brand lineage (Spartan/Tough Mudder) then paints the before/after — from losing members to being the hub.'},
+    followup:  {label:'🔓 Secret/Hack + 📋 Framework',    color:'#7C3AED', why:'Shares insider insight (what top gyms do differently) and structures next steps as a clear framework — reduces decision fatigue.'},
+    discovery: {label:'💥 Big Promise + ⏰ Urgency',       color:'#1DB954', why:'Leads with the win (approved!) and creates momentum with clear, sequential onboarding steps — no room for delay.'},
+  };
+  const wrap = document.getElementById('email-output-wrap');
+  const out  = document.getElementById('email-output');
+  const lbl  = document.getElementById('email-type-label');
+  const hookInd = document.getElementById('hook-indicator');
+  const hookLbl = document.getElementById('hook-label');
+  const hookWhy = document.getElementById('hook-why');
+  if (wrap && out) {
+    wrap.style.display = 'block';
+    out.value = `Subject: ${subject}\n\n${body}`;
+    if (lbl) lbl.textContent = (typeLabels[_currentEmailType]||'Email') + (_emailVariant > 0 ? ` (v${_emailVariant+1})` : '');
+    if (hookInd && hookLbl && hookWhy && hookMeta[_currentEmailType]) {
+      const hm = hookMeta[_currentEmailType];
+      hookInd.style.display = 'block';
+      hookInd.style.borderColor = hm.color + '40';
+      hookInd.style.background = hm.color + '0A';
+      hookLbl.textContent = hm.label;
+      hookLbl.style.color = hm.color;
+      hookWhy.textContent = hm.why;
+    }
+  }
+}
+
+function openEventPlannerFromPipeline(gymName) {
+  const s = JSON.parse(localStorage.getItem('deka_settings') || '{}');
+  let url = s.eventPlannerUrl || 'localhost:5173';
+  if (!url.startsWith('http')) url = 'http://' + url;
+  if (gymName) url += '?gym=' + encodeURIComponent(gymName);
+  window.open(url);
+}
+
+function copyEmail() {
+  const out = document.getElementById('email-output');
+  if (out) navigator.clipboard.writeText(out.value).then(()=>{ const btn=event.target; btn.textContent='✓ Copied'; setTimeout(()=>btn.textContent='📋 Copy',2000); });
+}
+
+// ── ADD MODAL ──
+function openAddModal() { document.getElementById('add-modal').classList.add('open'); }
+function closeAddModal() { document.getElementById('add-modal').classList.remove('open'); }
+
+function saveNewProspect() {
+  const get = id => document.getElementById(id)?.value?.trim()||'';
+  const gymName = get('new-gymName');
+  if (!gymName) { alert('Gym name is required.'); return; }
+  const p = {
+    id: genId(), gymName, ownerName: get('new-ownerName'), email: get('new-email'),
+    phone: get('new-phone'), city: get('new-city'), state: get('new-state').toUpperCase(),
+    gymType: get('new-gymType'), stage: get('new-stage')||'lead',
+    priority: get('new-priority')||'warm', source: get('new-source')||'',
+    estimatedRevenue: get('new-revenue')||'', nextAction: get('new-nextAction'),
+    nextActionDate: get('new-nextActionDate'), notes: get('new-notes'),
+    lastActivity: new Date().toISOString().slice(0,10),
+    activities: [{date: new Date().toISOString().slice(0,10), type:'note', notes:'Prospect added to pipeline.'}],
+    createdAt: new Date().toISOString().slice(0,10),
+  };
+  pipelineData.prospects.push(p);
+  savePipeline();
+  closeAddModal();
+  // Reset form
+  ['gymName','ownerName','email','phone','city','state','gymType','revenue','nextAction','nextActionDate','notes'].forEach(f => {
+    const el = document.getElementById('new-'+f); if (el) el.value = '';
+  });
+  populateStateFilter();
+  updateHeaderSub();
+  showView('board', document.querySelectorAll('.nav-tab')[0]);
+}
+
+// ── GOOGLE SHEETS SYNC ──
+function syncFromSheet() {
+  const config = JSON.parse(localStorage.getItem(GS_CONFIG_KEY)||'{}');
+  const url = config.webAppUrl;
+  if (!url) {
+    showToast('⚠ No sheet connected — configure in Import tab', 'var(--yellow)');
+    return;
+  }
+  showToast('⟳ Syncing Pipeline Tier 1-3...', 'var(--text-dim)');
+  const statusEl = document.getElementById('sync-status');
+  if (statusEl) statusEl.textContent = 'Syncing...';
+
+  const tabName = 'Pipeline Tier 1-3';
+  const scriptUrl = `${url}?tab=${encodeURIComponent(tabName)}&key=${encodeURIComponent(GS_SECRET)}&callback=pipelineSyncCallback`;
+  const script = document.createElement('script');
+  script.src = scriptUrl;
+  script.onerror = () => {
+    showToast('✗ Could not reach Google Sheets', 'var(--accent)');
+    if (statusEl) statusEl.textContent = '✗ Could not reach Google Sheets.';
+  };
+  document.head.appendChild(script);
+  setTimeout(() => script.remove(), 15000);
+}
+
+function pipelineSyncCallback(data) {
+  const statusEl = document.getElementById('sync-status');
+  try {
+    if (!data || (!Array.isArray(data.data) && !Array.isArray(data.values))) throw new Error('No data returned');
+    const rows = data.data || data.values;
+    if (rows.length < 2) { if (statusEl) statusEl.textContent = 'No rows found in Pipeline tab.'; return; }
+
+    // Find header row
+    const header = rows[0].map(h => String(h||'').trim().toLowerCase());
+    const col = name => header.findIndex(h => h.includes(name.toLowerCase()));
+
+    const iGym = col('gym name');
+    const iLoc = col('location');
+    const iState = col('state');
+    const iSource = col('source');
+    const iManager = col('sales manager');
+    const iEmail = col('email');
+    const iContact = col('contact name');
+    const iPhone = col('mobile');
+    const iCallArr = col('call arranged');
+    const iCallNeed = col('call to be arranged');
+    const iNotes = col('notes');
+    const iGymMem = col('gym membership');
+    const iDemo = col('demographics');
+    const iAffil = col('affiliations');
+
+    let added = 0, updated = 0, skipped = 0;
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const get = idx => idx >= 0 ? String(row[idx]||'').trim() : '';
+      const manager = get(iManager);
+      if (!manager.toLowerCase().includes('anthony')) { skipped++; continue; }
+
+      const gymName = get(iGym);
+      if (!gymName) { skipped++; continue; }
+
+      // Auto-detect stage
+      const callArr = get(iCallArr).toLowerCase();
+      const callNeed = get(iCallNeed).toLowerCase();
+      let stage = 'lead';
+      if (callArr === 'yes' || callArr === 'true' || callArr === '1') stage = 'discovery';
+      else if (callNeed && callNeed !== 'no' && callNeed !== '') stage = 'contacted';
+
+      const newFields = {
+        gymName, city: get(iLoc), state: get(iState).toUpperCase(),
+        source: get(iSource) ? (get(iSource).toLowerCase().includes('referral')?'referral':get(iSource).toLowerCase().includes('social')?'social':get(iSource).toLowerCase().includes('cold')?'cold':'sheet') : 'sheet',
+        email: get(iEmail), ownerName: get(iContact), phone: get(iPhone),
+        otherAffiliations: get(iAffil), gymMembership: get(iGymMem), demographics: get(iDemo),
+      };
+
+      // Merge: find existing by gym name, preserve manual enrichments
+      const existIdx = pipelineData.prospects.findIndex(p => {
+        return p.gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim() ===
+               gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+      });
+
+      if (existIdx >= 0) {
+        const exist = pipelineData.prospects[existIdx];
+        // Only update sheet-sourced fields; preserve dashboard-enriched fields
+        Object.assign(exist, newFields);
+        // Only update stage if not already advanced past sheet's auto-detect
+        const stageOrder = {lead:0,contacted:1,discovery:2,proposal:3,negotiating:4,signed:5,lost:-1};
+        if ((stageOrder[stage]||0) > (stageOrder[exist.stage]||0)) exist.stage = stage;
+        updated++;
+      } else {
+        const notesTxt = get(iNotes);
+        pipelineData.prospects.push(Object.assign({}, newFields, {
+          id: genId(), stage, priority: 'warm',
+          notes: notesTxt, estimatedRevenue: '', nextAction: '', nextActionDate: '',
+          lastActivity: new Date().toISOString().slice(0,10),
+          activities: [{date:new Date().toISOString().slice(0,10),type:'note',notes:'Imported from Google Sheet.'}],
+          createdAt: new Date().toISOString().slice(0,10),
+        }));
+        added++;
+      }
+    }
+
+    savePipeline();
+    populateStateFilter();
+    updateHeaderSub();
+    const msg = `✓ Sync done — ${added} added, ${updated} updated`;
+    if (statusEl) statusEl.textContent = `${msg}, ${skipped} skipped (other reps)`;
+    showToast(msg, 'var(--green)');
+    if (currentView === 'board') renderBoard();
+    else if (currentView === 'list') renderList();
+  } catch(e) {
+    showToast('✗ Sync error: ' + e.message, 'var(--accent)');
+    if (statusEl) statusEl.textContent = '✗ Sync error: ' + e.message;
+  }
+}
+
+// ── MANUAL IMPORT ──
+// ── FILE UPLOAD (Excel / CSV) ──
+let _pendingFileRows = null;
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processUploadedFile(file);
+}
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (file) processUploadedFile(file);
+  input.value = '';
+}
+function processUploadedFile(file) {
+  const statusEl = document.getElementById('file-status');
+  statusEl.textContent = 'Reading file...';
+  document.getElementById('file-preview').style.display = 'none';
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let rows;
+      if (ext === 'csv') {
+        rows = parseCSVText(e.target.result);
+      } else if (ext === 'xlsx' || ext === 'xls') {
+        if (typeof XLSX === 'undefined') { statusEl.textContent = '✗ Excel library not loaded. Try again or use CSV export.'; return; }
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      } else {
+        statusEl.textContent = '✗ Unsupported file type. Use .xlsx, .xls, or .csv.';
+        return;
+      }
+      if (!rows || rows.length < 2) { statusEl.textContent = '✗ File appears empty or has no data rows.'; return; }
+      showFilePreview(rows, file.name);
+    } catch(err) {
+      statusEl.textContent = '✗ Could not read file: ' + err.message;
+    }
+  };
+  if (ext === 'csv') reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function parseCSVText(text) {
+  // Handle quoted fields with commas/newlines
+  const rows = [];
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  let cur = [], field = '', inQ = false;
+  for (let i = 0; i < lines.length; i++) {
+    const c = lines[i];
+    if (inQ) {
+      if (c === '"' && lines[i+1] === '"') { field += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { cur.push(field); field = ''; }
+      else if (c === '\n') { cur.push(field); rows.push(cur); cur = []; field = ''; }
+      else field += c;
+    }
+  }
+  if (field || cur.length) { cur.push(field); rows.push(cur); }
+  return rows;
+}
+
+// Field definitions for column auto-mapping
+const FILE_FIELD_DEFS = [
+  {key:'gymName',   label:'Gym / Business Name', aliases:['gym name','business name','company','gym','club name','name']},
+  {key:'ownerName', label:'Owner / Contact Name', aliases:['owner','contact name','contact','first name','owner name','point of contact']},
+  {key:'email',     label:'Email',                aliases:['email','email address','e-mail']},
+  {key:'phone',     label:'Phone',                aliases:['phone','mobile','cell','telephone','contact mobile','phone number']},
+  {key:'city',      label:'City / Location',      aliases:['city','location','town','city/state']},
+  {key:'state',     label:'State',                aliases:['state','st','province']},
+  {key:'gymType',   label:'Gym Type',             aliases:['gym type','type','facility type','membership type','gym membership']},
+  {key:'source',    label:'Lead Source',          aliases:['source','lead source','how found','referred by']},
+  {key:'notes',     label:'Notes',                aliases:['notes','comments','description','additional notes']},
+  {key:'stage',     label:'Stage',                aliases:['stage','status','pipeline stage']},
+  {key:'priority',  label:'Priority',             aliases:['priority','urgency','tier']},
+];
+
+function autoMapColumns(header) {
+  const norm = header.map(h => String(h||'').trim().toLowerCase());
+  const mapping = {}; // key → colIndex
+  FILE_FIELD_DEFS.forEach(def => {
+    for (let i = 0; i < norm.length; i++) {
+      if (def.aliases.some(a => norm[i].includes(a) || a.includes(norm[i]))) {
+        if (!(def.key in mapping)) mapping[def.key] = i;
+        break;
+      }
+    }
+  });
+  return mapping;
+}
+
+function showFilePreview(rows, fileName) {
+  const statusEl = document.getElementById('file-status');
+  const previewEl = document.getElementById('file-preview');
+  const header = rows[0];
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim()));
+
+  _pendingFileRows = rows;
+
+  const mapping = autoMapColumns(header);
+
+  // Build column mapping UI
+  const mapWrap = document.getElementById('col-map-rows');
+  mapWrap.innerHTML = FILE_FIELD_DEFS.map(def => {
+    const colIdx = mapping[def.key] !== undefined ? mapping[def.key] : -1;
+    const opts = ['<option value="-1">-- skip --</option>',
+      ...header.map((h,i) => `<option value="${i}" ${i===colIdx?'selected':''}>${h||'(col '+(i+1)+')'}</option>`)
+    ].join('');
+    return `<div class="col-map-row">
+      <span style="min-width:150px;color:var(--text-mid)">${def.label}</span>
+      <select id="fmap-${def.key}" onchange="refreshPreviewTable()">${opts}</select>
+    </div>`;
+  }).join('');
+
+  refreshPreviewTable();
+  statusEl.textContent = `✓ Loaded "${fileName}" — ${dataRows.length} data rows, ${header.length} columns`;
+  previewEl.style.display = 'block';
+}
+
+function refreshPreviewTable() {
+  if (!_pendingFileRows) return;
+  const rows = _pendingFileRows;
+  const header = rows[0];
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim())).slice(0,5);
+  const mapping = getCurrentFileMapping();
+
+  const mappedKeys = Object.keys(mapping).filter(k => mapping[k] >= 0);
+  const tableEl = document.getElementById('preview-table-el');
+  tableEl.innerHTML = `<thead><tr>${mappedKeys.map(k => `<th>${FILE_FIELD_DEFS.find(d=>d.key===k)?.label||k}</th>`).join('')}</tr></thead>
+    <tbody>${dataRows.map(row => `<tr>${mappedKeys.map(k => `<td>${String(row[mapping[k]]||'').substring(0,40)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+
+function getCurrentFileMapping() {
+  const m = {};
+  FILE_FIELD_DEFS.forEach(def => {
+    const sel = document.getElementById('fmap-'+def.key);
+    if (sel) m[def.key] = parseInt(sel.value);
+  });
+  return m;
+}
+
+function confirmFileImport() {
+  if (!_pendingFileRows) return;
+  const rows = _pendingFileRows;
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim()));
+  const mapping = getCurrentFileMapping();
+  const statusEl = document.getElementById('file-import-status');
+
+  const get = (row, key) => {
+    const idx = mapping[key];
+    return idx >= 0 && idx < row.length ? String(row[idx]||'').trim() : '';
+  };
+
+  let added = 0, updated = 0, skipped = 0;
+  dataRows.forEach(row => {
+    const gymName = get(row,'gymName');
+    if (!gymName) { skipped++; return; }
+
+    const newFields = {
+      gymName, ownerName: get(row,'ownerName'), email: get(row,'email'),
+      phone: get(row,'phone'), city: get(row,'city'),
+      state: get(row,'state').toUpperCase().substring(0,2),
+      gymType: get(row,'gymType'), source: get(row,'source')||'file-import',
+      notes: get(row,'notes'),
+    };
+
+    // Stage mapping
+    const rawStage = get(row,'stage').toLowerCase();
+    const stageMap = {lead:'lead',contacted:'contacted',discovery:'discovery',proposal:'proposal',negotiating:'negotiating',signed:'signed',lost:'lost'};
+    if (rawStage && stageMap[rawStage]) newFields.stage = stageMap[rawStage];
+
+    // Priority mapping
+    const rawPri = get(row,'priority').toLowerCase();
+    if (rawPri.includes('hot')) newFields.priority = 'hot';
+    else if (rawPri.includes('cold')) newFields.priority = 'cold';
+    else if (rawPri.includes('warm')) newFields.priority = 'warm';
+
+    const normName = gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+    const normEmail = newFields.email.toLowerCase();
+    const existIdx = pipelineData.prospects.findIndex(p => {
+      const pName = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+      const pEmail = (p.email||'').toLowerCase();
+      return pName === normName || (normEmail && pEmail && pEmail === normEmail);
+    });
+
+    if (existIdx >= 0) {
+      Object.assign(pipelineData.prospects[existIdx], newFields);
+      updated++;
+    } else {
+      pipelineData.prospects.push(Object.assign({}, newFields, {
+        id: genId(), stage: newFields.stage||'lead', priority: newFields.priority||'warm',
+        lastActivity: new Date().toISOString().slice(0,10),
+        activities: [{date:new Date().toISOString().slice(0,10),type:'note',notes:'Imported from file upload.'}],
+        createdAt: new Date().toISOString().slice(0,10),
+        estimatedRevenue:'', nextAction:'', nextActionDate:'',
+      }));
+      added++;
+    }
+  });
+
+  savePipeline(); populateStateFilter(); updateHeaderSub();
+  statusEl.textContent = `✓ Done — ${added} added, ${updated} updated, ${skipped} skipped`;
+  _pendingFileRows = null;
+  if (currentView === 'board') renderBoard();
+  else if (currentView === 'list') renderList();
+}
+
+function cancelFileImport() {
+  _pendingFileRows = null;
+  document.getElementById('file-preview').style.display = 'none';
+  document.getElementById('file-status').textContent = '';
+}
+
+// ── BROWSE ANY SHEET TAB ──
+let _pendingTabRows = null;
+let _tabSources = {}; // tabName → sourceLabel
+
+function initSheet2Config() {
+  const config = JSON.parse(localStorage.getItem(GS_CONFIG_KEY)||'{}');
+  const s1El = document.getElementById('sheet1-status');
+  if (s1El) {
+    s1El.textContent = config.webAppUrl ? '✓ Connected' : '✗ Not configured — set up in Portfolio Dashboard → Data Manager';
+    s1El.style.color = config.webAppUrl ? 'var(--green)' : 'var(--accent)';
+  }
+  const s2url = config.webAppUrl2 || '';
+  const s2El = document.getElementById('gs2-url-input');
+  if (s2El) s2El.value = s2url;
+  const s2StatusEl = document.getElementById('sheet2-save-status');
+  if (s2StatusEl && s2url) { s2StatusEl.textContent = '✓ Saved'; s2StatusEl.style.color = 'var(--green)'; }
+}
+
+let _sheet2SaveTimer;
+function saveSheet2Url(silent) {
+  const url = (document.getElementById('gs2-url-input')?.value||'').trim();
+  const config = JSON.parse(localStorage.getItem(GS_CONFIG_KEY)||'{}');
+  config.webAppUrl2 = url;
+  localStorage.setItem(GS_CONFIG_KEY, JSON.stringify(config));
+  const statusEl = document.getElementById('sheet2-save-status');
+  if (!statusEl) return;
+  if (silent) {
+    // Auto-save: debounce the confirmation flash so it doesn't fire on every keystroke
+    clearTimeout(_sheet2SaveTimer);
+    _sheet2SaveTimer = setTimeout(() => {
+      statusEl.textContent = url ? '✓ Auto-saved' : '';
+      setTimeout(()=>{statusEl.textContent=''},2000);
+    }, 800);
+  } else {
+    statusEl.textContent = url ? '✓ Saved' : 'Cleared';
+    setTimeout(()=>{statusEl.textContent=''},2000);
+  }
+}
+
+function loadSheetTabs() {
+  // Always read live input value first (in case Save wasn't clicked)
+  const liveUrl2 = (document.getElementById('gs2-url-input')?.value||'').trim();
+  if (liveUrl2) {
+    const config = JSON.parse(localStorage.getItem(GS_CONFIG_KEY)||'{}');
+    config.webAppUrl2 = liveUrl2;
+    localStorage.setItem(GS_CONFIG_KEY, JSON.stringify(config));
+  }
+  const config = JSON.parse(localStorage.getItem(GS_CONFIG_KEY)||'{}');
+  const urls = [
+    {url: config.webAppUrl,  label: 'NAM Sheet'},
+    {url: config.webAppUrl2, label: 'CRM Sheet'},
+  ].filter(s => s.url);
+
+  const statusEl = document.getElementById('tab-list-status');
+  if (!urls.length) {
+    statusEl.textContent = '✗ No Google Sheets configured. Set up Sheet 1 in Portfolio Dashboard, or paste Sheet 2 URL above.';
+    return;
+  }
+  statusEl.textContent = 'Loading tabs...';
+  document.getElementById('tab-picker').style.display = 'none';
+  _tabSources = {};
+
+  let pending = urls.length;
+  const allTabs = [];
+  const sourceResults = [];
+
+  urls.forEach(({url, label}) => {
+    const cbName = 'gsTabListCallback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const scriptUrl = `${url}?action=list&key=${encodeURIComponent(GS_SECRET)}&callback=${cbName}`;
+    let settled = false;
+    const settle = (ok, count, error) => {
+      if (settled) return; settled = true;
+      sourceResults.push({label, ok, count: count||0, error: error||''});
+      pending--;
+      if (pending === 0) renderTabDropdown(allTabs, statusEl, sourceResults);
+    };
+    window[cbName] = function(data) {
+      delete window[cbName];
+      if (data && data.error) {
+        settle(false, 0, data.error);
+      } else if (data && Array.isArray(data.tabs)) {
+        data.tabs.forEach(t => { allTabs.push({name:t, label, url}); _tabSources[t+'__'+label] = {url, label}; });
+        settle(true, data.tabs.length);
+      } else {
+        settle(false, 0, 'no tabs returned');
+      }
+    };
+    const script = document.createElement('script');
+    script.src = scriptUrl;
+    script.onerror = () => { delete window[cbName]; settle(false, 0, 'network error'); };
+    document.head.appendChild(script);
+    setTimeout(() => { if (!settled) { if(window[cbName]) delete window[cbName]; settle(false, 0, 'timed out'); } }, 12000);
+  });
+}
+
+function renderTabDropdown(allTabs, statusEl, sourceResults) {
+  if (!allTabs.length) {
+    statusEl.textContent = '✗ Could not load tabs. Check both URLs are valid Apps Script Web App URLs.';
+    return;
+  }
+  const sel = document.getElementById('tab-select');
+  const byLabel = {};
+  allTabs.forEach(t => { if (!byLabel[t.label]) byLabel[t.label] = []; byLabel[t.label].push(t); });
+  sel.innerHTML = Object.entries(byLabel).map(([label, tabs]) =>
+    `<optgroup label="${label}">${tabs.map(t=>`<option value="${t.name}__${t.label}">${t.name}</option>`).join('')}</optgroup>`
+  ).join('');
+  document.getElementById('tab-picker').style.display = 'block';
+
+  // Show per-source result summary
+  const parts = (sourceResults||[]).map(r =>
+    r.ok ? `<span style="color:var(--green)">✓ ${r.label}: ${r.count} tabs</span>`
+          : `<span style="color:var(--accent)">✗ ${r.label}: ${r.error}</span>`
+  ).join(' &nbsp;·&nbsp; ');
+  statusEl.innerHTML = parts || `✓ Found ${allTabs.length} tab(s) across ${Object.keys(byLabel).length} sheet(s)`;
+}
+
+function testSheet2() {
+  const url = (document.getElementById('gs2-url-input')?.value||'').trim();
+  const statusEl = document.getElementById('sheet2-save-status');
+  if (!url) { statusEl.textContent = '⚠ Paste a URL first'; statusEl.style.color='var(--yellow)'; return; }
+  if (!url.includes('script.google.com')) {
+    statusEl.textContent = '✗ That doesn\'t look like a Google Apps Script URL'; statusEl.style.color='var(--accent)'; return;
+  }
+  statusEl.textContent = 'Testing connection...'; statusEl.style.color='var(--text-dim)';
+  const cbName = 'gsTest2_' + Date.now();
+  const testUrl = `${url}?action=list&key=${encodeURIComponent(GS_SECRET)}&callback=${cbName}`;
+  window[cbName] = function(data) {
+    delete window[cbName];
+    if (data && data.error) {
+      statusEl.textContent = `✗ Script returned: ${data.error}. Check the key or re-deploy.`;
+      statusEl.style.color = 'var(--accent)';
+    } else if (data && Array.isArray(data.tabs)) {
+      statusEl.textContent = `✓ Connected — found ${data.tabs.length} tabs: ${data.tabs.slice(0,4).join(', ')}${data.tabs.length>4?'…':''}`;
+      statusEl.style.color = 'var(--green)';
+      saveSheet2Url(false);
+    } else {
+      statusEl.textContent = '✗ Unexpected response — script may not be deployed correctly';
+      statusEl.style.color = 'var(--accent)';
+    }
+  };
+  const script = document.createElement('script');
+  script.src = testUrl;
+  script.onerror = () => {
+    delete window[cbName];
+    statusEl.textContent = '✗ Could not reach this URL — check it\'s deployed as "Anyone" access';
+    statusEl.style.color = 'var(--accent)';
+  };
+  document.head.appendChild(script);
+  setTimeout(() => { if (window[cbName]) { delete window[cbName]; statusEl.textContent='✗ Timed out — try re-deploying the script'; statusEl.style.color='var(--accent)'; } }, 10000);
+}
+
+function fetchSelectedTab() {
+  const config = JSON.parse(localStorage.getItem(GS_CONFIG_KEY)||'{}');
+  const rawVal = document.getElementById('tab-select').value; // "tabName__label"
+  const sepIdx = rawVal.lastIndexOf('__');
+  const tabName = sepIdx >= 0 ? rawVal.slice(0, sepIdx) : rawVal;
+  const label   = sepIdx >= 0 ? rawVal.slice(sepIdx+2) : 'NAM Sheet';
+  const src = _tabSources[rawVal] || {url: config.webAppUrl};
+  const url = src.url;
+  const statusEl = document.getElementById('tab-list-status');
+  if (!url || !tabName) return;
+  statusEl.textContent = `Loading "${tabName}" from ${label}...`;
+  document.getElementById('tab-preview').style.display = 'none';
+
+  const cbName = 'gsTabDataCallback_' + Date.now();
+  const scriptUrl = `${url}?tab=${encodeURIComponent(tabName)}&key=${encodeURIComponent(GS_SECRET)}&callback=${cbName}`;
+  window[cbName] = function(data) {
+    delete window[cbName];
+    if (!data || (!Array.isArray(data.data) && !Array.isArray(data.values))) {
+      statusEl.textContent = '✗ No data returned from that tab.';
+      return;
+    }
+    const rows = (data.data || data.values).filter(r => r.some(c => String(c||'').trim()));
+    if (rows.length < 2) { statusEl.textContent = '✗ Tab appears empty.'; return; }
+    _pendingTabRows = rows;
+    showTabPreview(rows, tabName);
+    statusEl.textContent = `✓ Loaded "${tabName}" — ${rows.length - 1} data rows`;
+  };
+  const script = document.createElement('script');
+  script.src = scriptUrl;
+  script.onerror = () => { statusEl.textContent = '✗ Could not load tab data.'; };
+  document.head.appendChild(script);
+  setTimeout(() => { script.remove(); if (window[cbName]) { delete window[cbName]; statusEl.textContent = '✗ Timed out.'; } }, 15000);
+}
+
+function showTabPreview(rows, tabName) {
+  const header = rows[0];
+  const dataRows = rows.slice(1).slice(0,5);
+  const mapping = autoMapColumns(header);
+
+  const mapWrap = document.getElementById('tab-col-map-rows');
+  mapWrap.innerHTML = FILE_FIELD_DEFS.map(def => {
+    const colIdx = mapping[def.key] !== undefined ? mapping[def.key] : -1;
+    const opts = ['<option value="-1">-- skip --</option>',
+      ...header.map((h,i) => `<option value="${i}" ${i===colIdx?'selected':''}>${h||'(col '+(i+1)+')'}</option>`)
+    ].join('');
+    return `<div class="col-map-row">
+      <span style="min-width:150px;color:var(--text-mid)">${def.label}</span>
+      <select id="tmap-${def.key}" onchange="refreshTabPreviewTable()">${opts}</select>
+    </div>`;
+  }).join('');
+
+  refreshTabPreviewTable();
+  document.getElementById('tab-preview').style.display = 'block';
+}
+
+function refreshTabPreviewTable() {
+  if (!_pendingTabRows) return;
+  const rows = _pendingTabRows;
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim())).slice(0,5);
+  const mapping = getCurrentTabMapping();
+  const mappedKeys = Object.keys(mapping).filter(k => mapping[k] >= 0);
+  const tableEl = document.getElementById('tab-preview-table-el');
+  tableEl.innerHTML = `<thead><tr>${mappedKeys.map(k => `<th>${FILE_FIELD_DEFS.find(d=>d.key===k)?.label||k}</th>`).join('')}</tr></thead>
+    <tbody>${dataRows.map(row => `<tr>${mappedKeys.map(k => `<td>${String(row[mapping[k]]||'').substring(0,40)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+
+function getCurrentTabMapping() {
+  const m = {};
+  FILE_FIELD_DEFS.forEach(def => {
+    const sel = document.getElementById('tmap-'+def.key);
+    if (sel) m[def.key] = parseInt(sel.value);
+  });
+  return m;
+}
+
+function confirmTabImport() {
+  if (!_pendingTabRows) return;
+  const rows = _pendingTabRows;
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim()));
+  const mapping = getCurrentTabMapping();
+  const statusEl = document.getElementById('tab-import-status');
+
+  const get = (row, key) => {
+    const idx = mapping[key];
+    return idx >= 0 && idx < row.length ? String(row[idx]||'').trim() : '';
+  };
+
+  let added = 0, updated = 0, skipped = 0, dupes = 0;
+  dataRows.forEach(row => {
+    const gymName = get(row,'gymName');
+    if (!gymName) { skipped++; return; }
+    const email = get(row,'email').toLowerCase();
+
+    const newFields = {
+      gymName, ownerName: get(row,'ownerName'), email: get(row,'email'),
+      phone: get(row,'phone'), city: get(row,'city'),
+      state: get(row,'state').toUpperCase().substring(0,2),
+      gymType: get(row,'gymType'), source: get(row,'source')||'sheet-import',
+      notes: get(row,'notes'),
+    };
+    const rawStage = get(row,'stage').toLowerCase();
+    const stageMap = {lead:'lead',contacted:'contacted',discovery:'discovery',proposal:'proposal',negotiating:'negotiating',signed:'signed',lost:'lost'};
+    if (rawStage && stageMap[rawStage]) newFields.stage = stageMap[rawStage];
+    const rawPri = get(row,'priority').toLowerCase();
+    if (rawPri.includes('hot')) newFields.priority = 'hot';
+    else if (rawPri.includes('cold')) newFields.priority = 'cold';
+    else if (rawPri.includes('warm')) newFields.priority = 'warm';
+
+    // Dedup: match by gym name OR email
+    const normName = gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+    const existIdx = pipelineData.prospects.findIndex(p => {
+      const pName = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+      const pEmail = (p.email||'').toLowerCase();
+      return pName === normName || (email && pEmail && pEmail === email);
+    });
+
+    if (existIdx >= 0) {
+      // Already exists — update sheet-sourced fields only, preserve manual enrichments
+      const exist = pipelineData.prospects[existIdx];
+      Object.assign(exist, newFields);
+      if (newFields.stage) {
+        const stageOrder = {lead:0,contacted:1,discovery:2,proposal:3,negotiating:4,signed:5,lost:-1};
+        if ((stageOrder[newFields.stage]||0) > (stageOrder[exist.stage]||0)) exist.stage = newFields.stage;
+      }
+      updated++; dupes++;
+    } else {
+      pipelineData.prospects.push(Object.assign({}, newFields, {
+        id: genId(), stage: newFields.stage||'lead', priority: newFields.priority||'warm',
+        lastActivity: new Date().toISOString().slice(0,10),
+        activities: [{date:new Date().toISOString().slice(0,10),type:'note',notes:'Imported from sheet tab.'}],
+        createdAt: new Date().toISOString().slice(0,10),
+        estimatedRevenue:'', nextAction:'', nextActionDate:'',
+      }));
+      added++;
+    }
+  });
+
+  savePipeline(); populateStateFilter(); updateHeaderSub();
+  const dupeNote = dupes > 0 ? `, ${dupes} duplicate(s) updated instead of re-added` : '';
+  statusEl.textContent = `✓ Done — ${added} new, ${updated} updated, ${skipped} skipped (no name)${dupeNote}`;
+  _pendingTabRows = null;
+  if (currentView === 'board') renderBoard();
+  else if (currentView === 'list') renderList();
+}
+
+function cancelTabImport() {
+  _pendingTabRows = null;
+  document.getElementById('tab-preview').style.display = 'none';
+}
+
+function parseManualImport() {
+  const raw = document.getElementById('manual-import-text')?.value?.trim();
+  if (!raw) return;
+  const statusEl = document.getElementById('sync-status');
+  try {
+    let rows;
+    if (raw.startsWith('[')) {
+      rows = JSON.parse(raw);
+    } else {
+      // Parse CSV
+      rows = raw.split('\n').map(r => r.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+      const header = rows[0];
+      rows = rows.slice(1).map(r => { const o={}; header.forEach((h,i)=>o[h]=r[i]||''); return o; });
+    }
+    let added = 0;
+    rows.forEach(row => {
+      const name = row['GYM NAME']||row.gymName||row.name||'';
+      if (!name) return;
+      if (pipelineData.prospects.find(p=>p.gymName.toLowerCase()===name.toLowerCase())) return;
+      pipelineData.prospects.push({
+        id:genId(), gymName:name, city:row['LOCATION']||row.city||'',
+        state:(row['STATE']||row.state||'').toUpperCase(),
+        source:row['SOURCE']||row.source||'sheet', email:row['Email Address']||row.email||'',
+        ownerName:row['Contact Name']||row.ownerName||'', phone:row['Contact mobile number']||row.phone||'',
+        notes:row['Notes']||row.notes||'', stage:'lead', priority:'warm',
+        lastActivity:new Date().toISOString().slice(0,10),
+        activities:[{date:new Date().toISOString().slice(0,10),type:'note',notes:'Manually imported.'}],
+        createdAt:new Date().toISOString().slice(0,10),
+      });
+      added++;
+    });
+    savePipeline(); populateStateFilter(); updateHeaderSub();
+    if (statusEl) statusEl.textContent = `✓ Imported ${added} new prospects`;
+    if (currentView==='board') renderBoard(); else if (currentView==='list') renderList();
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '✗ Parse error: ' + e.message;
+  }
+}
+
+// ── EXPORT ──
+function exportPipelineJSON() {
+  const blob = new Blob([JSON.stringify(pipelineData, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `deka-pipeline-${new Date().toISOString().slice(0,10)}.json`; a.click();
+}
+
+function exportPipelineCSV() {
+  const cols = ['gymName','ownerName','email','phone','city','state','gymType','stage','priority','source','estimatedRevenue','nextAction','nextActionDate','lastActivity','notes','createdAt'];
+  const hdr = cols.join(',');
+  const rows = pipelineData.prospects.map(p => cols.map(c => {
+    const v = p[c]==null?'':String(p[c]);
+    return v.includes(',')||v.includes('"')||v.includes('\n') ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }).join(','));
+  const blob = new Blob([[hdr,...rows].join('\n')], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `deka-pipeline-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+// ── ONBOARDING MODAL ──
+// Phase 1 = Setup & Admin, Phase 2 = Outreach & Event Launch
+const DEFAULT_ONBOARDING_TASKS = [
+  // ── Phase 1: Setup & Admin ──
+  {id:'ob1',  week:1, label:'Send Welcome Email (Affiliate Toolkit + Launch Guide)',                                        done:false, doneDate:'', emailBtn:'welcome'},
+  {id:'ob2',  week:1, label:'Update HubSpot DEKA Gym Profile (Active Affiliate, Agreement, Tier, POC, Rev Share)',          done:false, doneDate:''},
+  {id:'ob3',  week:1, label:'Request DEKA FIT 20% + Spartan Race 30% discount codes from Cynthia',                         done:false, doneDate:''},
+  {id:'ob4',  week:1, label:'Get DEKA codes (x2) + SGX code (x1) + discount codes ready',                                  done:false, doneDate:'', hasCodeField:true},
+  {id:'ob5',  week:1, label:'Request banner shipment \u2014 Warehouse Shipment Request Tab',                               done:false, doneDate:''},
+  {id:'ob6',  week:1, label:'Add affiliate to NAM Partner Tab + remove from Pipeline Tier 1\u20133 Tab',                   done:false, doneDate:''},
+  // ── Phase 2: Outreach & Event Launch ──
+  {id:'ob7',  week:2, label:'Send WhatsApp Group Invite Email (3\u20135 days after welcome)',                               done:false, doneDate:'', emailBtn:'whatsapp'},
+  {id:'ob8',  week:2, label:'Send Complimentary Codes + Discount Codes Email (3\u20135 days after WhatsApp)',               done:false, doneDate:'', emailBtn:'codes'},
+  {id:'ob9',  week:2, label:'Send Onboarding Strategy Call Email (schedule 30-min video call)',                              done:false, doneDate:'', emailBtn:'strategy'},
+  {id:'ob10', week:2, label:'Confirm first event is live + launch email sent by Arlene',                                    done:false, doneDate:''},
+  {id:'ob11', week:2, label:'Confirm all onboarding tasks are complete',                                                    done:false, doneDate:''},
+];
+
+const ONBOARDING_EMAILS = {
+  welcome: {
+    subject: 'Welcome to DEKA \u2014 Your Affiliate Toolkit & Next Steps',
+    body: `Hey NAME,
+
+We are truly excited to have you partner with us on our mission to positively impact 100 million lives through fitness and we can\u2019t wait to see your first event in action!
+
+Before you are ready to host your first DEKA STRONG or DEKA MILE event, you\u2019ll want to get up to speed with all things DEKA.
+
+Here you can access the full Affiliate Toolkit (password: dekakit)
+
+The DEKA Affiliate Toolkit will give you most of what is needed at this stage. Take your time to go through each section as it includes marketing assets, logos, the DEKA Training System & Programming and much more.
+
+Some highlights that will come in handy for you:
+
+\u2022 Affiliate Rules of Competition \u2014 explains in detail what the DEKA programme is and what we are trying to accomplish, as well as how to run a successful event
+\u2022 Affiliate Service Form \u2014 use this to request your DEKA STRONG, MILE, or ATLAS events. We suggest you do not request more than 4-5 hrs for your event when initially submitting. This will allow you to create demand for your event. If you end up selling out, you can submit a request through this form to open more heats!
+\u2022 DEKA Training System \u2014 this is The Spartan Training Center where we\u2019ll post different types of workouts; you\u2019ll find your DEKA Training System sessions in the Affiliate Toolkit (linked above) you can use the images to promote DTS for your gym.
+
+We also run a new affiliate onboarding call, hosted by DEKA co-creator Yancy Culp, every two (2) weeks which will include new affiliates from the USA as well as Europe. Look out for this invite & let us know if the time doesn\u2019t work for you as we can always add you to the next one.
+
+Over the next few days you will receive communication from myself and the DEKA team with further onboarding details. Keep an eye out for a postal delivery from us too!
+
+Thank you & welcome to the TEAM!
+Talk soon,
+
+${_s('firstName','Anthony')}
+DEKA ${_s('region','Northeast')} Affiliate Manager`
+  },
+  whatsapp: {
+    subject: 'DEKA HQ invites you to join our GLOBAL WhatsApp group!',
+    body: `Hey NAME,
+
+I am excited to invite you to join an exclusive DEKA WhatsApp group, created specifically for YOU! This group will serve as a platform for sharing important updates, insights, and opportunities directly from the DEKA team.
+
+Group Details:
+\u2022 Purpose: To provide timely updates, share valuable information, and facilitate communication among our core partners.
+\u2022 Access: Admin-only messaging to ensure that the information shared is relevant and concise.
+\u2022 Platform: WhatsApp
+\u2022 Join Link: https://chat.whatsapp.com/IvvNBolPihsFxdww9cGqdN
+
+By joining this group, you will gain access to:
+\u2022 Exclusive updates on DEKA\u2019s projects and initiatives
+\u2022 Early announcements of new opportunities and events
+\u2022 Direct communication channel with the DEKA leadership team
+
+We understand the importance of your time and assure you that the messages will be limited to essential updates and information.
+
+Please click on the link above to join the group. If you have any questions or need assistance, feel free to reach out to me directly.
+
+We look forward to having you as part of this exclusive group and keeping you informed about all the exciting developments at DEKA.
+
+Thanks,
+
+${_s('firstName','Anthony')}
+DEKA ${_s('region','Northeast')} Affiliate Manager`
+  },
+  codes: {
+    subject: 'DEKA \u2014 Your complimentary codes',
+    body: `Hi NAME,
+
+DEKA STRONG, MILE and ATLAS events hosted within your facility serve as official qualifiers for the DEKA World Championship. To ensure you can host an Official Spartan DEKA event with complete confidence, we equip you with the education and support needed to deliver a seamless, world-class experience.
+
+We are committed to supporting your coaching and programming so your members get the most out of the DEKA Training System.
+
+Here are your complimentary codes:
+
+DEKA Certification Codes (x2): CODES_HERE
+SGX Certification Code (x1): CODES_HERE
+DEKA FIT 20% Discount Code: CODES_HERE
+Spartan Race 30% Discount Code: CODES_HERE
+
+These codes are for you and your coaching staff to get certified and experience the DEKA and Spartan ecosystem firsthand.
+
+If you have any questions about how to redeem these, don\u2019t hesitate to reach out.
+
+${_s('firstName','Anthony')}
+DEKA ${_s('region','Northeast')} Affiliate Manager`
+  },
+  strategy: {
+    subject: 'DEKA \u2014 Let\u2019s schedule your onboarding strategy call',
+    body: `Hey NAME,
+
+Now that you\u2019ve had some time to explore the Affiliate Toolkit, I\u2019d love to set up a 30-minute video call to:
+
+\u2022 Answer any questions you have about the toolkit and program
+\u2022 Walk through the first half of our "Step by Step to Hosting a Successful Event" slide deck
+\u2022 Talk through the Affiliate Service Form process and what to expect
+\u2022 Start planning your first DEKA event together
+
+This call is all about making sure you feel confident and supported as you get ready to host.
+
+Here are a few times that work on my end \u2014 let me know what works best for you, or feel free to suggest another time:
+
+[SUGGEST 2-3 TIMES]
+
+Looking forward to connecting!
+
+${_s('firstName','Anthony')}
+DEKA ${_s('region','Northeast')} Affiliate Manager`
+  },
+};
+
+function markSigned(id) {
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  moveStage(id, 'signed');
+
+  // Pre-fill CRM entry in main dashboard
+  const crmData = JSON.parse(localStorage.getItem('deka_crm')||'{}');
+  const crmId = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+  crmData[crmId] = Object.assign(crmData[crmId]||{}, {
+    contactName: p.ownerName||'', email: p.email||'', phone: p.phone||'',
+    city: p.city||'', gymType: p.gymType||'',
+    notes: `[Signed via pipeline ${new Date().toISOString().slice(0,10)}]\n${p.notes||''}`,
+    joinDate: new Date().toISOString().slice(0,10),
+  });
+  localStorage.setItem('deka_crm', JSON.stringify(crmData));
+
+  // Ensure onboarding tasks exist on this prospect
+  if (!p.onboardingTasks || p.onboardingTasks.length === 0) {
+    p.onboardingTasks = JSON.parse(JSON.stringify(DEFAULT_ONBOARDING_TASKS));
+    p.onboardingStart = new Date().toISOString().slice(0,10);
+    savePipeline();
+  }
+
+  // Auto-transfer to portfolio
+  transferToPortfolio(id);
+
+  // Prospect is now signed — hide from active board and open onboarding
+  openOnboardingModal(id);
+}
+
+function openOnboardingModal(id) {
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  const crmId = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+
+  // Migrate old task structure (24 tasks) to new (11 tasks)
+  if (!p.onboardingTasks || p.onboardingTasks.length > 11 || (p.onboardingTasks[0] && p.onboardingTasks[0].id === 'ob1' && !p.onboardingTasks[0].hasOwnProperty('emailBtn') && p.onboardingTasks.length > 11)) {
+    p.onboardingTasks = JSON.parse(JSON.stringify(DEFAULT_ONBOARDING_TASKS));
+    if (!p.onboardingStart) p.onboardingStart = new Date().toISOString().slice(0,10);
+    savePipeline();
+  }
+
+  const tasks = p.onboardingTasks || DEFAULT_ONBOARDING_TASKS;
+  const byWeek = [1,2].map(w => ({week:w, tasks: tasks.filter(t=>t.week===w)}));
+  const doneCount = tasks.filter(t=>t.done).length;
+  const codes = p.onboardingCodes || {};
+
+  let el = document.getElementById('onboarding-modal');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'onboarding-modal';
+    el.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;overflow-y:auto;padding:24px';
+    document.body.appendChild(el);
+  }
+
+  const pct = tasks.length ? Math.round((doneCount/tasks.length)*100) : 0;
+  const alreadyTransferred = JSON.parse(localStorage.getItem('deka_affiliates_added')||'[]').some(a => a.id === crmId);
+
+  el.innerHTML = `
+    <div style="max-width:660px;margin:0 auto;background:var(--card);border-radius:14px;padding:26px;border:1px solid var(--border)">
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+        <div>
+          <div style="font-size:19px;font-weight:700;color:var(--green);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px" onclick="openGymProfile('${id}')" title="Click to edit profile">\u2705 ${esc(p.gymName)}</div>
+          <div style="font-size:12px;color:var(--text-dim);margin-top:3px">
+            ${[p.city,p.state,p.gymType].filter(Boolean).join(' \u00b7 ')} \u00b7 Signed ${p.onboardingStart||new Date().toISOString().slice(0,10)}
+            <span onclick="openGymProfile('${id}')" style="color:var(--blue);cursor:pointer;margin-left:8px;font-size:11px">\u270F\uFE0F Edit Profile</span>
+          </div>
+        </div>
+        <button onclick="closeOnboardingModal()" style="background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;line-height:1;padding:0">\u2715</button>
+      </div>
+
+      <div style="background:${alreadyTransferred?'rgba(74,222,128,0.08)':'rgba(96,165,250,0.08)'};border:1px solid ${alreadyTransferred?'var(--green)':'var(--blue)'};border-radius:10px;padding:16px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px">Portfolio Dashboard</div>
+        ${alreadyTransferred
+          ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+               <span style="color:var(--green);font-size:13px;font-weight:600">\u2713 Added to Portfolio Dashboard</span>
+               <button onclick="window.open('deka-northeast-portfolio-analysis.html')" class="btn btn-ghost" style="font-size:12px;border-color:var(--green);color:var(--green)">Open Dashboard \u2192</button>
+               <button onclick="openEventPlannerFromPipeline('${esc(p.gymName)}')" class="btn btn-ghost" style="font-size:12px;border-color:#4ade80;color:#4ade80">\uD83C\uDFC3 Plan First Event</button>
+             </div>`
+          : `<p style="font-size:12px;color:var(--text-mid);margin:0 0 12px">One click adds ${esc(p.gymName)} to your Portfolio Dashboard. Their contact info is already saved and waiting.</p>
+             <button onclick="transferToPortfolio('${id}')" class="btn btn-primary" style="background:var(--blue);border-color:var(--blue);font-size:13px">\u2192 Add to Portfolio Dashboard</button>`
+        }
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:700">Onboarding Checklist</div>
+        <div style="font-size:12px;color:var(--text-dim)" id="ob-count-label">${doneCount} / ${tasks.length} complete</div>
+      </div>
+      <div style="background:var(--bg);border-radius:6px;height:5px;margin-bottom:16px;overflow:hidden">
+        <div id="ob-progress-bar" style="background:var(--green);height:100%;width:${pct}%;transition:width 0.3s"></div>
+      </div>
+
+      ${byWeek.map(({week, tasks:wt}) => `
+        <div style="margin-bottom:16px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${week===1?'var(--accent)':'var(--blue)'};margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)">${week===1?'Phase 1 \u2014 Setup & Admin':'Phase 2 \u2014 Outreach & Event Launch'}</div>
+          ${wt.map(t => `
+            <div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                <input type="checkbox" ${t.done?'checked':''} onchange="toggleOBTask('${id}','${t.id}',this.checked)"
+                  style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;flex-shrink:0">
+                <span style="font-size:12px;color:${t.done?'var(--text-dim)':'var(--text)'};${t.done?'text-decoration:line-through':''}; flex:1">${esc(t.label)}</span>
+                ${t.done&&t.doneDate?`<span style="font-size:10px;color:var(--text-dim);flex-shrink:0">${t.doneDate}</span>`:''}
+              </label>
+              ${t.emailBtn?`
+                <button onclick="openOBEmail('${id}','${t.emailBtn}')" style="margin:6px 0 0 26px;font-size:11px;padding:4px 12px;border-radius:5px;border:1px solid var(--blue);background:rgba(43,127,224,0.1);color:var(--blue);cursor:pointer;font-family:'DM Sans',sans-serif">
+                  \u2709\uFE0F Open in Gmail
+                </button>`:''}
+              ${t.hasCodeField?`
+                <div style="margin:8px 0 0 26px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                  <input id="ob-code-deka" value="${esc(codes.deka||'')}" placeholder="DEKA codes (x2)" style="font-size:11px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif">
+                  <input id="ob-code-sgx" value="${esc(codes.sgx||'')}" placeholder="SGX code (x1)" style="font-size:11px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif">
+                  <input id="ob-code-dekafit" value="${esc(codes.dekafit||'')}" placeholder="DEKA FIT 20% code" style="font-size:11px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif">
+                  <input id="ob-code-spartan" value="${esc(codes.spartan||'')}" placeholder="Spartan 30% code" style="font-size:11px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif">
+                </div>
+                <button onclick="saveOBCodes('${id}')" style="margin:6px 0 0 26px;font-size:10px;padding:3px 10px;border-radius:4px;border:1px solid var(--green);background:rgba(29,185,84,0.1);color:var(--green);cursor:pointer;font-family:'DM Sans',sans-serif">\u2713 Save Codes</button>
+              `:''}
+            </div>`).join('')}
+        </div>`).join('')}
+
+      <div style="display:flex;justify-content:flex-end;margin-top:18px">
+        <button onclick="closeOnboardingModal()" class="btn btn-ghost">Close</button>
+      </div>
+    </div>`;
+
+  el.style.display = 'block';
+}
+
+function closeOnboardingModal() {
+  const el = document.getElementById('onboarding-modal');
+  if (el) el.style.display = 'none';
+}
+
+function transferToPortfolio(id) {
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  const normName = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  let crmId = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+
+  // Check if this gym already exists in the portfolio roster (prevents duplicates)
+  let roster;
+  try { roster = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]'); } catch(e) { roster = []; }
+  const rosterMatch = roster.find(r => normName(r.name) === normName(p.gymName));
+  if (rosterMatch) {
+    // Gym already exists in the portfolio — use their existing ID and just update CRM data
+    crmId = rosterMatch.id;
+    const crmData = JSON.parse(localStorage.getItem('deka_crm')||'{}');
+    crmData[crmId] = Object.assign(crmData[crmId]||{}, {
+      contactName: p.ownerName||'', email: p.email||'', phone: p.phone||'',
+      city: p.city||'', gymType: p.gymType||'',
+    });
+    localStorage.setItem('deka_crm', JSON.stringify(crmData));
+    showToast(`${p.gymName} already exists in portfolio — CRM data updated`);
+    openOnboardingModal(id);
+    return;
+  }
+
+  // Also check deka_affiliates_added by name (not just ID)
+  const added = JSON.parse(localStorage.getItem('deka_affiliates_added') || '[]');
+  const addedMatch = added.find(a => normName(a.name) === normName(p.gymName));
+  if (addedMatch) {
+    crmId = addedMatch.id;
+    showToast(`${p.gymName} already in portfolio — updated`);
+    openOnboardingModal(id);
+    return;
+  }
+
+  const newAffiliate = {
+    id: crmId,
+    name: p.gymName,
+    state: p.state || '??',
+    tier: 'b',
+    signYear: new Date().getFullYear(),
+    events: 0,
+    participants: 0,
+    revenue: Number(p.estimatedRevenue) || 0,
+    eventHistory: [],
+    upcomingEvents: [],
+    city: p.city || '',
+    gymType: p.gymType || '',
+  };
+  const existIdx = added.findIndex(a => a.id === crmId);
+  if (existIdx >= 0) added[existIdx] = newAffiliate;
+  else added.push(newAffiliate);
+  localStorage.setItem('deka_affiliates_added', JSON.stringify(added));
+  // Refresh modal to show the ✓ transferred state
+  openOnboardingModal(id);
+  // Open portfolio dashboard in new tab
+  window.open('deka-northeast-portfolio-analysis.html');
+}
+
+function toggleOBTask(prospectId, taskId, checked) {
+  const p = pipelineData.prospects.find(x => x.id === prospectId);
+  if (!p || !p.onboardingTasks) return;
+  const task = p.onboardingTasks.find(t => t.id === taskId);
+  if (!task) return;
+  task.done = checked;
+  task.doneDate = checked ? new Date().toISOString().slice(0,10) : '';
+  savePipeline();
+  // Re-render the full modal so strikethrough + colors update correctly
+  openOnboardingModal(prospectId);
+}
+
+function openOBEmail(prospectId, emailKey) {
+  const p = pipelineData.prospects.find(x => x.id === prospectId);
+  if (!p) return;
+  const tmpl = ONBOARDING_EMAILS[emailKey];
+  if (!tmpl) return;
+  const firstName = (p.ownerName||'').split(' ')[0] || 'there';
+  let body = tmpl.body.replace(/NAME/g, firstName);
+  // Insert saved codes if available
+  if (emailKey === 'codes' && p.onboardingCodes) {
+    const c = p.onboardingCodes;
+    body = body.replace('DEKA Certification Codes (x2): CODES_HERE', `DEKA Certification Codes (x2): ${c.deka||'[enter codes]'}`);
+    body = body.replace('SGX Certification Code (x1): CODES_HERE', `SGX Certification Code (x1): ${c.sgx||'[enter code]'}`);
+    body = body.replace('DEKA FIT 20% Discount Code: CODES_HERE', `DEKA FIT 20% Discount Code: ${c.dekafit||'[enter code]'}`);
+    body = body.replace('Spartan Race 30% Discount Code: CODES_HERE', `Spartan Race 30% Discount Code: ${c.spartan||'[enter code]'}`);
+  }
+  const subject = tmpl.subject.replace(/NAME/g, firstName);
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email||'')}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(gmailUrl, '_blank');
+}
+
+function saveOBCodes(prospectId) {
+  const p = pipelineData.prospects.find(x => x.id === prospectId);
+  if (!p) return;
+  p.onboardingCodes = {
+    deka: document.getElementById('ob-code-deka')?.value?.trim() || '',
+    sgx: document.getElementById('ob-code-sgx')?.value?.trim() || '',
+    dekafit: document.getElementById('ob-code-dekafit')?.value?.trim() || '',
+    spartan: document.getElementById('ob-code-spartan')?.value?.trim() || '',
+  };
+  savePipeline();
+  showToast('Codes saved');
+}
+
+function openGymProfile(prospectId) {
+  const p = pipelineData.prospects.find(x => x.id === prospectId);
+  if (!p) return;
+  let panel = document.getElementById('gym-profile-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'gym-profile-panel';
+    panel.style.cssText = 'position:fixed;top:0;right:-420px;width:400px;height:100%;background:var(--card);border-left:1px solid var(--border);z-index:1100;overflow-y:auto;transition:right 0.3s ease;padding:24px;box-shadow:-4px 0 20px rgba(0,0,0,0.5)';
+    document.body.appendChild(panel);
+  }
+
+  const fields = [
+    {key:'gymName', label:'Gym Name'},
+    {key:'ownerName', label:'Owner / Contact'},
+    {key:'email', label:'Email'},
+    {key:'phone', label:'Phone'},
+    {key:'city', label:'City'},
+    {key:'state', label:'State'},
+    {key:'gymType', label:'Gym Type'},
+    {key:'notes', label:'Notes', type:'textarea'},
+  ];
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:16px;font-weight:700;color:var(--green)">${esc(p.gymName)}</div>
+      <button onclick="closeGymProfile()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">\u2715</button>
+    </div>
+    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">Affiliate Profile</div>
+    ${fields.map(f => `
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:4px;font-weight:600">${f.label}</div>
+        ${f.type === 'textarea'
+          ? `<textarea id="gp-${f.key}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:8px;resize:vertical;min-height:80px;font-family:'DM Sans',sans-serif">${esc(p[f.key]||'')}</textarea>`
+          : `<input id="gp-${f.key}" value="${esc(p[f.key]||'')}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:8px;font-family:'DM Sans',sans-serif">`
+        }
+      </div>
+    `).join('')}
+    <button onclick="saveGymProfile('${prospectId}')" class="btn btn-primary" style="width:100%;background:var(--green);border-color:var(--green);margin-top:8px">\u2713 Save Profile</button>
+  `;
+
+  requestAnimationFrame(() => { panel.style.right = '0'; });
+}
+
+function closeGymProfile() {
+  const panel = document.getElementById('gym-profile-panel');
+  if (panel) {
+    panel.style.right = '-420px';
+  }
+}
+
+function saveGymProfile(prospectId) {
+  const p = pipelineData.prospects.find(x => x.id === prospectId);
+  if (!p) return;
+  ['gymName','ownerName','email','phone','city','state','gymType','notes'].forEach(key => {
+    const el = document.getElementById('gp-' + key);
+    if (el) p[key] = el.value.trim();
+  });
+  savePipeline();
+  // Also update CRM
+  const crmData = JSON.parse(localStorage.getItem('deka_crm')||'{}');
+  const crmId = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+  crmData[crmId] = Object.assign(crmData[crmId]||{}, {
+    contactName: p.ownerName||'', email: p.email||'', phone: p.phone||'',
+    city: p.city||'', gymType: p.gymType||'', notes: p.notes||'',
+  });
+  localStorage.setItem('deka_crm', JSON.stringify(crmData));
+  closeGymProfile();
+  openOnboardingModal(prospectId);
+  showToast('Profile saved');
+}
+
+function copySnippet() {
+  const text = document.getElementById('affiliate-snippet')?.textContent || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-snip-btn');
+    if (btn) { btn.textContent = '✓ Copied'; setTimeout(()=>{btn.textContent='📋 Copy';},2000); }
+  });
+}
+
+// Show onboarding checklist for already-signed prospects from detail panel
+function openOnboardingFromDetail(id) {
+  const p = pipelineData.prospects.find(x => x.id === id);
+  if (!p) return;
+  if (!p.onboardingTasks || p.onboardingTasks.length === 0) {
+    p.onboardingTasks = JSON.parse(JSON.stringify(DEFAULT_ONBOARDING_TASKS));
+    p.onboardingStart = p.onboardingStart || new Date().toISOString().slice(0,10);
+    savePipeline();
+  }
+  openOnboardingModal(id);
+}
+
+function copyAgenticCmd() {
+  const text = document.getElementById('agentic-cmd')?.textContent || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('agentic-copy-btn');
+    if (btn) { btn.textContent = '✓ Copied'; setTimeout(()=>{btn.textContent='📋 Copy';},2000); }
+  });
+}
+
+// ── TOAST ──
+let _toastTimer;
+function openGmail(url) {
+  window.open(url, 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+}
+
+function openEmailInGmail(prospectId) {
+  const p = pipelineData.prospects.find(x => x.id === prospectId);
+  if (!p || !p.email) { showToast('No email on file for this prospect.'); return; }
+  const output = document.getElementById('email-output');
+  const body = output ? output.value : '';
+  const typeLabel = {cold:'Cold Intro', called:'Called + Email', followup:'Post-Call Follow-up', discovery:'Discovery Recap'};
+  const subject = _currentEmailType ? (typeLabel[_currentEmailType] || 'DEKA Affiliate Partnership') + ' — ' + (p.gymName||'') : 'DEKA Affiliate Partnership — ' + (p.gymName||'');
+  const url = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(url, 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+  // Log to CRM
+  const today = new Date().toISOString().slice(0,10);
+  if (!p.activities) p.activities = [];
+  p.activities.unshift({date:today, type:'email', notes:`${typeLabel[_currentEmailType]||'Email'} sent via Gmail`});
+  p.lastActivity = today;
+  const fu = new Date(); fu.setDate(fu.getDate()+7);
+  p.nextAction = 'Follow up';
+  p.nextActionDate = fu.toISOString().slice(0,10);
+  if (p.stage === 'lead') p.stage = 'contacted';
+  savePipeline();
+  renderActionQueue();
+  showToast('✉ Gmail opened — logged to prospect');
+}
+
+function showToast(msg, color) {
+  const el = document.getElementById('sync-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = color || 'var(--text)';
+  el.style.borderColor = color || 'var(--border)';
+  el.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 3500);
+}
+
+// ── HELPERS ──
+function esc(v) {
+  if (!v) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── BOOT ──
+init();
+</script>
+
+<!-- BULK ACTION BAR -->
+<div class="bulk-bar hidden" id="bulk-bar">
+  <span class="bulk-count" id="bulk-count">0 selected</span>
+  <button class="btn btn-blue" onclick="batchEmail()">&#9993; Send Batch Email &rarr; Contacted</button>
+  <button class="btn btn-ghost btn-sm" onclick="clearSelection()">&#10005; Clear</button>
+</div>
+</body>
+</html>
