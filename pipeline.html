@@ -196,6 +196,8 @@ a{color:inherit;text-decoration:none}
   .p-card-name{color:black!important}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 </head>
 <body>
 
@@ -643,12 +645,12 @@ function genId() {
 }
 
 // ── INIT ──
-function init() {
-  // Access gate check
-  if (!_checkAccess()) {
-    document.body.classList.add('locked');
-    document.getElementById('access-gate').style.display='flex';
-    return;
+async function init() {
+  // Supabase Auth check
+  if (typeof dekaAuthCheck === 'function') {
+    const authResult = await dekaAuthCheck();
+    if (authResult === false) return;
+    if (authResult === 'needs_setup') return;
   }
   loadPipeline();
   populateStateFilter();

@@ -348,6 +348,8 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
 .settings-toggle input:checked ~ .tog-track .tog-thumb{left:19px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 </head>
 <body>
 
@@ -7114,17 +7116,12 @@ function renderOnboardingSection() {
     </div>`;
 }
 
-function initDashboard() {
-  // Access gate check
-  if (!_checkAccess()) {
-    document.body.classList.add('locked');
-    document.getElementById('access-gate').style.display='flex';
-    return;
-  }
-  // Settings check — if no settings saved yet, show setup
-  if (!localStorage.getItem('deka_settings')) {
-    _populateSettingsForm();
-    document.getElementById('settings-setup').style.display='flex';
+async function initDashboard() {
+  // Supabase Auth check
+  if (typeof dekaAuthCheck === 'function') {
+    const authResult = await dekaAuthCheck();
+    if (authResult === false) return; // shows login screen
+    if (authResult === 'needs_setup') return; // shows settings setup
   }
 
   // Update header with settings
