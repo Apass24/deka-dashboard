@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEKA NAM | Northeast Affiliate Directory</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #13131a;
+    --card2: #1a1a24;
+    --border: rgba(255,255,255,0.08);
+    --accent: #e63946;
+    --green: #4ade80;
+    --blue: #60a5fa;
+    --yellow: #fbbf24;
+    --purple: #a78bfa;
+    --text: #f0f0f5;
+    --text-dim: #6b7280;
+    --text-mid: #9ca3af;
+    --tier-a: #4ade80;
+    --tier-b: #60a5fa;
+    --tier-c: #fbbf24;
+    --tier-d: #e63946;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 20px 32px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(230,57,70,0.05) 0%, transparent 100%);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  }
+  .header-left h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p { color: var(--text-dim); font-size: 12px; margin-top: 3px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .back-link { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; transition: color 0.15s; }
+  .back-link:hover { color: var(--text); }
+
+  /* ── BUTTONS ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+  .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-blue { background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.3); color: var(--blue); }
+  .btn-blue:hover { background: rgba(96,165,250,0.25); }
+  .btn-green { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+  .btn-green:hover { background: rgba(74,222,128,0.25); }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    padding: 14px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--card);
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 320px; }
+  .search-wrap input {
+    width: 100%; padding: 8px 12px 8px 34px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-size: 13px; outline: none;
+  }
+  .search-wrap input:focus { border-color: var(--blue); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 14px; pointer-events: none; }
+  .filter-select {
+    padding: 7px 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text-mid); font-size: 12px; cursor: pointer; outline: none;
+  }
+  .filter-select:focus { border-color: var(--blue); }
+  .view-toggle { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
+  .view-btn { padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; background: transparent; color: var(--text-dim); transition: all 0.15s; }
+  .view-btn.active { background: var(--card2); color: var(--text); }
+  .toolbar-spacer { flex: 1; }
+  .count-badge { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+
+  /* ── MAIN ── */
+  .main { padding: 24px 32px; }
+
+  /* ── CARD GRID ── */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+  .aff-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; transition: border-color 0.15s;
+  }
+  .aff-card:hover { border-color: rgba(255,255,255,0.15); }
+
+  .card-head {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  }
+  .card-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .tier-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    padding: 2px 7px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;
+  }
+  .tier-a { background: rgba(74,222,128,0.15); color: var(--tier-a); }
+  .tier-b { background: rgba(96,165,250,0.15); color: var(--tier-b); }
+  .tier-c { background: rgba(251,191,36,0.15); color: var(--tier-c); }
+  .tier-d { background: rgba(230,57,70,0.15); color: var(--tier-d); }
+  .card-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-state { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .card-head-right { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* Contact info rows */
+  .card-body { padding: 12px 16px; }
+  .info-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; font-size: 12px; color: var(--text-mid); }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-icon { width: 14px; text-align: center; flex-shrink: 0; margin-top: 1px; font-size: 12px; opacity: 0.7; }
+  .info-val { color: var(--text); word-break: break-word; }
+  .info-val a { color: var(--blue); }
+  .info-val a:hover { text-decoration: underline; }
+  .info-empty { color: var(--text-dim); font-style: italic; opacity: 0.5; }
+
+  /* Divider sections */
+  .card-section { padding: 10px 16px; border-top: 1px solid var(--border); }
+  .card-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); font-weight: 600; margin-bottom: 6px; }
+  .social-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .social-tag { font-size: 11px; color: var(--text-dim); background: var(--card2); padding: 2px 8px; border-radius: 4px; }
+  .social-tag span { color: var(--text-mid); }
+
+  .perf-row { display: flex; gap: 12px; }
+  .perf-item { flex: 1; text-align: center; }
+  .perf-val { font-size: 16px; font-weight: 700; }
+  .perf-lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  .crm-quick { font-size: 11px; color: var(--text-dim); }
+  .crm-quick strong { color: var(--text-mid); }
+
+  /* Card actions */
+  .card-actions { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ── EDIT MODE ── */
+  .edit-panel { display: none; padding: 14px 16px; border-top: 1px solid var(--border); background: var(--card2); }
+  .edit-panel.open { display: block; }
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .edit-field label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); font-weight: 600; margin-bottom: 4px; }
+  .edit-field input, .edit-field select, .edit-field textarea {
+    width: 100%; padding: 7px 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-size: 12px;
+    font-family: inherit; outline: none; transition: border-color 0.15s;
+  }
+  .edit-field input:focus, .edit-field select:focus, .edit-field textarea:focus { border-color: var(--blue); }
+  .edit-field.full { grid-column: 1 / -1; }
+  .edit-actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+  .save-flash { font-size: 11px; color: var(--green); display: none; }
+
+  /* ── TABLE VIEW ── */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  .aff-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .aff-table th {
+    padding: 10px 14px; text-align: left; white-space: nowrap;
+    background: var(--card2); color: var(--text-dim);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+  }
+  .aff-table th:hover { color: var(--text); }
+  .aff-table th.sort-asc::after { content: ' ▲'; }
+  .aff-table th.sort-desc::after { content: ' ▼'; }
+  .aff-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .aff-table tr:last-child td { border-bottom: none; }
+  .aff-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .aff-table td a { color: var(--blue); }
+  .aff-table td a:hover { text-decoration: underline; }
+  .tbl-name { font-weight: 600; color: var(--text); }
+  .tbl-dim { color: var(--text-dim); }
+  .tbl-actions { display: flex; gap: 4px; }
+
+  /* ── NO RESULTS ── */
+  .no-results { text-align: center; padding: 48px 24px; color: var(--text-dim); }
+
+  /* ── PRINT ── */
+  @media print {
+    .header-actions, .toolbar, .card-actions, .edit-panel, .back-link { display: none !important; }
+    body { background: white !important; color: black !important; }
+    .card-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+    .aff-card { border: 1px solid #ddd !important; background: white !important; break-inside: avoid; }
+    .card-name, .info-val, .perf-val { color: black !important; }
+    .card-state, .info-row, .tbl-dim { color: #555 !important; }
+    .tier-a { background: #e8fde8 !important; color: #1a7c3a !important; }
+    .tier-b { background: #e8f0fd !important; color: #1a3c7c !important; }
+    .tier-c { background: #fdf8e8 !important; color: #7c5f1a !important; }
+    .tier-d { background: #fde8e8 !important; color: #7c1a1a !important; }
+    .card-section { border-top: 1px solid #eee !important; }
+    .social-tag { background: #f0f0f0 !important; color: #555 !important; }
+    .perf-lbl { color: #777 !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1><span>DEKA</span> NAM | Northeast Affiliate Directory</h1>
+    <p>37 Affiliates &bull; Contact Information &bull; Relationship Data &bull; Synced with Portfolio Dashboard</p>
+  </div>
+  <div class="header-actions">
+    <a href="deka-northeast-portfolio-analysis.html" class="back-link btn btn-ghost">&#8592; Portfolio Dashboard</a>
+    <button class="btn btn-green" onclick="document.getElementById('add-affiliate-modal').style.display='flex'">&#43; Add Affiliate</button>
+    <button class="btn btn-blue" onclick="document.getElementById('partner-import-modal').style.display='flex'">&#8593; Import from Sheet</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">&#8595; Export CSV</button>
+    <button class="btn btn-ghost" onclick="window.print()">&#128438; Print</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search-input" placeholder="Search affiliates, contact names, cities..." oninput="applyFilters()">
+  </div>
+  <select class="filter-select" id="filter-tier" onchange="applyFilters()">
+    <option value="">All Tiers</option>
+    <option value="a">Tier A</option>
+    <option value="b">Tier B</option>
+    <option value="c">Tier C</option>
+    <option value="d">Tier D</option>
+  </select>
+  <select class="filter-select" id="filter-state" onchange="applyFilters()">
+    <option value="">All States</option>
+  </select>
+  <select class="filter-select" id="filter-contact" onchange="applyFilters()">
+    <option value="">All Records</option>
+    <option value="has-email">Has Email</option>
+    <option value="has-phone">Has Phone</option>
+    <option value="missing-contact">Missing Contact</option>
+  </select>
+  <div class="toolbar-spacer"></div>
+  <span class="count-badge" id="count-badge">37 affiliates</span>
+  <div class="view-toggle">
+    <button class="view-btn active" id="view-cards" onclick="setView('cards')">&#9646;&#9646; Cards</button>
+    <button class="view-btn" id="view-table" onclick="setView('table')">&#9776; Table</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="card-view" class="card-grid"></div>
+  <div id="table-view" style="display:none">
+    <div class="table-wrap">
+      <table class="aff-table" id="aff-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable('tier')">Tier</th>
+            <th onclick="sortTable('name')">Affiliate</th>
+            <th onclick="sortTable('state')">State</th>
+            <th onclick="sortTable('contactName')">Contact</th>
+            <th onclick="sortTable('phone')">Phone</th>
+            <th onclick="sortTable('email')">Email</th>
+            <th onclick="sortTable('gymType')">Gym Type</th>
+            <th onclick="sortTable('lastContact')">Last Contact</th>
+            <th onclick="sortTable('nextAction')">Next Action</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="no-results" id="no-results" style="display:none">No affiliates match your filters.</div>
+</div>
+
+<script>
+// ── BASE AFFILIATE DATA ──
+const AFFILIATES_BASE = [
+  // TIER A
+  {id:'underdog',name:'Underdog Fitness',state:'CT',tier:'a',signYear:2021,events:7,participants:127,revenue:5953},
+  {id:'fitness_appeal',name:'Fitness Appeal',state:'MA',tier:'a',signYear:2021,events:2,participants:107,revenue:5303},
+  {id:'spooky_nook',name:'Spooky Nook Sports',state:'PA',tier:'a',signYear:2024,events:2,participants:105,revenue:5195},
+  // TIER B
+  {id:'urbanfit',name:'Urban Fit, Inc',state:'PA',tier:'b',signYear:2024,events:2,participants:39,revenue:5702},
+  {id:'donedone',name:'Done Done Fitness',state:'DE',tier:'b',signYear:2023,events:5,participants:68,revenue:8246},
+  {id:'onyourmark',name:'On Your MARK Fitness',state:'PA',tier:'b',signYear:2024,events:2,participants:84,revenue:6012},
+  {id:'chambersburg',name:'Chambersburg Fitness',state:'PA',tier:'b',signYear:2024,events:3,participants:63,revenue:4833},
+  {id:'exsurgo',name:'Exsurgo Strong and Fit',state:'VA',tier:'b',signYear:2021,events:5,participants:63,revenue:3138},
+  {id:'fitzone',name:'FitZone Personal Training',state:'MD',tier:'b',signYear:2024,events:3,participants:77,revenue:3101},
+  {id:'arena',name:'Arena Fitness & Perf.',state:'PA',tier:'b',signYear:2021,events:4,participants:65,revenue:2912},
+  {id:'relentless',name:'Relentless Iron',state:'PA',tier:'b',signYear:2023,events:3,participants:66,revenue:2309},
+  {id:'trilogy',name:'Trilogy Fitness',state:'CT',tier:'b',signYear:2025,events:1,participants:56,revenue:2273},
+  // TIER C
+  {id:'fitresults',name:'Fit Results Skippack',state:'PA',tier:'c',signYear:2024,events:1,participants:49,revenue:1941},
+  {id:'impactx_sayre',name:'IMPACT-X Sayre',state:'PA',tier:'c',signYear:2024,events:2,participants:49,revenue:1748},
+  {id:'jamerson',name:'Jamerson Family YMCA',state:'VA',tier:'c',signYear:2021,events:3,participants:33,revenue:1463},
+  {id:'impactx_hh',name:'Impact-X Horseheads',state:'NY',tier:'c',signYear:2025,events:2,participants:38,revenue:1372},
+  {id:'itstarts',name:'It Starts Here Fitness',state:'RI',tier:'c',signYear:2025,events:3,participants:30,revenue:1344},
+  {id:'stormborn',name:'Stormborn Strength',state:'NY',tier:'c',signYear:2026,events:2,participants:18,revenue:851},
+  {id:'fitness19',name:'Fitness 19',state:'NJ',tier:'c',signYear:2025,events:1,participants:1,revenue:54},
+  {id:'wareings',name:"Wareing's Gym",state:'VA',tier:'c',signYear:2025,events:1,participants:0,revenue:0},
+  // TIER D — Legacy
+  {id:'onemoreep',name:'1 more rep athletics',state:'MA',tier:'d',signYear:2021,events:0,participants:0,revenue:0},
+  {id:'fenix',name:'Fenix Fitness',state:'NY',tier:'d',signYear:2021,events:0,participants:0,revenue:0},
+  {id:'soldierfit',name:'Soldierfit Easton',state:'PA',tier:'d',signYear:2022,events:0,participants:0,revenue:0},
+  {id:'uconn',name:'UConn Recreation',state:'CT',tier:'d',signYear:2023,events:0,participants:0,revenue:0},
+  {id:'parkclub',name:'Park Club Fitness',state:'PA',tier:'d',signYear:2023,events:0,participants:0,revenue:0},
+  {id:'challenge',name:'Challenge Yourself Fitness',state:'MA',tier:'d',signYear:2024,events:0,participants:0,revenue:0},
+  {id:'gymrassic',name:'Gymrassic Park',state:'PA',tier:'d',signYear:2024,events:0,participants:0,revenue:0},
+  {id:'swiftriver',name:'Swift River CrossFit',state:'NH',tier:'d',signYear:2024,events:0,participants:0,revenue:2556},
+  // TIER D — New Onboards
+  {id:'alliance',name:'Alliance Performance',state:'NJ',tier:'d',signYear:2025,events:0,participants:0,revenue:0},
+  {id:'traininglab',name:'The Training Lab',state:'NY',tier:'d',signYear:2025,events:0,participants:0,revenue:0},
+  {id:'spartan',name:'Spartan Gym S&C',state:'PA',tier:'d',signYear:2025,events:0,participants:0,revenue:0},
+  {id:'somerset',name:'Somerset Sports',state:'ME',tier:'d',signYear:2025,events:0,participants:0,revenue:0},
+  {id:'fit360',name:'Fit360DC',state:'DC',tier:'d',signYear:2025,events:0,participants:0,revenue:0},
+  {id:'athol',name:'Athol Area YMCA',state:'MA',tier:'d',signYear:2026,events:0,participants:0,revenue:0},
+  {id:'bspoke',name:'B/SPOKE STUDIOS',state:'MA',tier:'d',signYear:2026,events:0,participants:0,revenue:0},
+  {id:'anf',name:'ANF Fitness',state:'CT',tier:'d',signYear:2026,events:0,participants:0,revenue:0},
+  {id:'reck',name:'Reck Fitness',state:'MA',tier:'d',signYear:2026,events:0,participants:0,revenue:0},
+  {id:'letsflexit',name:"Let's Flex It! LLC",state:'VA',tier:'d',signYear:2023,events:0,participants:0,revenue:0},
+];
+
+const GYM_TYPES = ['CrossFit Box','YMCA','Boutique Fitness','Independent Gym','Martial Arts / MMA','Sports Complex','University / Rec Center','Other'];
+const STATES = [...new Set(AFFILIATES_BASE.map(a => a.state))].sort();
+
+// ── STATE ──
+let currentView = 'cards';
+let sortCol = 'tier';
+let sortDir = 'asc';
+let allAffiliates = [];
+
+// ── DATA LAYER ──
+function loadDirectory() {
+  const stored       = JSON.parse(localStorage.getItem('deka_crm')                || '{}');
+  const custom       = JSON.parse(localStorage.getItem('deka_custom_affiliates')  || '[]');
+  const pipeAdded    = JSON.parse(localStorage.getItem('deka_affiliates_added')   || '[]');
+  const pipelineData = JSON.parse(localStorage.getItem('deka_pipeline')           || '{}');
+
+  const merge = a => {
+    const s = stored[a.id] || {};
+    // also check pipeline-style CRM key (gymname_slug format)
+    const altId = (a.name||'').toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
+    const s2 = stored[altId] || {};
+    return Object.assign({}, a, {
+      contactName:   s.contactName   || s2.contactName   || '',
+      contactTitle:  s.contactTitle  || s2.contactTitle  || '',
+      email:         s.email         || s2.email         || '',
+      phone:         s.phone         || s2.phone         || '',
+      cell:          s.cell          || s2.cell          || '',
+      address:       s.address       || s2.address       || '',
+      city:          s.city          || s2.city          || '',
+      website:       s.website       || s2.website       || '',
+      gymType:       s.gymType       || s2.gymType       || '',
+      capacity:      s.capacity      || s2.capacity      || '',
+      instagram:     s.instagram     || s2.instagram     || '',
+      facebook:      s.facebook      || s2.facebook      || '',
+      joinDate:      s.joinDate      || s2.joinDate      || '',
+      notes:         s.notes         || s2.notes         || '',
+      lastContact:   s.lastContact   || s2.lastContact   || '',
+      nextAction:    s.nextAction    || s2.nextAction    || '',
+      nextActionDate:s.nextActionDate|| s2.nextActionDate|| '',
+    });
+  };
+
+  const baseIds = new Set(AFFILIATES_BASE.map(a => a.id));
+  const customRows = custom.filter(c => !baseIds.has(c.id));
+
+  // Collect all known names to avoid duplicates when adding pipeline entries
+  const normStr = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const knownNames = new Set([
+    ...AFFILIATES_BASE.map(a => normStr(a.name)),
+    ...customRows.map(c => normStr(c.name)),
+  ]);
+
+  // deka_affiliates_added — written when a signed prospect is removed from pipeline
+  const addedRows = pipeAdded.filter(p => !baseIds.has(p.id) && !knownNames.has(normStr(p.name)));
+  addedRows.forEach(p => knownNames.add(normStr(p.name)));
+
+  // deka_pipeline signed prospects still active in pipeline (not yet removed)
+  const signedActive = (pipelineData.prospects || [])
+    .filter(p => p.stage === 'signed' && !knownNames.has(normStr(p.gymName || p.name)))
+    .map(p => ({
+      id: 'pipeline_' + normStr(p.gymName || p.name),
+      name: p.gymName || p.name || 'Unknown',
+      state: (p.state || '').toUpperCase(),
+      tier: 'd',
+      signYear: new Date().getFullYear(),
+      events: 0, participants: 0, revenue: 0,
+    }));
+
+  return [...AFFILIATES_BASE, ...customRows, ...addedRows, ...signedActive].map(merge);
+}
+
+function saveContactFields(id, fields) {
+  const stored = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  stored[id] = Object.assign(stored[id] || {}, fields);
+  localStorage.setItem('deka_crm', JSON.stringify(stored));
+}
+
+// ── INIT ──
+function init() {
+  // One-time cleanup: strip 'name' from import_*/partner_* CRM entries that contaminate the portfolio
+  (function cleanImportCrmNames() {
+    try {
+      const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+      let changed = false;
+      Object.keys(crm).forEach(id => {
+        if ((id.startsWith('import_') || id.startsWith('partner_')) && crm[id].name !== undefined) {
+          delete crm[id].name;
+          changed = true;
+        }
+      });
+      if (changed) localStorage.setItem('deka_crm', JSON.stringify(crm));
+    } catch(e) {}
+  })();
+
+  // Populate state filter
+  const sel = document.getElementById('filter-state');
+  STATES.forEach(st => {
+    const o = document.createElement('option');
+    o.value = st; o.textContent = st;
+    sel.appendChild(o);
+  });
+  allAffiliates = loadDirectory();
+  applyFilters();
+}
+
+// ── FILTERS ──
+function applyFilters() {
+  allAffiliates = loadDirectory();
+  const q = document.getElementById('search-input').value.toLowerCase().trim();
+  const tierF = document.getElementById('filter-tier').value;
+  const stateF = document.getElementById('filter-state').value;
+  const contactF = document.getElementById('filter-contact').value;
+
+  let filtered = allAffiliates.filter(a => {
+    if (tierF && a.tier !== tierF) return false;
+    if (stateF && a.state !== stateF) return false;
+    if (contactF === 'has-email' && !a.email) return false;
+    if (contactF === 'has-phone' && !a.phone) return false;
+    if (contactF === 'missing-contact' && (a.email || a.phone)) return false;
+    if (q) {
+      const haystack = [a.name, a.contactName, a.city, a.state, a.email, a.phone, a.gymType, a.address].join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('count-badge').textContent = `${filtered.length} of ${allAffiliates.length} affiliates`;
+  document.getElementById('no-results').style.display = filtered.length === 0 ? 'block' : 'none';
+
+  if (currentView === 'cards') renderCards(filtered);
+  else renderTable(filtered);
+}
+
+// ── CARD GRID ──
+function renderCards(list) {
+  const grid = document.getElementById('card-view');
+  grid.innerHTML = list.map(a => cardHTML(a)).join('');
+}
+
+function cardHTML(a) {
+  const tc = {a:'tier-a',b:'tier-b',c:'tier-c',d:'tier-d'}[a.tier];
+  const tierLabel = {a:'TIER A',b:'TIER B',c:'TIER C',d:'TIER D'}[a.tier];
+  const tierColor = {a:'var(--tier-a)',b:'var(--tier-b)',c:'var(--tier-c)',d:'var(--tier-d)'}[a.tier];
+
+  const loc = [a.address, a.city, a.state].filter(Boolean).join(', ') || (a.state ? a.state : '');
+  const contactLine = [a.contactName, a.contactTitle].filter(Boolean).join(' — ');
+  const lastContactDays = a.lastContact ? Math.floor((Date.now() - new Date(a.lastContact)) / 86400000) : null;
+  const lastContactStr = lastContactDays !== null
+    ? (lastContactDays === 0 ? 'Today' : lastContactDays === 1 ? 'Yesterday' : `${lastContactDays}d ago`)
+    : '';
+
+  const ig = a.instagram ? (a.instagram.startsWith('@') ? a.instagram : '@' + a.instagram) : '';
+  const fb = a.facebook || '';
+
+  // Gmail compose URL
+  const gmailUrl = a.email
+    ? `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(a.email)}&su=${encodeURIComponent('DEKA Northeast — Quick check-in')}`
+    : '';
+
+  return `<div class="aff-card" id="card-${a.id}">
+    <div class="card-head">
+      <div class="card-head-left">
+        <span class="tier-badge ${tc}">${tierLabel}</span>
+        <div>
+          <div class="card-name">${a.name}</div>
+          <div class="card-state">${a.signYear} · ${a.state}</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="info-row">
+        <span class="info-icon">👤</span>
+        <span class="${contactLine ? 'info-val' : 'info-empty'}">${contactLine || 'No contact on file'}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">📞</span>
+        <span class="${a.phone ? 'info-val' : 'info-empty'}">
+          ${a.phone ? `<a href="tel:${a.phone.replace(/\D/g,'')}">${a.phone}</a>` : 'No phone on file'}
+          ${a.cell ? ` &nbsp;·&nbsp; <a href="tel:${a.cell.replace(/\D/g,'')}">${a.cell} (cell)</a>` : ''}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">✉</span>
+        <span class="${a.email ? 'info-val' : 'info-empty'}">
+          ${a.email ? `<a href="mailto:${a.email}">${a.email}</a>` : 'No email on file'}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">🌐</span>
+        <span class="${a.website ? 'info-val' : 'info-empty'}">
+          ${a.website ? `<a href="${a.website.startsWith('http') ? a.website : 'https://'+a.website}" target="_blank">${a.website.replace(/^https?:\/\//,'')}</a>` : 'No website on file'}
+        </span>
+      </div>
+      <div class="info-row">
+        <span class="info-icon">📍</span>
+        <span class="${loc ? 'info-val' : 'info-empty'}">${loc || 'No address on file'}</span>
+      </div>
+    </div>
+    ${a.gymType || a.capacity || ig || fb ? `
+    <div class="card-section">
+      ${a.gymType || a.capacity ? `<div style="font-size:11px;color:var(--text-mid);margin-bottom:${ig||fb?'6px':'0'}">${[a.gymType, a.capacity ? 'Cap: '+a.capacity : ''].filter(Boolean).join(' &nbsp;·&nbsp; ')}</div>` : ''}
+      ${ig || fb ? `<div class="social-row">${ig ? `<span class="social-tag">IG: <span>${ig}</span></span>` : ''}${fb ? `<span class="social-tag">FB: <span>${fb}</span></span>` : ''}</div>` : ''}
+    </div>` : ''}
+    <div class="card-section">
+      <div class="perf-row">
+        <div class="perf-item">
+          <div class="perf-val" style="color:${tierColor}">${a.events}</div>
+          <div class="perf-lbl">Events</div>
+        </div>
+        <div class="perf-item">
+          <div class="perf-val" style="color:var(--yellow)">${a.participants}</div>
+          <div class="perf-lbl">Participants</div>
+        </div>
+        <div class="perf-item">
+          <div class="perf-val" style="color:var(--green);font-size:13px">$${a.revenue.toLocaleString()}</div>
+          <div class="perf-lbl">Revenue</div>
+        </div>
+      </div>
+    </div>
+    ${lastContactStr || a.nextAction ? `
+    <div class="card-section">
+      <div class="crm-quick">
+        ${lastContactStr ? `Last contact: <strong>${lastContactStr}</strong>` : ''}
+        ${lastContactStr && a.nextAction ? ' &nbsp;·&nbsp; ' : ''}
+        ${a.nextAction ? `Next: <strong>${a.nextAction}</strong>${a.nextActionDate ? ' by ' + a.nextActionDate : ''}` : ''}
+      </div>
+    </div>` : ''}
+    <div class="card-actions">
+      <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="toggleEdit('${a.id}')">&#9998; Edit</button>
+      ${gmailUrl ? `<a href="${gmailUrl}" target="_blank" class="btn btn-blue" style="font-size:11px;padding:5px 10px">&#9993; Email</a>` : (a.email ? `<a href="mailto:${a.email}" class="btn btn-blue" style="font-size:11px;padding:5px 10px">&#9993; Email</a>` : `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;opacity:0.4" disabled>&#9993; Email</button>`)}
+      ${a.phone ? `<a href="tel:${a.phone.replace(/\D/g,'')}" class="btn btn-green" style="font-size:11px;padding:5px 10px">&#128222; Call</a>` : ''}
+      <a href="deka-northeast-portfolio-analysis.html" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;margin-left:auto">&#128202; Dashboard</a>
+    </div>
+    <div class="edit-panel" id="edit-${a.id}">
+      ${editPanelHTML(a)}
+    </div>
+  </div>`;
+}
+
+function editPanelHTML(a) {
+  const gymTypeOpts = GYM_TYPES.map(t => `<option value="${t}"${a.gymType===t?' selected':''}>${t}</option>`).join('');
+  return `
+    <div class="card-section-label">Edit Contact Info — auto-saves, syncs with Portfolio Dashboard</div>
+    <div class="edit-grid">
+      <div class="edit-field">
+        <label>Owner / Primary Contact</label>
+        <input type="text" id="ef-contactName-${a.id}" value="${esc(a.contactName)}" placeholder="Full name" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Title / Role</label>
+        <input type="text" id="ef-contactTitle-${a.id}" value="${esc(a.contactTitle)}" placeholder="Owner, GM, Events Director..." onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Email</label>
+        <input type="email" id="ef-email-${a.id}" value="${esc(a.email)}" placeholder="owner@gym.com" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Phone (Business)</label>
+        <input type="tel" id="ef-phone-${a.id}" value="${esc(a.phone)}" placeholder="(555) 555-1234" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Cell / Mobile</label>
+        <input type="tel" id="ef-cell-${a.id}" value="${esc(a.cell)}" placeholder="(555) 555-5678" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Website</label>
+        <input type="text" id="ef-website-${a.id}" value="${esc(a.website)}" placeholder="gymwebsite.com" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field full">
+        <label>Street Address</label>
+        <input type="text" id="ef-address-${a.id}" value="${esc(a.address)}" placeholder="123 Main Street" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>City</label>
+        <input type="text" id="ef-city-${a.id}" value="${esc(a.city)}" placeholder="City" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Gym Type</label>
+        <select id="ef-gymType-${a.id}" onchange="saveField('${a.id}')">
+          <option value="">-- Select --</option>
+          ${gymTypeOpts}
+        </select>
+      </div>
+      <div class="edit-field">
+        <label>Approx. Capacity</label>
+        <input type="number" id="ef-capacity-${a.id}" value="${esc(a.capacity)}" placeholder="e.g. 40" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Instagram Handle</label>
+        <input type="text" id="ef-instagram-${a.id}" value="${esc(a.instagram)}" placeholder="@gymhandle" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Facebook Page</label>
+        <input type="text" id="ef-facebook-${a.id}" value="${esc(a.facebook)}" placeholder="facebook.com/gympage" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field">
+        <label>Official Join Date</label>
+        <input type="date" id="ef-joinDate-${a.id}" value="${esc(a.joinDate)}" onchange="saveField('${a.id}')">
+      </div>
+      <div class="edit-field full">
+        <label>Notes</label>
+        <textarea id="ef-notes-${a.id}" rows="3" placeholder="Add context, history, or anything useful..." onchange="saveField('${a.id}')">${esc(a.notes)}</textarea>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn btn-primary" style="padding:6px 16px;font-size:12px" onclick="saveField('${a.id}', true)">&#10003; Save</button>
+      <button class="btn btn-ghost" style="padding:6px 16px;font-size:12px" onclick="toggleEdit('${a.id}')">Done</button>
+      <span class="save-flash" id="flash-${a.id}">&#10003; Saved</span>
+    </div>`;
+}
+
+function esc(v) {
+  if (!v && v !== 0) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── EDIT TOGGLE ──
+function toggleEdit(id) {
+  const panel = document.getElementById('edit-' + id);
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  // Reload fresh data into panel before opening
+  if (!isOpen) {
+    const a = loadDirectory().find(x => x.id === id);
+    if (a) panel.innerHTML = editPanelHTML(a);
+  }
+  panel.classList.toggle('open', !isOpen);
+}
+
+// ── SAVE ──
+function saveField(id, showFlash) {
+  const g = (field) => {
+    const el = document.getElementById(`ef-${field}-${id}`);
+    return el ? el.value : '';
+  };
+  const fields = {
+    contactName: g('contactName'),
+    contactTitle: g('contactTitle'),
+    email: g('email'),
+    phone: g('phone'),
+    cell: g('cell'),
+    address: g('address'),
+    city: g('city'),
+    website: g('website'),
+    gymType: g('gymType'),
+    capacity: g('capacity'),
+    instagram: g('instagram'),
+    facebook: g('facebook'),
+    joinDate: g('joinDate'),
+    notes: g('notes'),
+  };
+  saveContactFields(id, fields);
+
+  // Update card display without full re-render (refresh contact rows)
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    const refreshed = loadDirectory().find(x => x.id === id);
+    if (refreshed) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = cardHTML(refreshed);
+      const newCard = tmp.firstChild;
+      // Keep edit panel open if it was open
+      const editPanel = newCard.querySelector('.edit-panel');
+      if (editPanel) {
+        editPanel.classList.add('open');
+        editPanel.innerHTML = editPanelHTML(refreshed);
+      }
+      card.replaceWith(newCard);
+    }
+  }
+
+  // Flash
+  if (showFlash) {
+    const flash = document.getElementById('flash-' + id);
+    if (flash) {
+      flash.style.display = 'inline';
+      clearTimeout(flash._t);
+      flash._t = setTimeout(() => { flash.style.display = 'none'; }, 2200);
+    }
+  }
+}
+
+// ── TABLE VIEW ──
+let tableSortCol = 'tier';
+let tableSortDir = 'asc';
+
+function renderTable(list) {
+  const sorted = [...list].sort((a, b) => {
+    let va = a[tableSortCol] || '', vb = b[tableSortCol] || '';
+    if (typeof va === 'number') return tableSortDir === 'asc' ? va - vb : vb - va;
+    return tableSortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = sorted.map(a => {
+    const tierLabel = {a:'A',b:'B',c:'C',d:'D'}[a.tier];
+    const tc = {a:'tier-a',b:'tier-b',c:'tier-c',d:'tier-d'}[a.tier];
+    const lastContactDays = a.lastContact ? Math.floor((Date.now() - new Date(a.lastContact)) / 86400000) : null;
+    const lastStr = lastContactDays !== null ? (lastContactDays === 0 ? 'Today' : lastContactDays + 'd ago') : '—';
+    const gmailUrl = a.email ? `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(a.email)}&su=${encodeURIComponent('DEKA Northeast — Quick check-in')}` : '';
+    return `<tr>
+      <td><span class="tier-badge ${tc}" style="font-size:10px">${tierLabel}</span></td>
+      <td><span class="tbl-name">${a.name}</span><br><span class="tbl-dim">${a.state}</span></td>
+      <td class="tbl-dim">${a.state}</td>
+      <td>${a.contactName ? `${a.contactName}${a.contactTitle ? '<br><span class="tbl-dim">'+a.contactTitle+'</span>' : ''}` : '<span class="tbl-dim">—</span>'}</td>
+      <td>${a.phone ? `<a href="tel:${a.phone.replace(/\D/g,'')}">${a.phone}</a>` : '<span class="tbl-dim">—</span>'}</td>
+      <td>${a.email ? `<a href="${gmailUrl||'mailto:'+a.email}" target="_blank">${a.email}</a>` : '<span class="tbl-dim">—</span>'}</td>
+      <td class="tbl-dim">${a.gymType || '—'}</td>
+      <td class="tbl-dim">${lastStr}</td>
+      <td style="max-width:180px;color:${a.nextAction ? 'var(--text-mid)' : 'var(--text-dim)'};">${a.nextAction || '—'}${a.nextActionDate ? '<br><span class="tbl-dim">by '+a.nextActionDate+'</span>' : ''}</td>
+      <td>
+        <div class="tbl-actions">
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px" onclick="quickEditRow('${a.id}')">&#9998;</button>
+          ${a.email ? `<a href="${gmailUrl||'mailto:'+a.email}" target="_blank" class="btn btn-blue" style="font-size:11px;padding:4px 8px">&#9993;</a>` : ''}
+          ${a.phone ? `<a href="tel:${a.phone.replace(/\D/g,'')}" class="btn btn-green" style="font-size:11px;padding:4px 8px">&#128222;</a>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Update sort header indicators
+  document.querySelectorAll('.aff-table th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+  });
+}
+
+function sortTable(col) {
+  if (tableSortCol === col) tableSortDir = tableSortDir === 'asc' ? 'desc' : 'asc';
+  else { tableSortCol = col; tableSortDir = 'asc'; }
+  applyFilters();
+}
+
+// Quick edit row (opens card view for that affiliate in a mini modal-like scroll)
+function quickEditRow(id) {
+  setView('cards');
+  setTimeout(() => {
+    const card = document.getElementById('card-' + id);
+    if (card) {
+      card.scrollIntoView({behavior:'smooth', block:'center'});
+      toggleEdit(id);
+    }
+  }, 150);
+}
+
+// ── VIEW TOGGLE ──
+function setView(v) {
+  currentView = v;
+  document.getElementById('card-view').style.display = v === 'cards' ? 'grid' : 'none';
+  document.getElementById('table-view').style.display = v === 'table' ? 'block' : 'none';
+  document.getElementById('view-cards').classList.toggle('active', v === 'cards');
+  document.getElementById('view-table').classList.toggle('active', v === 'table');
+  applyFilters();
+}
+
+// ── EXPORT CSV ──
+function exportCSV() {
+  const data = loadDirectory();
+  const cols = ['name','state','tier','contactName','contactTitle','email','phone','cell','address','city','website','gymType','capacity','instagram','facebook','joinDate','lastContact','nextAction','nextActionDate','notes','signYear','events','participants','revenue'];
+  const header = cols.join(',');
+  const rows = data.map(a => cols.map(c => {
+    const v = a[c] == null ? '' : String(a[c]);
+    return v.includes(',') || v.includes('"') || v.includes('\n') ? '"' + v.replace(/"/g,'""') + '"' : v;
+  }).join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const el = document.createElement('a');
+  el.href = URL.createObjectURL(blob);
+  el.download = `deka-northeast-directory-${new Date().toISOString().slice(0,10)}.csv`;
+  el.click();
+}
+
+// ── Partner import ──────────────────────────────────────────────────────────
+
+// Proper TSV parser — handles quoted cells that contain newlines (Google Sheets multi-line cells)
+function parseTSV(raw) {
+  const rows = [];
+  let row = [], cell = '', inQuote = false, i = 0;
+  while (i < raw.length) {
+    const ch = raw[i];
+    if (inQuote) {
+      if (ch === '"' && raw[i+1] === '"') { cell += '"'; i += 2; continue; } // escaped quote ""
+      if (ch === '"') { inQuote = false; i++; continue; }                     // closing quote
+      cell += ch; i++; continue;
+    }
+    if (ch === '"')  { inQuote = true; i++; continue; }
+    if (ch === '\t') { row.push(cell); cell = ''; i++; continue; }
+    if (ch === '\r') { i++; continue; }
+    if (ch === '\n') { row.push(cell); cell = ''; rows.push(row); row = []; i++; continue; }
+    cell += ch; i++;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+
+const PARTNER_COL_MAP = {
+  gymName:     ['partner- 1','partner-1','partner 1','gym name','business name','affiliate','club','facility','partner name'],
+  salesRep:    ['sales rep','salesperson','rep'],
+  contactName: ['contact name','contact','owner','owner name','poc','point of contact','manager'],
+  email:       ['email address','email','e-mail','contact email'],
+  phone:       ['phone','mobile','cell','telephone','phone number','contact phone','contact mobile'],
+  city:        ['city','location','town'],
+  state:       ['state','province'],
+  region:      ['region'],
+  gymType:     ['gym membership','gym type','type','membership type','facility type'],
+  notes:       ['event notes','notes','comments','description'],
+  signYear:    ['year of acquisition','year of acquis','year acquired','sign year','signed','partner since'],
+};
+
+function _initImportListener() {
+  const ta = document.getElementById('partner-paste-input');
+  if (!ta) return;
+  ta.addEventListener('input', function() {
+    const raw = this.value.trim();
+    const prev = document.getElementById('partner-import-preview');
+    if (!raw) { prev.textContent = ''; return; }
+    const rows = parseTSV(raw);
+    if (rows.length < 1) { prev.textContent = ''; return; }
+    const dataRows = Math.max(0, rows.length - 1);
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const previewIdx = {};
+    headers.forEach((h, i) => {
+      for (const [field, aliases] of Object.entries(PARTNER_COL_MAP)) {
+        if (previewIdx[field] === undefined && aliases.some(a => h.includes(a))) { previewIdx[field] = i; break; }
+      }
+    });
+    const matched = Object.keys(previewIdx);
+    const hasEmail = matched.includes('email');
+    const hasPhone = matched.includes('phone');
+    const hasSalesRep = matched.includes('salesRep');
+    let anthonyCount = 0;
+    if (hasSalesRep && rows.length > 1) {
+      rows.slice(1).forEach(cols => {
+        const rep = (cols[previewIdx.salesRep] || '').trim().toLowerCase();
+        if (rep.includes('anthony')) anthonyCount++;
+      });
+    }
+    prev.innerHTML =
+      `<span style="color:var(--green)">&#10003;</span> Detected <strong>${dataRows}</strong> rows` +
+      (hasSalesRep
+        ? ` &nbsp;&middot;&nbsp; <span style="color:var(--green)"><strong>${anthonyCount}</strong> Anthony rows will import</span>`
+        : ' &nbsp;<span style="color:var(--yellow)">&#9888; no SALES REP column — all rows will import</span>') +
+      `<br><span style="color:var(--text-dim);font-size:11px;">` +
+      matched.filter(f => f !== 'salesRep').map(f => `<span style="color:var(--blue)">${f}</span>`).join(' &middot; ') + `</span>` +
+      (!hasEmail ? ' &nbsp;<span style="color:var(--yellow)">&#9888; no email column</span>' : '') +
+      (!hasPhone ? ' &nbsp;<span style="color:var(--yellow)">&#9888; no phone column</span>' : '');
+  });
+}
+
+function runPartnerImport() {
+  const btn = document.querySelector('#partner-import-modal button[onclick="runPartnerImport()"]');
+  if (btn) { btn.textContent = 'Importing…'; btn.disabled = true; }
+
+  // Defer heavy work one tick so the button state visually updates first
+  setTimeout(function() {
+    try {
+      const raw = document.getElementById('partner-paste-input').value.trim();
+      if (!raw) { alert('Please paste your sheet data first.'); return; }
+      const rows = parseTSV(raw);
+      if (rows.length < 2) { alert('Need at least a header row and one data row.'); return; }
+      const headers = rows[0].map(h => h.trim().toLowerCase());
+      const colIdx = {};
+      headers.forEach((h, i) => {
+        for (const [field, aliases] of Object.entries(PARTNER_COL_MAP)) {
+          if (colIdx[field] === undefined && aliases.some(a => h.includes(a))) colIdx[field] = i;
+        }
+      });
+      if (colIdx.gymName === undefined) {
+        alert('Could not find a gym/partner name column. Make sure your header row is included.');
+        return;
+      }
+      let crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+
+      // Purge orphaned junk from any previous broken imports to free up localStorage space
+      const baseIds = new Set(AFFILIATES_BASE.map(a => a.id));
+      Object.keys(crm).forEach(id => {
+        if ((id.startsWith('partner_') || id.startsWith('import_')) && !baseIds.has(id)) {
+          delete crm[id];
+        }
+      });
+
+      // Build name→id lookups so we write to the correct CRM key
+      const baseNameMap = {};
+      AFFILIATES_BASE.forEach(a => {
+        baseNameMap[a.name.toLowerCase().replace(/[^a-z0-9]/g,'')] = a.id;
+      });
+      const custom = JSON.parse(localStorage.getItem('deka_custom_affiliates') || '[]');
+      const customNameMap = {};
+      custom.forEach(a => {
+        customNameMap[(a.name||'').toLowerCase().replace(/[^a-z0-9]/g,'')] = a.id;
+      });
+
+      let updated = 0, added = 0, skippedBlank = 0, skippedRep = 0;
+      rows.slice(1).forEach(cols => {
+        const getCol = field => colIdx[field] !== undefined ? (cols[colIdx[field]] || '').trim() : '';
+        const gymName = getCol('gymName');
+        if (!gymName) { skippedBlank++; return; }
+        if (colIdx.salesRep !== undefined) {
+          const rep = getCol('salesRep').toLowerCase();
+          if (!rep.includes('anthony')) { skippedRep++; return; }
+        }
+        const normName = gymName.toLowerCase().replace(/[^a-z0-9]/g,'');
+
+        // 1. Match against AFFILIATES_BASE (existing cards)
+        let targetId = null;
+        for (const [bNorm, bId] of Object.entries(baseNameMap)) {
+          if (bNorm === normName || bNorm.includes(normName) || normName.includes(bNorm)) {
+            targetId = bId; break;
+          }
+        }
+        // 2. Match against custom affiliates
+        if (!targetId) {
+          for (const [cNorm, cId] of Object.entries(customNameMap)) {
+            if (cNorm === normName || cNorm.includes(normName) || normName.includes(cNorm)) {
+              targetId = cId; break;
+            }
+          }
+        }
+        // 3. Fallback: existing CRM keys
+        if (!targetId) {
+          targetId = Object.keys(crm).find(id => {
+            const stored = (crm[id].gymName || crm[id].name || id).toLowerCase().replace(/[^a-z0-9]/g,'');
+            return stored === normName || stored.includes(normName) || normName.includes(stored);
+          });
+        }
+
+        const incoming = {};
+        for (const field of Object.keys(PARTNER_COL_MAP)) {
+          const val = getCol(field);
+          if (val) incoming[field] = val;
+        }
+        incoming.gymName = gymName;
+        // Do NOT set incoming.name — portfolio's loadAppData() picks up any deka_crm entry where s.name exists
+
+        if (targetId) {
+          crm[targetId] = Object.assign(crm[targetId] || {}, incoming);
+          updated++;
+        } else {
+          const newId = 'import_' + normName + '_' + Date.now() + Math.floor(Math.random()*1000);
+          crm[newId] = { ...incoming, importedAt: new Date().toISOString().slice(0,10) };
+          custom.push({
+            id: newId, name: gymName,
+            state: (incoming.state || '').toUpperCase().trim(),
+            tier: 'd',
+            signYear: parseInt(incoming.signYear) || new Date().getFullYear(),
+            events: 0, participants: 0, revenue: 0,
+            importedAt: new Date().toISOString().slice(0,10)
+          });
+          customNameMap[normName] = newId;
+          added++;
+        }
+      });
+
+      localStorage.setItem('deka_crm', JSON.stringify(crm));
+      localStorage.setItem('deka_custom_affiliates', JSON.stringify(custom));
+      document.getElementById('partner-import-modal').style.display = 'none';
+      document.getElementById('partner-paste-input').value = '';
+      document.getElementById('partner-import-preview').textContent = '';
+      applyFilters();
+      const parts = [`${updated} updated`, `${added} added`];
+      if (skippedRep > 0)   parts.push(`${skippedRep} skipped (other rep)`);
+      if (skippedBlank > 0) parts.push(`${skippedBlank} skipped (blank name)`);
+      alert(`Import complete: ${parts.join(', ')}.`);
+    } catch(err) {
+      alert('Import failed: ' + err.message + '\n\nTry refreshing the page and importing again.');
+      console.error('runPartnerImport error:', err);
+    } finally {
+      if (btn) { btn.textContent = '✓ Import & Merge'; btn.disabled = false; }
+    }
+  }, 50);
+}
+
+// ── ADD AFFILIATE ──
+function addAffiliate() {
+  const name = document.getElementById('aa-name').value.trim();
+  const state = document.getElementById('aa-state').value.trim().toUpperCase();
+  if (!name) { alert('Gym name is required.'); return; }
+  if (!state) { alert('State is required.'); return; }
+
+  const id = 'manual_' + name.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + Date.now();
+  const tier = (document.getElementById('aa-tier').value || 'd').toLowerCase();
+  const signYear = parseInt(document.getElementById('aa-signYear').value) || new Date().getFullYear();
+
+  // Save to custom affiliates list (so loadDirectory picks it up)
+  const custom = JSON.parse(localStorage.getItem('deka_custom_affiliates') || '[]');
+  custom.push({ id, name, state, tier, signYear, events: 0, participants: 0, revenue: 0, manualEntry: true });
+  localStorage.setItem('deka_custom_affiliates', JSON.stringify(custom));
+
+  // Save contact fields to CRM
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  crm[id] = {
+    gymName:      name,
+    contactName:  document.getElementById('aa-contactName').value.trim(),
+    email:        document.getElementById('aa-email').value.trim(),
+    phone:        document.getElementById('aa-phone').value.trim(),
+    city:         document.getElementById('aa-city').value.trim(),
+    notes:        document.getElementById('aa-notes').value.trim(),
+    addedAt:      new Date().toISOString().slice(0,10),
+  };
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+
+  // Reset + close modal
+  ['aa-name','aa-state','aa-contactName','aa-email','aa-phone','aa-city','aa-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('aa-tier').value = 'd';
+  document.getElementById('aa-signYear').value = '';
+  document.getElementById('add-affiliate-modal').style.display = 'none';
+  applyFilters();
+  if (typeof showToast === 'function') showToast(`${name} added to directory.`);
+  else alert(`${name} added to directory.`);
+}
+
+// ── BOOT ──
+init();
+setTimeout(_initImportListener, 200);
+</script>
+
+<!-- Add Affiliate Modal -->
+<div id="add-affiliate-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:700;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="font-size:15px;font-weight:700">Add Affiliate Manually</h3>
+      <button onclick="document.getElementById('add-affiliate-modal').style.display='none'" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:15px;cursor:pointer;padding:3px 10px;">&#10005;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="grid-column:1/-1;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Gym Name <span style="color:var(--accent)">*</span></label>
+        <input id="aa-name" type="text" placeholder="Full gym name" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">State <span style="color:var(--accent)">*</span></label>
+        <input id="aa-state" type="text" placeholder="e.g. PA" maxlength="2" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;text-transform:uppercase;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Tier</label>
+        <select id="aa-tier" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+          <option value="a">Tier A</option>
+          <option value="b">Tier B</option>
+          <option value="c">Tier C</option>
+          <option value="d" selected>Tier D</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Sign Year</label>
+        <input id="aa-signYear" type="number" placeholder="e.g. 2026" min="2018" max="2035" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Contact Name</label>
+        <input id="aa-contactName" type="text" placeholder="Owner / primary contact" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Email</label>
+        <input id="aa-email" type="email" placeholder="owner@gym.com" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Phone</label>
+        <input id="aa-phone" type="tel" placeholder="(555) 555-1234" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">City</label>
+        <input id="aa-city" type="text" placeholder="City" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-dim);font-weight:600;margin-bottom:4px;">Notes</label>
+        <textarea id="aa-notes" rows="3" placeholder="Any context about this affiliate..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:8px 10px;outline:none;resize:vertical;font-family:'Inter',sans-serif;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--border)">
+      <button onclick="document.getElementById('add-affiliate-modal').style.display='none'" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer;">Cancel</button>
+      <button onclick="addAffiliate()" style="padding:8px 18px;border-radius:6px;border:none;background:var(--green);color:#0a0a0f;font-size:12px;font-weight:600;cursor:pointer;">&#43; Add to Directory</button>
+    </div>
+  </div>
+</div>
+
+<!-- Partner Import Modal -->
+<div id="partner-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:700;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="font-size:15px;font-weight:700">Import Partners from Google Sheet</h3>
+      <button onclick="document.getElementById('partner-import-modal').style.display='none'" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:15px;cursor:pointer;padding:3px 10px;">&#10005;</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-mid);line-height:1.6;">
+      In Google Sheets, select all rows in the <strong>Partner USA tab</strong> (including the header row), copy, and paste below.
+      Existing affiliates are matched by gym name and <strong>updated</strong> — new gyms are added. Nothing is deleted.
+    </p>
+    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Paste your sheet data here:</div>
+    <textarea id="partner-paste-input" rows="10" placeholder="Paste rows from Google Sheets here (Cmd+A in the tab, then Cmd+C, then paste here)..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:10px;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;box-sizing:border-box;"></textarea>
+    <div id="partner-import-preview" style="font-size:12px;color:var(--text-mid);min-height:20px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--border)">
+      <button onclick="document.getElementById('partner-import-modal').style.display='none'" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer;">Cancel</button>
+      <button onclick="runPartnerImport()" style="padding:8px 18px;border-radius:6px;border:none;background:var(--green);color:#0a0a0f;font-size:12px;font-weight:600;cursor:pointer;">&#10003; Import &amp; Merge</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

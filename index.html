@@ -394,10 +394,10 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
     <p>37 Affiliates &bull; 2026 Performance Dashboard &bull; Revenue Target: $10K min / $15K stretch per club</p>
   </div>
   <div class="header-actions no-print">
-    <button class="btn btn-ghost btn-sm" id="hdr-sales-btn" onclick="window.open('deka-sales-pipeline.html')" style="border-color:var(--accent);color:var(--accent);display:none">&#127919; Sales Pipeline</button>
-    <button class="btn btn-ghost btn-sm" id="hdr-dir-btn" onclick="window.open('deka-nam-directory.html')" style="border-color:var(--blue);color:var(--blue)">&#128101; Affiliate Directory</button>
+    <button class="btn btn-ghost btn-sm" id="hdr-sales-btn" onclick="window.open('pipeline.html')" style="border-color:var(--accent);color:var(--accent);display:none">&#127919; Sales Pipeline</button>
+    <button class="btn btn-ghost btn-sm" id="hdr-dir-btn" onclick="window.open('directory.html')" style="border-color:var(--blue);color:var(--blue)">&#128101; Affiliate Directory</button>
     <button class="btn btn-ghost btn-sm" id="hdr-events-btn" onclick="openEventPlanner()" style="border-color:#1DB954;color:#1DB954;display:none">&#127939; Event Planner</button>
-    <button class="btn btn-ghost btn-sm" id="hdr-kpi-btn" onclick="window.open('deka-kpi-tracker.html')" style="border-color:#a78bfa;color:#a78bfa;display:none">&#128202; Weekly KPI</button>
+    <button class="btn btn-ghost btn-sm" id="hdr-kpi-btn" onclick="window.open('kpi.html')" style="border-color:#a78bfa;color:#a78bfa;display:none">&#128202; Weekly KPI</button>
     <button class="btn btn-ghost btn-sm" onclick="exportData()">&#8595; Export JSON</button>
     <label class="btn btn-ghost btn-sm" style="cursor:pointer;">&#8593; Import JSON<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
     <button class="btn btn-ghost btn-sm" onclick="printPortfolio()">&#128438; Print Portfolio</button>
@@ -701,7 +701,7 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
         </div>
         <div style="font-size:12px;color:var(--text-dim);line-height:1.5">Week-by-week milestone tracker for new affiliates. Scopes event format, marketing approach, and builds toward first event launch.</div>
       </div>
-      <div class="resource-card" onclick="window.open('deka-sales-pipeline.html','_blank')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;cursor:pointer;transition:all 0.15s;border-left:3px solid var(--blue)">
+      <div class="resource-card" onclick="window.open('pipeline.html','_blank')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;cursor:pointer;transition:all 0.15s;border-left:3px solid var(--blue)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
           <span style="font-size:22px">&#128203;</span>
           <div>
@@ -2420,7 +2420,7 @@ function openInlineOnboarding(gymName) {
   const p = pipeline.prospects.find(x => normName(x.gymName) === normName(gymName));
   if (!p) {
     // Fallback: open pipeline page if prospect not found
-    window.open('deka-sales-pipeline.html?onboard=' + encodeURIComponent(gymName), '_blank');
+    window.open('pipeline.html?onboard=' + encodeURIComponent(gymName), '_blank');
     return;
   }
 
@@ -6093,7 +6093,7 @@ function plShowCallList() {
     const eb=p.email?`<button onclick="plCallListEmail('${p.email.replace(/'/g,"\\'")}','${(p.name||'').replace(/'/g,"\\'")}','${(p.company||'').replace(/'/g,"\\'")}','${p.stage||''}')" style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer">✉ Email</button>`:'<span style="font-size:11px;color:var(--text-dim)">no email</span>';
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)"><div style="font-size:12px;font-weight:700;color:var(--text-dim);min-width:20px">${i+1}.</div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">${p.name||'—'} <span style="font-size:11px;color:var(--text-dim)">${p.company||''}</span></div><div style="font-size:11px;color:var(--text-dim)">${p.stage} · <span style="color:${uc}">${ds}</span>${p.nextAction?` · ${p.nextAction}`:''}</div></div>${eb}</div>`;
   }).join('');
-  _plShowResults(`<div style="max-height:360px;overflow-y:auto">${rows}</div><div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Sorted by longest overdue · <span onclick="window.open('deka-sales-pipeline.html','_blank')" style="color:var(--blue);cursor:pointer">Open Pipeline →</span></div>`,`📞 Call List (${list.length})`);
+  _plShowResults(`<div style="max-height:360px;overflow-y:auto">${rows}</div><div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Sorted by longest overdue · <span onclick="window.open('pipeline.html','_blank')" style="color:var(--blue);cursor:pointer">Open Pipeline →</span></div>`,`📞 Call List (${list.length})`);
 }
 function plCallListEmail(email, name, company, stage) {
   const fn=name?name.split(' ')[0]:'there';
@@ -6136,7 +6136,7 @@ function plShowKPI() {
     <div style="background:var(--surface2);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">Stale Contacts</div><div style="font-size:22px;font-weight:800;color:${staleCount>5?'var(--accent)':'var(--yellow)'};font-family:'Space Mono',monospace">${staleCount}</div><div style="font-size:11px;color:var(--text-dim)">affiliates 30+ days no contact</div></div>
     <div style="background:var(--surface2);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">This Weekend</div><div style="font-size:22px;font-weight:800;color:var(--blue);font-family:'Space Mono',monospace">${weekendGyms.length}</div><div style="font-size:11px;color:var(--text-dim)">gyms hosting — need Race Week email</div></div>
     <div style="background:var(--surface2);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">30-Day Pipeline</div><div style="font-size:22px;font-weight:800;color:var(--green);font-family:'Space Mono',monospace">${thirtyDayGyms.length}</div><div style="font-size:11px;color:var(--text-dim)">gyms with events 28–35 days out</div></div>
-  </div><span onclick="window.open('deka-kpi-tracker.html','_blank')" style="font-size:12px;color:var(--blue);cursor:pointer">→ Open Full KPI Tracker</span>`,'📊 KPI Highlights');
+  </div><span onclick="window.open('kpi.html','_blank')" style="font-size:12px;color:var(--blue);cursor:pointer">→ Open Full KPI Tracker</span>`,'📊 KPI Highlights');
 }
 
 // ── Thursday ─────────────────────────────────────────────────────────────────
@@ -6179,7 +6179,7 @@ function plThuSocialPanel() {
     const eb=p.email?`<button onclick="plCallListEmail('${p.email.replace(/'/g,"\\'")}','${(p.name||'').replace(/'/g,"\\'")}','${(p.company||'').replace(/'/g,"\\'")}','${p.stage||''}')" style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer">✉</button>`:'';
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)"><div style="font-size:12px;color:var(--text-dim);min-width:22px">${i+1}.</div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">${p.name||'—'} <span style="font-size:11px;color:var(--text-dim)">${p.company||''}</span></div><div style="font-size:11px;color:var(--text-dim)">${p.stage} · <span style="color:${uc}">${ds}</span></div></div>${eb}</div>`;
   }).join('');
-  _plShowResults(`<div style="max-height:360px;overflow-y:auto">${rows}</div><div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Goal: 20 outreaches via social or email · <span onclick="window.open('deka-sales-pipeline.html','_blank')" style="color:var(--blue);cursor:pointer">Open Pipeline →</span></div>`,`👥 Social Outreach (${prospects.length})`);
+  _plShowResults(`<div style="max-height:360px;overflow-y:auto">${rows}</div><div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Goal: 20 outreaches via social or email · <span onclick="window.open('pipeline.html','_blank')" style="color:var(--blue);cursor:pointer">Open Pipeline →</span></div>`,`👥 Social Outreach (${prospects.length})`);
 }
 
 // ── Friday ───────────────────────────────────────────────────────────────────

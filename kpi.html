@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEKA | Weekly KPI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap');
+  :root {
+    --bg:#0a0c10; --surface:#12151c; --surface2:#1a1e28; --border:#2a2f3d;
+    --text:#e8eaf0; --text-dim:#8b92a5; --accent:#e63946;
+    --green:#4ade80; --blue:#60a5fa; --yellow:#fbbf24; --purple:#a78bfa; --teal:#2dd4bf;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;}
+  a{color:inherit;text-decoration:none;}
+
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .header-title{font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:var(--accent);flex:1;}
+  .header-week{font-size:12px;color:var(--text-dim);white-space:nowrap;}
+  .btn{padding:7px 14px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:12px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .btn:hover{border-color:var(--text-dim);color:var(--text);}
+  .btn-accent{border-color:var(--accent);color:var(--accent);}
+  .btn-accent:hover{background:rgba(230,57,70,0.1);}
+  .btn-green{border-color:var(--green);color:var(--green);}
+  .btn-green:hover{background:rgba(74,222,128,0.1);}
+  .btn-blue{border-color:var(--blue);color:var(--blue);}
+  .btn-blue:hover{background:rgba(96,165,250,0.1);}
+
+  .main{max-width:1100px;margin:0 auto;padding:24px 20px;display:flex;flex-direction:column;gap:20px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;}
+  .card-title{font-family:'Bebas Neue';font-size:12px;letter-spacing:2px;color:var(--accent);margin-bottom:16px;}
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .section-head .card-title{margin-bottom:0;}
+
+  /* Activity tiles */
+  .act-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}
+  .act-tile{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 14px 10px;}
+  .act-tile label{display:block;font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;}
+  .act-tile input[type="number"]{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-size:30px;font-family:'Bebas Neue';letter-spacing:1px;padding:0 0 4px;outline:none;-moz-appearance:textfield;}
+  .act-tile input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;}
+  .act-tile input[type="number"]:focus{border-bottom-color:var(--accent);}
+
+  .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+  .notes-label{font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+  textarea.note{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.65;padding:12px;resize:vertical;min-height:80px;outline:none;}
+  textarea.note:focus{border-color:var(--blue);}
+
+  /* Stats */
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}
+  .stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .stat-num{font-family:'Bebas Neue';font-size:38px;letter-spacing:1px;line-height:1;}
+  .stat-label{font-size:11px;color:var(--text-dim);margin-top:4px;}
+  .stat-sub{font-size:10px;color:var(--text-dim);margin-top:2px;}
+
+  .stage-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .stage-pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;display:flex;align-items:center;gap:6px;}
+  .pill-count{font-family:'Bebas Neue';font-size:17px;}
+
+  .prog-wrap{margin-top:14px;}
+  .prog-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:6px;}
+  .prog-track{background:var(--surface2);border-radius:4px;height:8px;}
+  .prog-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+
+  .alert-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+  .alert-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:6px;background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.18);color:var(--yellow);cursor:pointer;transition:background 0.15s;}
+  .alert-item:hover{background:rgba(251,191,36,0.12);}
+  .ok-msg{font-size:12px;color:var(--green);margin-top:10px;}
+
+  /* Outreach slide panel */
+  .outreach-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:800;display:none;}
+  .outreach-overlay.open{display:flex;align-items:flex-start;justify-content:flex-end;}
+  .outreach-panel{background:var(--surface);border-left:1px solid var(--border);width:380px;max-width:95vw;height:100vh;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;}
+  .op-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .op-name{font-family:'Bebas Neue';font-size:20px;letter-spacing:1px;line-height:1.2;}
+  .op-close{background:none;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:16px;cursor:pointer;padding:4px 10px;flex-shrink:0;}
+  .op-close:hover{border-color:var(--accent);color:var(--accent);}
+  .op-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+  .op-field{display:flex;flex-direction:column;}
+  .op-input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;width:100%;}
+  .op-input:focus{border-color:var(--blue);}
+  .op-textarea{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;width:100%;resize:vertical;min-height:80px;line-height:1.6;}
+  .op-textarea:focus{border-color:var(--blue);}
+  .op-method-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .op-method-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:12px;cursor:pointer;transition:all 0.15s;}
+  .op-method-btn.active{border-color:var(--blue);color:var(--blue);background:rgba(96,165,250,0.1);}
+  .op-divider{border:none;border-top:1px solid var(--border);}
+  .btn-full{width:100%;padding:10px;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+
+  /* Summary */
+  textarea.summary-box{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.75;padding:16px;resize:vertical;min-height:220px;outline:none;}
+  textarea.summary-box:focus{border-color:var(--blue);}
+
+  /* History */
+  .hist-list{display:flex;flex-direction:column;gap:10px;}
+  .hist-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .hist-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;}
+  .hist-header:hover{background:rgba(96,165,250,0.05);}
+  .hist-week{font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;}
+  .hist-stats{font-size:11px;color:var(--text-dim);}
+  .hist-body{padding:0 16px;max-height:0;overflow:hidden;transition:max-height 0.3s ease,padding 0.2s;}
+  .hist-body.open{max-height:600px;padding:0 16px 16px;}
+  pre.hist-text{font-family:'Inter',sans-serif;font-size:12px;color:var(--text-dim);line-height:1.7;white-space:pre-wrap;word-break:break-word;}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--green);color:var(--green);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999;}
+  .toast.show{opacity:1;}
+
+  /* Auto-activity read-only tiles */
+  .act-auto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;}
+  .act-auto-tile{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px 10px;}
+  .act-auto-tile .aat-label{font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;margin-bottom:6px;}
+  .act-auto-tile .aat-val{font-family:'Bebas Neue';font-size:30px;letter-spacing:1px;line-height:1;color:var(--text);}
+  .act-auto-tile .aat-src{font-size:9px;color:var(--text-dim);margin-top:3px;opacity:0.7;}
+
+  /* Intelligence card — two-line format */
+  .intel-bullet{font-size:13px;line-height:1.65;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .intel-bullet:last-child{border-bottom:none;}
+  .intel-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+  .intel-item:last-child{border-bottom:none;}
+  .intel-stat{font-size:13px;line-height:1.5;}
+  .intel-action{font-size:11px;color:var(--blue);margin-top:5px;letter-spacing:0.2px;}
+
+  /* Bar chart */
+  .bar-chart{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+  .bar-row{display:grid;grid-template-columns:36px 1fr;align-items:center;gap:10px;cursor:default;}
+  .bar-row.bar-row-current .bar-label{color:var(--accent);font-weight:600;}
+  .bar-label{font-size:11px;color:var(--text-dim);text-align:right;}
+  .bar-track{background:var(--surface2);border-radius:4px;height:10px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+  .bar-meta{font-size:10px;color:var(--text-dim);white-space:nowrap;}
+
+  /* Bar tooltip */
+  .bar-tooltip-box{position:fixed;z-index:500;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;line-height:1.8;pointer-events:none;min-width:160px;box-shadow:0 4px 12px rgba(0,0,0,0.4);}
+
+  /* Tier bar */
+  .tier-bar-wrap{margin-bottom:16px;}
+  .tier-bar{display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px;}
+  .tier-segment{height:100%;transition:width 0.4s;min-width:2px;}
+  .tier-legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;}
+  .tier-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim);}
+  .tier-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .tier-legend-count{font-family:'Bebas Neue';font-size:14px;letter-spacing:0.5px;}
+
+  /* SMART goal card */
+  .smart-goal-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .smart-goal-title{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+  .smart-goal-text{font-size:13px;color:var(--text);margin-bottom:10px;min-height:20px;line-height:1.5;}
+  .smart-goal-edit{display:none;flex-direction:column;gap:8px;margin-top:8px;}
+  .smart-goal-edit.open{display:flex;}
+  .sge-input{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:7px 10px;outline:none;width:100%;}
+  .sge-input:focus{border-color:var(--blue);}
+  .sge-row{display:flex;gap:8px;}
+  select.sge-input{cursor:pointer;}
+
+  /* Best month card */
+  .best-month-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .best-month-title{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--yellow);margin-bottom:8px;}
+  .best-month-val{font-family:'Bebas Neue';font-size:30px;letter-spacing:1px;line-height:1;}
+  .best-month-sub{font-size:11px;color:var(--text-dim);margin-top:4px;}
+
+  /* Pipeline follow-up list items */
+  .followup-list{display:flex;flex-direction:column;gap:5px;margin-top:12px;}
+  .followup-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:background 0.15s;}
+  .followup-item.overdue{background:rgba(230,57,70,0.05);border:1px solid rgba(230,57,70,0.25);color:var(--accent);}
+  .followup-item.overdue:hover{background:rgba(230,57,70,0.12);}
+  .followup-item.upcoming{background:rgba(96,165,250,0.05);border:1px solid rgba(96,165,250,0.2);color:var(--blue);}
+  .followup-item.upcoming:hover{background:rgba(96,165,250,0.1);}
+
+  @media print {
+    .no-print{display:none!important;}
+    body{background:white;color:#111;}
+    .card{border:1px solid #ccc;background:white;}
+    textarea.summary-box{border:1px solid #ccc;color:#111;background:white;}
+  }
+  @media(max-width:700px){
+    .two-col,.notes-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">DEKA | Weekly KPI</div>
+  <div class="header-week" id="week-label"></div>
+  <a href="deka-northeast-portfolio-analysis.html" class="btn no-print">&#8592; Portfolio</a>
+  <a href="deka-sales-pipeline.html" class="btn no-print">Pipeline</a>
+  <button class="btn no-print" onclick="syncAll()" title="Re-read all data from pipeline and portfolio">&#8635; Sync Data</button>
+  <button class="btn btn-green no-print" onclick="saveWeek()">&#128190; Save Week</button>
+  <button class="btn btn-blue no-print" onclick="copySummary()">&#128203; Copy Summary</button>
+  <button class="btn no-print" onclick="window.print()">&#128424; Print</button>
+</div>
+
+<div class="main">
+
+  <!-- THIS WEEK AUTO-ACTIVITY -->
+  <div class="card">
+    <div class="section-head">
+      <div class="card-title">This Week's Activity</div>
+      <span style="font-size:11px;color:var(--text-dim)" class="no-print">Auto-pulled from Sales Pipeline logs</span>
+    </div>
+    <div class="act-auto-grid" id="act-auto-grid"></div>
+  </div>
+
+  <!-- MONTHLY TRENDS CHART -->
+  <div class="card">
+    <div class="card-title">Monthly Trends — 2026</div>
+    <div id="monthly-chart"></div>
+  </div>
+  <div id="bar-tooltip" class="bar-tooltip-box" style="display:none"></div>
+
+  <!-- INTELLIGENCE SUMMARY -->
+  <div class="card">
+    <div class="section-head">
+      <div class="card-title">&#128161; Insights &amp; Action Items</div>
+      <button class="btn no-print" onclick="renderIntelligence()" style="font-size:10px;padding:2px 8px">&#8635; Refresh</button>
+    </div>
+    <div id="intel-list"></div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- PIPELINE SNAPSHOT -->
+    <div class="card">
+      <div class="card-title">Pipeline Snapshot</div>
+      <div class="stat-row" id="pipeline-stats"></div>
+      <div class="stage-pills" id="stage-pills"></div>
+      <div class="prog-wrap" id="goal-prog"></div>
+      <div id="pipeline-followup-list"></div>
+    </div>
+
+    <!-- PORTFOLIO HEALTH -->
+    <div class="card">
+      <div class="card-title">Portfolio Health</div>
+      <div id="portfolio-tier-bar"></div>
+      <div class="stat-row" id="portfolio-stats"></div>
+      <div id="portfolio-lower" style="margin-top:14px"></div>
+      <div class="alert-list" id="stale-list"></div>
+    </div>
+
+  </div>
+
+  <!-- WINS & RADAR NOTES -->
+  <div class="card">
+    <div class="notes-grid">
+      <div>
+        <div class="notes-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>&#127942; Wins &amp; Highlights</span>
+          <button class="btn no-print" onclick="refreshAutoWins()" style="font-size:10px;padding:2px 8px;border-radius:4px;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer" title="Refresh from live data">&#8635; Refresh</button>
+        </div>
+        <div id="auto-wins" style="font-size:12px;color:var(--text-dim);background:rgba(29,185,84,0.05);border:1px solid rgba(29,185,84,0.15);border-radius:6px;padding:10px 12px;margin-bottom:8px;line-height:1.7;white-space:pre-wrap;min-height:40px"></div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:4px;font-weight:600">YOUR NOTES</div>
+        <textarea class="note" id="note-wins" placeholder="Add your own observations, wins, or context..." oninput="autoSaveNotes()" style="min-height:60px"></textarea>
+      </div>
+      <div>
+        <div class="notes-label" style="display:flex;align-items:center;justify-content:space-between">
+          <span>&#128270; On My Radar / Needs Attention</span>
+          <button class="btn no-print" onclick="refreshAutoRadar()" style="font-size:10px;padding:2px 8px;border-radius:4px;background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer" title="Refresh from live data">&#8635; Refresh</button>
+        </div>
+        <div id="auto-radar" style="font-size:12px;color:var(--text-dim);background:rgba(224,32,32,0.05);border:1px solid rgba(224,32,32,0.15);border-radius:6px;padding:10px 12px;margin-bottom:8px;line-height:1.7;white-space:pre-wrap;min-height:40px"></div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:4px;font-weight:600">YOUR NOTES</div>
+        <textarea class="note" id="note-watch" placeholder="Add your own follow-up items, risks, or context..." oninput="autoSaveNotes()" style="min-height:60px"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEETING SUMMARY -->
+  <div class="card">
+    <div class="section-head">
+      <div class="card-title">&#128203; Tuesday Meeting Summary</div>
+      <div class="no-print" style="display:flex;gap:8px">
+        <button class="btn" onclick="refreshSummary()">&#8635; Regenerate</button>
+        <button class="btn btn-accent" onclick="copySummary()">Copy to Clipboard</button>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text-dim);margin-bottom:12px">Auto-generated from your pipeline + activity data. Edit freely before your meeting.</p>
+    <textarea class="summary-box" id="summary-box"></textarea>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="card">
+    <div class="card-title">Past Weekly Reviews</div>
+    <div class="hist-list" id="hist-list"></div>
+  </div>
+
+</div>
+
+<!-- Outreach action panel -->
+<div class="outreach-overlay" id="outreach-overlay" onclick="handleOverlayClick(event)">
+  <div class="outreach-panel" id="outreach-panel">
+    <div class="op-header">
+      <div>
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--yellow);margin-bottom:4px">&#9888; Needs Outreach</div>
+        <div class="op-name" id="op-gym-name"></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="op-last-contact"></div>
+      </div>
+      <button class="op-close" onclick="closeOutreachPanel()">&#10005;</button>
+    </div>
+    <hr class="op-divider">
+    <div class="op-field">
+      <div class="op-label">Contact Method</div>
+      <div class="op-method-row">
+        <button class="op-method-btn active" id="opm-call"  onclick="setMethod('call')">&#128222; Call</button>
+        <button class="op-method-btn"        id="opm-email" onclick="setMethod('email')">&#9993; Email</button>
+        <button class="op-method-btn"        id="opm-text"  onclick="setMethod('text')">&#128172; Text</button>
+        <button class="op-method-btn"        id="opm-inperson" onclick="setMethod('inperson')">&#129309; In Person</button>
+      </div>
+    </div>
+    <div class="op-field">
+      <div class="op-label">Notes from this contact</div>
+      <textarea class="op-textarea" id="op-notes" placeholder="What did you cover? Any next steps?"></textarea>
+    </div>
+    <div class="op-field">
+      <div class="op-label">Next Follow-up Date (optional)</div>
+      <input type="date" class="op-input" id="op-next-date">
+    </div>
+    <div class="op-field">
+      <div class="op-label">Next Action Note (optional)</div>
+      <input type="text" class="op-input" id="op-next-action" placeholder="e.g. Send event recap email">
+    </div>
+    <hr class="op-divider">
+    <button class="btn-full" style="background:var(--green);border:none;color:#0a0c10;" onclick="markContactedToday()">&#10003; Mark Contacted Today &amp; Log</button>
+    <button class="btn-full" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);margin-top:-6px;" onclick="closeOutreachPanel()">Cancel — Keep Open</button>
+  </div>
+</div>
+
+<!-- Prospect log panel -->
+<div class="outreach-overlay" id="prospect-overlay" onclick="handleProspectOverlayClick(event)">
+  <div class="outreach-panel" id="prospect-panel">
+    <div class="op-header">
+      <div>
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--blue);margin-bottom:4px" id="pp-status-label">Follow-up Due</div>
+        <div class="op-name" id="pp-prospect-name"></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="pp-prospect-meta"></div>
+      </div>
+      <button class="op-close" onclick="closeProspectPanel()">&#10005;</button>
+    </div>
+    <hr class="op-divider">
+    <div class="op-field">
+      <div class="op-label">Contact Method</div>
+      <div class="op-method-row">
+        <button class="op-method-btn active" id="ppm-call"     onclick="setProspectMethod('call')">&#128222; Call</button>
+        <button class="op-method-btn"        id="ppm-email"    onclick="setProspectMethod('email')">&#9993; Email</button>
+        <button class="op-method-btn"        id="ppm-text"     onclick="setProspectMethod('text')">&#128172; Text</button>
+        <button class="op-method-btn"        id="ppm-inperson" onclick="setProspectMethod('inperson')">&#129309; In Person</button>
+      </div>
+    </div>
+    <div class="op-field">
+      <div class="op-label">Notes from this contact</div>
+      <textarea class="op-textarea" id="pp-notes" placeholder="What did you discuss? Any next steps?"></textarea>
+    </div>
+    <div class="op-field">
+      <div class="op-label">Next Follow-up Date</div>
+      <input type="date" class="op-input" id="pp-next-date">
+    </div>
+    <div class="op-field">
+      <div class="op-label">Next Action Note</div>
+      <input type="text" class="op-input" id="pp-next-action" placeholder="e.g. Send proposal, Schedule call">
+    </div>
+    <hr class="op-divider">
+    <button class="btn-full" style="background:var(--blue);border:none;color:#0a0c10;" onclick="logProspectActivity()">&#10003; Log Activity &amp; Update Follow-up</button>
+    <button class="btn-full" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);margin-top:-6px;" onclick="closeProspectPanel()">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────
+const ACT_FIELDS = [
+  {key:'calls',       label:'Calls Made'},
+  {key:'voicemails',  label:'Voicemails Left'},
+  {key:'emails',      label:'Emails Sent'},
+  {key:'discovery',   label:'Discovery Calls'},
+  {key:'newProspects',label:'New Prospects'},
+  {key:'proposals',   label:'Proposals Sent'},
+  {key:'signed',      label:'Signed This Week'},
+];
+
+const STAGES = ['lead','contacted','proposal','discovery','negotiating','signed','nurture'];
+const STAGE_LABELS = {lead:'Lead',contacted:'Contacted',proposal:'Proposal',discovery:'Discovery Call',negotiating:'Negotiating',signed:'Signed',nurture:'Follow Up Later'};
+const STAGE_COLORS = {lead:'#8b92a5',contacted:'#60a5fa',proposal:'#fb923c',discovery:'#fbbf24',negotiating:'#a78bfa',signed:'#4ade80',nurture:'#2dd4bf'};
+const BASE_AFFILIATE_COUNT = 32;
+const ANNUAL_GOAL_KEY = 'newAffiliates2026';
+
+// ── Week utilities ────────────────────────────────────────────────────────
+function getMonday(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day));
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+function isoDate(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(d) { return MONTHS[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear(); }
+
+const today = new Date();
+const weekStart = getMonday(today);
+const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+6);
+const currentWeekKey = isoDate(weekStart);
+
+// ── Storage helpers ────────────────────────────────────────────────────────
+function getPipeline() { try{return JSON.parse(localStorage.getItem('deka_pipeline')||'{"prospects":[],"goals":{}}')}catch(e){return{prospects:[],goals:{}};} }
+function getCRM()      { try{return JSON.parse(localStorage.getItem('deka_crm')||'{}')}catch(e){return{};} }
+function getAdded()    { try{return JSON.parse(localStorage.getItem('deka_affiliates_added')||'[]')}catch(e){return[];} }
+function getKPIStore() { try{return JSON.parse(localStorage.getItem('deka_kpi')||'{"weeks":[]}')}catch(e){return{weeks:[]};} }
+function saveKPIStore(d) { localStorage.setItem('deka_kpi', JSON.stringify(d)); }
+
+function getCurrentEntry() {
+  const store = getKPIStore();
+  return store.weeks.find(w => w.weekOf === currentWeekKey) || {weekOf:currentWeekKey, activity:{}, wins:'', watch:''};
+}
+function persistEntry(entry) {
+  const store = getKPIStore();
+  const idx = store.weeks.findIndex(w => w.weekOf === currentWeekKey);
+  if (idx >= 0) store.weeks[idx] = entry; else store.weeks.unshift(entry);
+  saveKPIStore(store);
+}
+
+// ── Auto-activity from pipeline ────────────────────────────────────────────
+function kpiCalcWeeklyActivity() {
+  const pl = getPipeline();
+  const all = pl.prospects || [];
+  const weekStartTime = weekStart.getTime();
+  const weekEndTime   = weekEnd.getTime() + 86400000; // inclusive of Sunday
+
+  const counts = { calls:0, emails:0, texts:0, inperson:0, voicemails:0, discovery:0, proposals:0, signed:0 };
+
+  all.forEach(p => {
+    // pipeline app uses p.activities; KPI prospect panel uses p.activityLog — read both
+    const logs = [...(p.activityLog || []), ...(p.activities || [])];
+    logs.forEach(log => {
+      if (!log.date) return;
+      const t = new Date(log.date + (log.date.length === 10 ? 'T12:00:00' : '')).getTime();
+      if (t < weekStartTime || t >= weekEndTime) return;
+
+      const type = (log.type || '').toLowerCase();
+      const note = (log.note || log.notes || '').toLowerCase();
+
+      if (type === 'call') {
+        counts.calls++;
+        if (note.includes('voicemail') || note.includes(' vm ') || note.startsWith('vm')) counts.voicemails++;
+      } else if (type === 'email') {
+        counts.emails++;
+      } else if (type === 'text') {
+        counts.texts++;
+      } else if (type === 'inperson' || type === 'meeting') {
+        counts.inperson++;
+      } else if (type === 'note') {
+        if (note.includes('voicemail') || note.includes(' vm ') || note.startsWith('vm')) counts.voicemails++;
+      } else if (type === 'stage') {
+        // pipeline logs stage changes as: {type:'stage', notes:'Moved to Discovery Call'}
+        const dest = (log.to || log.notes || '').toLowerCase();
+        if (dest.includes('discovery')) counts.discovery++;
+        else if (dest.includes('proposal')) counts.proposals++;
+        else if (dest.includes('signed'))   counts.signed++;
+      }
+    });
+  });
+
+  return counts;
+}
+
+// ── Expanded portfolio metrics with monthly data ──────────────────────────
+function kpiCalcPortfolioMetrics() {
+  const crm    = getCRM();
+  const cutoff = Date.now() - 30 * 86400000;
+
+  let roster;
+  try { roster = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]'); } catch(e) { roster = []; }
+  if (roster.length === 0) {
+    roster = Object.keys(crm).map(id => ({ id, name: crm[id]?.name || crm[id]?.contactName || id.replace(/_/g,' ') }));
+  }
+
+  const total = roster.length;
+  let totalEvents = 0, totalParticipants = 0, totalFacilityRev = 0, totalDekaRev = 0, activeCount = 0, multiEventCount = 0;
+  let completedEvents = 0, completedFacilityRev = 0, thisMonthEventCount = 0;
+  const staleAffiliates = [];
+  const tierCounts = { A:0, B:0, C:0, D:0 };
+  const monthlyData = {};
+  const thisMonthGymIds = new Set();
+  const thisMonthGymsList = [];
+  const noEventsList = [];
+  const _now = new Date(); _now.setHours(0,0,0,0);
+  const thisMonthKey = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+
+  roster.forEach(aff => {
+    const data = crm[aff.id] || {};
+    const events = data.events || 0;
+    totalEvents      += events;
+    totalParticipants+= data.actualParticipants || data.participants || 0;
+    totalFacilityRev += data.facilityRevenue || 0;
+    totalDekaRev     += data.dekaRevenue || data.dekaHQRevenue || 0;
+    if (events > 0) activeCount++;
+    if (events > 1) multiEventCount++;
+
+    const tier = _normalizeTier(data.tier) || _normalizeTier(aff.tier) || _calcTier(data);
+    if (tierCounts[tier] !== undefined) tierCounts[tier]++; else tierCounts['D']++;
+
+    const lc = data.lastContact;
+    if (!lc || new Date(lc + 'T12:00:00').getTime() < cutoff) {
+      staleAffiliates.push({ id: aff.id, name: aff.name || data.name || data.contactName || aff.id.replace(/_/g,' '), lastContact: lc || null, data });
+    }
+
+    (data.upcomingEvents || []).forEach(ev => {
+      if (!ev.date) return;
+      const d = new Date(ev.date + 'T12:00:00');
+      if (d.getFullYear() !== 2026) return;
+      const key = `2026-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (!monthlyData[key]) monthlyData[key] = { events:0, participants:0, revenue:0 };
+      monthlyData[key].events++;
+      monthlyData[key].participants += ev.actualParticipants || ev.participants || 0;
+      monthlyData[key].revenue      += (ev.facilityRevenue || 0) + (ev.dekaRevenue || ev.dekaHQRevenue || 0);
+      // Completed events (past dates only)
+      if (d < _now) {
+        completedEvents++;
+        completedFacilityRev += ev.facilityRevenue || 0;
+      }
+      // This month events
+      if (key === thisMonthKey) {
+        thisMonthEventCount++;
+        if (!thisMonthGymIds.has(aff.id)) {
+          thisMonthGymIds.add(aff.id);
+          thisMonthGymsList.push({ id: aff.id, name: aff.name || data.contactName || data.name || aff.id.replace(/_/g,' ') });
+        }
+      }
+    });
+
+    // No events scheduled at all in 2026
+    if (events === 0 && (data.upcomingEvents || []).length === 0) {
+      const affTier = _normalizeTier(data.tier) || _normalizeTier(aff.tier) || _calcTier(data);
+      noEventsList.push({ id: aff.id, name: aff.name || data.contactName || data.name || aff.id.replace(/_/g,' '), tier: affTier });
+    }
+  });
+
+  // Best past month by participant count
+  const nowMs2 = Date.now();
+  const pastEntries = Object.entries(monthlyData)
+    .filter(([key]) => {
+      const [y, mo] = key.split('-');
+      return new Date(parseInt(y), parseInt(mo) - 1).getTime() <= nowMs2;
+    })
+    .sort((a, b) => b[1].participants - a[1].participants);
+  const bestMonthRaw = pastEntries[0] || null;
+  const bestMonth = bestMonthRaw ? {
+    key:          bestMonthRaw[0],
+    label:        MONTHS[parseInt(bestMonthRaw[0].split('-')[1]) - 1],
+    events:       bestMonthRaw[1].events,
+    participants: bestMonthRaw[1].participants,
+    revenue:      bestMonthRaw[1].revenue,
+  } : null;
+
+  return {
+    total, activeCount, multiEventCount, totalEvents, totalParticipants, totalFacilityRev, totalDekaRev,
+    stale: staleAffiliates.length,
+    staleList: staleAffiliates.slice(0, 8),
+    moreCount: Math.max(0, staleAffiliates.length - 8),
+    tierCounts, monthlyData, bestMonth,
+    thisMonthEvents: thisMonthEventCount,
+    thisMonthGyms: thisMonthGymsList,
+    completedEvents, completedFacilityRev,
+    noEventsScheduled: noEventsList.length,
+    noEventsGyms: noEventsList,
+  };
+}
+
+function _calcTier(data) {
+  const rev = data.facilityRevenue || 0;
+  if (rev >= 10000) return 'A';
+  if (rev >= 5000)  return 'B';
+  if (rev >= 1000)  return 'C';
+  return 'D';
+}
+
+function _normalizeTier(raw) {
+  if (!raw) return null;
+  const r = String(raw).trim().toLowerCase();
+  if (r === 'gold'     || r === 'a' || r === 'tier a' || r === '1' || r === 'tier 1') return 'A';
+  if (r === 'silver'   || r === 'b' || r === 'tier b' || r === '2' || r === 'tier 2') return 'B';
+  if (r === 'bronze'   || r === 'c' || r === 'tier c' || r === '3' || r === 'tier 3') return 'C';
+  if (r === 'emerging' || r === 'd' || r === 'tier d' || r === '4' || r === 'tier 4') return 'D';
+  return null;
+}
+
+// ── Metrics ────────────────────────────────────────────────────────────────
+function pipelineMetrics() {
+  const pl = getPipeline();
+  const all = pl.prospects || [];
+  const active = all.filter(p => p.stage !== 'lost');
+  const byStage = {};
+  STAGES.forEach(s => byStage[s] = 0);
+  active.forEach(p => { if (byStage[p.stage] !== undefined) byStage[p.stage]++; });
+
+  const hotProspects  = active.filter(p => p.priority === 'hot');
+  const hot  = hotProspects.length;
+  const warm = active.filter(p => p.priority === 'warm').length;
+  const yr   = today.getFullYear();
+
+  const discoveryProspects = active.filter(p => p.stage === 'discovery');
+
+  const signedProspects = all.filter(p => {
+    if (p.stage !== 'signed') return false;
+    const d = p.signedDate || p.lastActivity || p.createdAt;
+    return d && new Date(d).getFullYear() === yr;
+  });
+  const signedYTD = signedProspects.length;
+
+  const nowMs = Date.now();
+  const in7Ms  = nowMs + 7 * 86400000;
+
+  const overdueProspects  = active.filter(p => p.nextActionDate && new Date(p.nextActionDate+'T12:00:00').getTime() < nowMs && p.stage !== 'signed');
+  const upcomingProspects = active.filter(p => {
+    if (!p.nextActionDate) return false;
+    const t = new Date(p.nextActionDate+'T12:00:00').getTime();
+    return t >= nowMs && t <= in7Ms && p.stage !== 'signed';
+  });
+  const overdue = overdueProspects.length;
+
+  return {
+    total: active.length, byStage, hot, warm, signedYTD, overdue,
+    goal: pl.goals?.[ANNUAL_GOAL_KEY] || 8,
+    hotNames: hotProspects.map(p => p.gymName),
+    discoveryNames: discoveryProspects.map(p => p.gymName),
+    signedNames: signedProspects.map(p => p.gymName),
+    overdueProspects, upcomingProspects,
+  };
+}
+
+function portfolioMetrics() {
+  const crm   = getCRM();
+  const added = getAdded();
+  const cutoff = Date.now() - 30 * 86400000;
+
+  // Try to use full affiliate roster from portfolio dashboard (shared via localStorage)
+  let roster;
+  try { roster = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]'); } catch(e) { roster = []; }
+
+  // If roster is empty (portfolio dashboard hasn't been opened yet), fall back to CRM keys + added
+  if (roster.length === 0) {
+    const crmIds = Object.keys(crm);
+    const addedIds = added.map(a => a.id || a.name?.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20));
+    const allIds = [...new Set([...crmIds, ...addedIds])];
+    roster = allIds.map(id => ({id, name: crm[id]?.contactName || id.replace(/_/g,' ')}));
+  }
+
+  const total = roster.length || (BASE_AFFILIATE_COUNT + added.length);
+
+  const staleAffiliates = [];
+  roster.forEach(aff => {
+    const data = crm[aff.id] || {};
+    const lc = data.lastContact;
+    if (!lc || new Date(lc+'T12:00:00').getTime() < cutoff) {
+      staleAffiliates.push({
+        id: aff.id,
+        name: aff.name || data.contactName || aff.id.replace(/_/g,' '),
+        lastContact: lc || null,
+        data,
+      });
+    }
+  });
+
+  return {
+    total, stale: staleAffiliates.length,
+    staleList: staleAffiliates.slice(0, 8),
+    moreCount: Math.max(0, staleAffiliates.length - 8),
+  };
+}
+
+// ── Bar chart tooltips ────────────────────────────────────────────────────
+function showBarTooltip(evt, el) {
+  const events = parseInt(el.dataset.events) || 0;
+  if (events === 0) return;
+  const parts  = parseInt(el.dataset.participants) || 0;
+  const rev    = parseFloat(el.dataset.revenue) || 0;
+  const avg    = Math.round(parts / events);
+  const revStr = rev > 0 ? '$' + (rev / 1000).toFixed(1) + 'k' : '—';
+  const tip    = document.getElementById('bar-tooltip');
+  tip.innerHTML = `<strong>${el.dataset.label}</strong><br>Events: ${events}<br>Participants: ${parts.toLocaleString()}<br>Revenue: ${revStr}<br>Avg / event: ${avg} ppl`;
+  tip.style.display = 'block';
+  tip.style.left    = (evt.clientX + 14) + 'px';
+  tip.style.top     = (evt.clientY - 10) + 'px';
+}
+function hideBarTooltip() {
+  document.getElementById('bar-tooltip').style.display = 'none';
+}
+
+// ── Monthly trends chart ──────────────────────────────────────────────────
+function renderMonthlyChart() {
+  const pm2 = kpiCalcPortfolioMetrics();
+  const monthlyData = pm2.monthlyData;
+  const now = new Date();
+  const curMonthIdx = now.getMonth();
+  const curYear     = now.getFullYear();
+
+  const months = [];
+  for (let i = -3; i <= 3; i++) {
+    let m = curMonthIdx + i, y = curYear;
+    while (m < 0)  { m += 12; y--; }
+    while (m > 11) { m -= 12; y++; }
+    const key = `${y}-${String(m+1).padStart(2,'0')}`;
+    months.push({ key, label: MONTHS[m], isCurrent: i === 0 });
+  }
+
+  const maxPart = Math.max(1, ...months.map(m => monthlyData[m.key]?.participants || 0));
+
+  const rows = months.map(m => {
+    const d   = monthlyData[m.key] || { events:0, participants:0, revenue:0 };
+    const pct = Math.round((d.participants / maxPart) * 100);
+    const color = m.isCurrent ? 'var(--accent)' : 'var(--blue)';
+    const hasData = d.events > 0;
+    return `<div class="bar-row${m.isCurrent ? ' bar-row-current' : ''}"
+               data-events="${d.events}" data-participants="${d.participants}" data-revenue="${d.revenue}" data-label="${m.label}"
+               ${hasData ? 'onmouseenter="showBarTooltip(event,this)" onmouseleave="hideBarTooltip()"' : ''}>
+      <div class="bar-label">${m.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('monthly-chart').innerHTML = `<div class="bar-chart">${rows}</div>`;
+}
+
+// ── Intelligence summary ───────────────────────────────────────────────────
+function _intel(stat, action) {
+  return `<div class="intel-item"><div class="intel-stat">${stat}</div><div class="intel-action">&#8594; ${action}</div></div>`;
+}
+
+function renderIntelligence() {
+  const pm   = pipelineMetrics();
+  const pm2  = kpiCalcPortfolioMetrics();
+  const act  = kpiCalcWeeklyActivity();
+  const crm  = getCRM();
+  const now  = new Date();
+  const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
+
+  const items = [];
+
+  // Upcoming events next 30 days
+  let upcomingCount = 0;
+  let topAffiliate = null, topPart = 0;
+  const curMoKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  Object.values(crm).forEach(aff => {
+    let moPart = 0;
+    (aff.upcomingEvents || []).forEach(ev => {
+      if (!ev.date) return;
+      const d = new Date(ev.date + 'T12:00:00');
+      if (d >= now && d <= in30) upcomingCount++;
+      const evKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (evKey === curMoKey) moPart += ev.actualParticipants || ev.participants || 0;
+    });
+    if (moPart > topPart) { topPart = moPart; topAffiliate = aff.name || aff.contactName; }
+  });
+
+  if (upcomingCount > 0)
+    items.push(_intel(`&#128197; ${upcomingCount} event${upcomingCount !== 1 ? 's' : ''} on the calendar in the next 30 days`,
+      `Reach out to each host this week to confirm logistics and capture any last-minute needs`));
+
+  if (topAffiliate && topPart > 0)
+    items.push(_intel(`&#127942; Top performer this month: <strong>${topAffiliate}</strong> &mdash; ${topPart} participants`,
+      `Recognize them by name and ask for a referral or a testimonial you can share with prospects`));
+
+  // Stale affiliates
+  if (pm2.stale > 0)
+    items.push(_intel(`&#9888;&#65039; ${pm2.stale} affiliate${pm2.stale !== 1 ? 's' : ''} not contacted in 30+ days`,
+      `Batch ${Math.min(10, pm2.stale)} check-ins this week — prioritize your highest-tier affiliates first`));
+  else
+    items.push(_intel(`&#10003; All ${pm2.total} affiliates contacted within the last 30 days`,
+      `Stay on this cadence — schedule your next round of check-ins before the week ends`));
+
+  // Active pipeline stages
+  const activeStages = (pm.byStage.discovery || 0) + (pm.byStage.proposal || 0) + (pm.byStage.negotiating || 0);
+  if (activeStages > 0)
+    items.push(_intel(`&#128260; ${activeStages} prospect${activeStages !== 1 ? 's' : ''} in active stages (Discovery / Proposal / Negotiating)`,
+      `Push each one to the next stage this week &mdash; follow up, send a proposal, or set a decision deadline`));
+
+  // Signing pace check
+  const pct = Math.round((pm.signedYTD / pm.goal) * 100);
+  const monthsElapsed = now.getMonth() + 1;
+  const yearPace = Math.round((monthsElapsed / 12) * 100);
+  if (pm.signedYTD > 0 || pm.goal > 0) {
+    if (pct < yearPace - 10)
+      items.push(_intel(`&#128202; Signing pace: ${pm.signedYTD} of ${pm.goal} goal (${pct}%) &mdash; currently behind pace`,
+        `Identify 2 prospects close to signing and make closing moves this week &mdash; push for a decision`));
+    else
+      items.push(_intel(`&#127919; Signing pace: ${pm.signedYTD} of ${pm.goal} goal (${pct}%) &mdash; on track`,
+        `Keep prospect pipeline moving &mdash; ensure you have at least 3 active Discovery or Proposal conversations`));
+  }
+
+  // YTD revenue
+  const ytdRev = pm2.totalFacilityRev + pm2.totalDekaRev;
+  if (ytdRev > 0) {
+    const revStr = ytdRev >= 1000 ? `$${Math.round(ytdRev/1000)}k` : `$${Math.round(ytdRev)}`;
+    items.push(_intel(`&#128176; YTD revenue: ${revStr} across ${pm2.activeCount} active affiliate${pm2.activeCount !== 1 ? 's' : ''}`,
+      `Drive more events per affiliate &mdash; contact your Tier C affiliates about adding a second event format`));
+  }
+
+  // Tier D coaching opportunity
+  const tierD = pm2.tierCounts.D || 0;
+  if (tierD > 0)
+    items.push(_intel(`&#127775; ${tierD} Tier D affiliate${tierD !== 1 ? 's' : ''} have zero events this year &mdash; time to activate or re-evaluate`,
+      `Batch 10 check-ins this week &mdash; prioritize your Tier D affiliates first`));
+
+  // Activity this week
+  const weekTotal = act.calls + act.emails + act.texts + act.inperson;
+  if (weekTotal > 0) {
+    const parts = [act.calls && `${act.calls} calls`, act.emails && `${act.emails} emails`, act.texts && `${act.texts} texts`, act.inperson && `${act.inperson} in-person`].filter(Boolean);
+    items.push(_intel(`&#128222; This week: ${parts.join(', ')} logged via pipeline`,
+      `Keep the cadence going &mdash; aim for ${Math.max(20, weekTotal + 5)} total touches by Friday`));
+  } else {
+    items.push(_intel(`&#128202; No pipeline activity logged yet this week`,
+      `Log at least 10 outreach touches today &mdash; calls, emails, or texts all count. Activity creates momentum`));
+  }
+
+  if (items.length === 0) items.push('<div class="intel-item"><div class="intel-stat">Sync data from your pipeline and portfolio to see insights here.</div></div>');
+
+  document.getElementById('intel-list').innerHTML = items.join('');
+}
+
+// ── Render auto-activity (read-only, from pipeline) ────────────────────────
+function renderActivity() {
+  const entry = getCurrentEntry();
+  const act   = kpiCalcWeeklyActivity();
+
+  // Persist auto-calculated counts into the weekly entry so they show in history
+  entry.activity = { ...entry.activity, ...act };
+  persistEntry(entry);
+
+  const AUTO_TILES = [
+    { key:'calls',     label:'Calls Made',       color:'var(--blue)'   },
+    { key:'voicemails',label:'Voicemails',        color:'var(--text-dim)'},
+    { key:'emails',    label:'Emails Sent',       color:'var(--teal)'   },
+    { key:'texts',     label:'Texts Sent',        color:'var(--purple)' },
+    { key:'inperson',  label:'In Person',         color:'var(--yellow)' },
+    { key:'discovery', label:'Discovery Calls',   color:'var(--green)'  },
+    { key:'proposals', label:'Proposals Sent',    color:'var(--yellow)' },
+    { key:'signed',    label:'Signed This Week',  color:'var(--green)'  },
+  ];
+
+  document.getElementById('act-auto-grid').innerHTML = AUTO_TILES.map(f => `
+    <div class="act-auto-tile">
+      <div class="aat-label">${f.label}</div>
+      <div class="aat-val" style="color:${act[f.key] > 0 ? f.color : 'var(--text-dim)'}">${act[f.key] || 0}</div>
+      <div class="aat-src">via pipeline</div>
+    </div>
+  `).join('');
+
+  document.getElementById('note-wins').value  = entry.wins  || '';
+  document.getElementById('note-watch').value = entry.watch || '';
+}
+// ── Auto-generated insights from live data ───────────────────────────────
+function generateWins() {
+  const pm   = pipelineMetrics();
+  const port = kpiCalcPortfolioMetrics();
+  const pl   = getPipeline();
+  const all  = pl.prospects || [];
+  const act  = kpiCalcWeeklyActivity();
+  const now  = new Date();
+  const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const bullets = [];
+
+  // New signings
+  if (act.signed > 0)
+    bullets.push(`\u2705 ${act.signed} new affiliate${act.signed > 1 ? 's' : ''} signed this week — that's real growth`);
+
+  // Recently signed from pipeline
+  const recentSigned = all.filter(p => {
+    if (p.stage !== 'signed') return false;
+    const d = p.signedDate || p.lastActivity;
+    return d && new Date(d) >= weekAgo;
+  });
+  if (recentSigned.length > 0 && !act.signed)
+    bullets.push(`\u2705 Recently signed: ${recentSigned.map(p => p.gymName).join(', ')}`);
+
+  // Discovery calls in progress
+  if (pm.byStage.discovery > 0)
+    bullets.push(`\uD83D\uDDE3\uFE0F ${pm.byStage.discovery} discovery call${pm.byStage.discovery > 1 ? 's' : ''} in progress: ${pm.discoveryNames.slice(0,3).join(', ')}${pm.discoveryNames.length > 3 ? ` +${pm.discoveryNames.length-3} more` : ''}`);
+
+  // Proposals outstanding
+  if (pm.byStage.proposal > 0)
+    bullets.push(`\uD83D\uDCCB ${pm.byStage.proposal} proposal${pm.byStage.proposal > 1 ? 's' : ''} out — decisions are in motion`);
+
+  // Hot leads
+  if (pm.hot > 0)
+    bullets.push(`\uD83D\uDD25 ${pm.hot} hot lead${pm.hot > 1 ? 's' : ''} active: ${pm.hotNames.slice(0,3).join(', ')}`);
+
+  // Signed YTD
+  if (pm.signedYTD > 0) {
+    const pct = Math.round((pm.signedYTD / pm.goal) * 100);
+    bullets.push(`\uD83C\uDFAF Signed YTD: ${pm.signedYTD} of ${pm.goal} goal (${pct}%) — keep building`);
+  }
+
+  // Strong activity week
+  if (act.calls >= 15) bullets.push(`\uD83D\uDCDE Strong outreach week — ${act.calls} calls logged`);
+  if (act.emails >= 10) bullets.push(`\u2709\uFE0F Email momentum — ${act.emails} emails sent this week`);
+
+  // Clean portfolio
+  if (port.stale === 0)
+    bullets.push(`\u2705 All ${port.total} affiliates contacted within 30 days — clean, healthy portfolio`);
+
+  // Build opening sentence
+  let opening;
+  if (act.signed > 0 || recentSigned.length > 0)
+    opening = `You added new affiliates this week — that's the goal. Here's what's working:`;
+  else if (pm.byStage.discovery > 0)
+    opening = `You have ${pm.byStage.discovery} discovery call${pm.byStage.discovery > 1 ? 's' : ''} in motion — solid pipeline development. Here's the full picture:`;
+  else if (act.calls >= 15)
+    opening = `Strong outreach week — ${act.calls} calls logged. Activity creates results. Here's what's in motion:`;
+  else
+    opening = `Your pipeline is active and your portfolio is running. Here's what's working this week:`;
+
+  if (bullets.length === 0)
+    return `Your numbers will populate here once you log activity and sync data. Keep moving forward.`;
+
+  return opening + '\n' + bullets.join('\n') + '\n\nKeep this up — consistent effort compounds over time.';
+}
+
+function generateRadar() {
+  const pm   = pipelineMetrics();
+  const port = kpiCalcPortfolioMetrics();
+  const pl   = getPipeline();
+  const all  = pl.prospects || [];
+  const now  = new Date();
+  const act  = kpiCalcWeeklyActivity();
+  const items = [];
+
+  // Overdue follow-ups — directive per prospect
+  const overdue = all.filter(p => {
+    if (p.stage === 'signed' || p.stage === 'lost') return false;
+    return p.nextActionDate && new Date(p.nextActionDate + 'T12:00:00') < now;
+  });
+  if (overdue.length > 0) {
+    items.push(`\u26A0\uFE0F You have ${overdue.length} overdue follow-up${overdue.length > 1 ? 's' : ''} — these need to be handled today, not tomorrow:`);
+    overdue.slice(0, 4).forEach(p => {
+      const d = Math.round((now - new Date(p.nextActionDate + 'T12:00:00')) / 86400000);
+      const action = p.nextAction || 'follow up';
+      items.push(`  \u2022 ${p.gymName} is ${d}d overdue — ${action}. Pick up the phone or send the email right now`);
+    });
+    if (overdue.length > 4) items.push(`  \u2022 +${overdue.length - 4} more overdue — open the Pipeline tab to clear the backlog`);
+  }
+
+  // Stale affiliates — directive
+  if (port.stale > 0) {
+    items.push(`\u26A0\uFE0F ${port.stale} affiliate${port.stale > 1 ? 's' : ''} haven't heard from you in 30+ days — that silence costs you:`);
+    port.staleList.slice(0, 5).forEach(a => {
+      const last = a.lastContact ? `last contact ${a.lastContact}` : 'never contacted';
+      items.push(`  \u2022 Call or email ${a.name} today — ${last}`);
+    });
+    if (port.moreCount > 0) items.push(`  \u2022 +${port.moreCount} more — use the Portfolio Health list to work through them`);
+  }
+
+  // Stuck prospects
+  const fourteenAgo = new Date(now); fourteenAgo.setDate(fourteenAgo.getDate() - 14);
+  const stuck = all.filter(p => {
+    if (p.stage === 'signed' || p.stage === 'lost' || p.stage === 'nurture') return false;
+    const lastAct = p.lastActivity || p.createdAt;
+    return lastAct && new Date(lastAct) < fourteenAgo;
+  });
+  if (stuck.length > 0) {
+    items.push(`\u23F3 ${stuck.length} prospect${stuck.length > 1 ? 's are' : ' is'} stuck in the same stage for 14+ days — momentum is stalling:`);
+    stuck.slice(0, 4).forEach(p => {
+      const days = Math.round((now - new Date(p.lastActivity || p.createdAt)) / 86400000);
+      items.push(`  \u2022 Move ${p.gymName} forward — they've been in "${p.stage}" for ${days} days. Either advance them or cut the rope`);
+    });
+    if (stuck.length > 4) items.push(`  \u2022 +${stuck.length - 4} more stalled — dead weight in the pipeline slows everything down`);
+  }
+
+  // Zero activity
+  const totalAct = Object.values(act).reduce((s, v) => s + (v || 0), 0);
+  if (totalAct === 0)
+    items.push(`\uD83D\uDCCA Zero pipeline activity logged this week — no calls, emails, or texts recorded. Activity creates deals. Log something today`);
+
+  if (items.length === 0)
+    return 'All clear this week — no overdue follow-ups, no stale affiliates, and you\'re active. Keep the standard high.';
+
+  const opening = 'Here\'s where you need to push harder — no filter:';
+  const closing = '\nPick your top 3 from this list and handle them before end of day. Progress is a choice.';
+  return opening + '\n' + items.join('\n') + closing;
+}
+
+function refreshAutoWins() {
+  document.getElementById('auto-wins').textContent = generateWins();
+}
+function refreshAutoRadar() {
+  document.getElementById('auto-radar').textContent = generateRadar();
+}
+function refreshAutoInsights() {
+  refreshAutoWins();
+  refreshAutoRadar();
+}
+
+function autoSaveNotes() {
+  const entry = getCurrentEntry();
+  entry.wins  = document.getElementById('note-wins').value;
+  entry.watch = document.getElementById('note-watch').value;
+  persistEntry(entry);
+  refreshSummary();
+}
+
+// ── Render pipeline ────────────────────────────────────────────────────────
+function renderPipeline() {
+  const m = pipelineMetrics();
+  const pct = Math.min(100, Math.round((m.signedYTD / m.goal) * 100));
+  const barColor = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--blue)';
+  const now = new Date();
+
+  document.getElementById('pipeline-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--blue)">${m.total}</div>
+      <div class="stat-label">Active Prospects</div>
+      <div class="stat-sub">${m.hot} hot &middot; ${m.warm} warm &middot; total in pipeline</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--green)">${m.signedYTD}</div>
+      <div class="stat-label">Signed YTD (2026)</div>
+      <div class="stat-sub">of ${m.goal} goal &mdash; ${pct}% to target</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:${m.overdue > 0 ? 'var(--accent)' : 'var(--green)'}">${m.overdue > 0 ? m.overdue : '&#10003;'}</div>
+      <div class="stat-label">${m.overdue > 0 ? 'Overdue Follow-ups' : 'Follow-ups'}</div>
+      <div class="stat-sub">${m.overdue > 0 ? 'past scheduled next-action date' : 'all on track'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--yellow)">${m.upcomingProspects.length}</div>
+      <div class="stat-label">Due This Week</div>
+      <div class="stat-sub">follow-ups in next 7 days</div>
+    </div>
+  `;
+
+  document.getElementById('stage-pills').innerHTML = STAGES.filter(s => m.byStage[s] > 0).map(s => `
+    <div class="stage-pill">
+      <span class="pill-count" style="color:${STAGE_COLORS[s]}">${m.byStage[s]}</span>
+      <span style="font-size:11px;color:var(--text-dim)">${STAGE_LABELS[s]}</span>
+    </div>
+  `).join('') || '<span style="font-size:12px;color:var(--text-dim)">No active prospects yet</span>';
+
+  document.getElementById('goal-prog').innerHTML = `
+    <div class="prog-meta"><span>2026 Signing Goal</span><span>${m.signedYTD} / ${m.goal} &mdash; ${pct}%</span></div>
+    <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${barColor}"></div></div>
+  `;
+
+  // Follow-up list (overdue first, then upcoming)
+  const followupEl = document.getElementById('pipeline-followup-list');
+  const combined = [
+    ...m.overdueProspects.map(p => ({...p, _type:'overdue'})),
+    ...m.upcomingProspects.map(p => ({...p, _type:'upcoming'})),
+  ].slice(0, 6);
+  const overflow = (m.overdueProspects.length + m.upcomingProspects.length) - 6;
+
+  if (combined.length === 0) {
+    followupEl.innerHTML = '';
+    return;
+  }
+
+  const header = `<div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px">Click to log follow-up</div>`;
+  const items = combined.map(p => {
+    const safeId = (p.id || p.gymName||'').replace(/'/g,'');
+    const safeName = (p.gymName||'Prospect').replace(/'/g,'\u2019');
+    let badge, daysStr;
+    if (p._type === 'overdue') {
+      const d = Math.round((now - new Date(p.nextActionDate+'T12:00:00')) / 86400000);
+      badge = `&#9888;`;
+      daysStr = `${d}d overdue`;
+    } else {
+      const d = Math.round((new Date(p.nextActionDate+'T12:00:00') - now) / 86400000);
+      badge = `&#128197;`;
+      daysStr = `due in ${d}d`;
+    }
+    const action = p.nextAction ? ` &mdash; "${p.nextAction}"` : '';
+    return `<div class="followup-item ${p._type}" onclick="openProspectLogPanel('${safeId}')" title="Log follow-up">
+      ${badge} <span style="flex:1">${safeName}</span>
+      <span style="font-size:10px;opacity:0.8;margin-left:auto">${daysStr}${action}</span>
+      <span style="font-size:10px;margin-left:8px">Log &#8594;</span>
+    </div>`;
+  }).join('');
+
+  followupEl.innerHTML = header + `<div class="followup-list">${items}</div>` +
+    (overflow > 0 ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">...and ${overflow} more — open Pipeline to view all</div>` : '');
+}
+
+// ── SMART goal helpers ──────────────────────────────────────────────────────
+function loadSmartGoal() {
+  const store = getKPIStore();
+  return store.smartGoal || { label:'', target:0, unit:'', current:0, autoKey:'' };
+}
+function saveSmartGoal(goal) {
+  const store = getKPIStore();
+  store.smartGoal = goal;
+  saveKPIStore(store);
+}
+function toggleSmartGoalEdit() {
+  const form = document.getElementById('sg-edit-form');
+  if (!form) return;
+  form.classList.toggle('open');
+  const btn = document.getElementById('sg-edit-btn');
+  if (btn) btn.textContent = form.classList.contains('open') ? 'Cancel' : 'Edit Goal ▾';
+  // show/hide custom current field
+  const ak = document.getElementById('sg-autokey');
+  if (ak) _sgToggleCustom(ak.value);
+}
+function _sgToggleCustom(val) {
+  const row = document.getElementById('sg-custom-row');
+  if (row) row.style.display = val === 'custom' ? 'flex' : 'none';
+}
+function saveSmartGoalForm() {
+  const label   = (document.getElementById('sg-label')?.value   || '').trim();
+  const target  = parseFloat(document.getElementById('sg-target')?.value  || 0);
+  const unit    = (document.getElementById('sg-unit')?.value    || '').trim();
+  const autoKey = document.getElementById('sg-autokey')?.value  || '';
+  const current = autoKey === 'custom' ? parseFloat(document.getElementById('sg-current')?.value || 0) : 0;
+  saveSmartGoal({ label, target, unit, current, autoKey });
+  renderPortfolio();
+}
+
+function renderSmartGoalCard(m, pm) {
+  const goal = loadSmartGoal();
+  let current = goal.current;
+  if (goal.autoKey === 'events')              current = m.totalEvents;
+  if (goal.autoKey === 'affiliatesContacted') current = m.total - m.stale;
+  if (goal.autoKey === 'signed')              current = pm.signedYTD;
+  const pct = goal.target > 0 ? Math.min(100, Math.round((current / goal.target) * 100)) : 0;
+  const barColor = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--blue)';
+  const dueLabel = `${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`;
+  const hasGoal  = goal.label.length > 0 && goal.target > 0;
+
+  return `
+    <div class="smart-goal-card">
+      <div class="smart-goal-title">&#127919; End-of-Month Goal &mdash; ${dueLabel}</div>
+      <div class="smart-goal-text">${hasGoal ? goal.label : '<span style="color:var(--text-dim);font-style:italic">No goal set &mdash; click Edit to add one.</span>'}</div>
+      ${hasGoal ? `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:5px;">
+            <span>Progress</span><span>${current} / ${goal.target}${goal.unit ? ' ' + goal.unit : ''} &nbsp; <strong style="color:${barColor}">${pct}%</strong></span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${barColor};"></div></div>
+        </div>
+      ` : ''}
+      <button class="btn btn-blue" id="sg-edit-btn" onclick="toggleSmartGoalEdit()" style="font-size:11px;padding:5px 10px;">Edit Goal &#9660;</button>
+      <div class="smart-goal-edit" id="sg-edit-form">
+        <input class="sge-input" id="sg-label" placeholder="Goal description (e.g. Host 5 events this month)" value="${goal.label}">
+        <div class="sge-row">
+          <input class="sge-input" id="sg-target" type="number" placeholder="Target #" value="${goal.target || ''}" style="flex:1">
+          <input class="sge-input" id="sg-unit" placeholder="Unit (events, affiliates…)" value="${goal.unit}" style="flex:2">
+        </div>
+        <select class="sge-input" id="sg-autokey" onchange="_sgToggleCustom(this.value)">
+          <option value="" ${goal.autoKey===''?'selected':''}>Auto-track: None</option>
+          <option value="events" ${goal.autoKey==='events'?'selected':''}>Auto-track: Events Hosted YTD</option>
+          <option value="affiliatesContacted" ${goal.autoKey==='affiliatesContacted'?'selected':''}>Auto-track: Affiliates Contacted</option>
+          <option value="signed" ${goal.autoKey==='signed'?'selected':''}>Auto-track: Affiliates Signed YTD</option>
+          <option value="custom" ${goal.autoKey==='custom'?'selected':''}>Manual: Enter current value</option>
+        </select>
+        <div class="sge-row" id="sg-custom-row" style="display:${goal.autoKey==='custom'?'flex':'none'}">
+          <input class="sge-input" id="sg-current" type="number" placeholder="Current value" value="${goal.current || ''}">
+        </div>
+        <button class="btn btn-green" onclick="saveSmartGoalForm()" style="font-size:11px;padding:5px 10px;align-self:flex-start;">Save Goal</button>
+      </div>
+    </div>`;
+}
+
+// ── Render portfolio ───────────────────────────────────────────────────────
+function renderPortfolio() {
+  const m   = kpiCalcPortfolioMetrics();
+  const pm  = pipelineMetrics();
+  const fmtRev = v => v >= 1000 ? `$${(v/1000).toFixed(1)}k` : `$${Math.round(v)}`;
+  const avgPPE = m.totalEvents > 0 ? Math.round(m.totalParticipants / m.totalEvents) : 0;
+  const avgRPE = m.totalEvents > 0 ? m.totalFacilityRev / m.totalEvents : 0;
+  const avgCompletedRPE = m.completedEvents > 0 ? m.completedFacilityRev / m.completedEvents : 0;
+  const nowLabel = MONTHS[new Date().getMonth()];
+
+  // ── Tier bar ──────────────────────────────────────────────────────────────
+  const TIER_CFG = [
+    { key:'A', color:'var(--green)',  label:'Tier A' },
+    { key:'B', color:'var(--blue)',   label:'Tier B' },
+    { key:'C', color:'var(--yellow)', label:'Tier C' },
+    { key:'D', color:'var(--accent)', label:'Tier D' },
+  ];
+  const total = m.total || 1;
+  const tierBarHtml = TIER_CFG.map(t => {
+    const count = m.tierCounts[t.key] || 0;
+    const pct   = ((count / total) * 100).toFixed(1);
+    return `<div class="tier-segment" style="width:${pct}%;background:${t.color};" title="${t.label}: ${count}"></div>`;
+  }).join('');
+  const tierLegendHtml = TIER_CFG.map(t => {
+    const count = m.tierCounts[t.key] || 0;
+    return `<div class="tier-legend-item">
+      <div class="tier-legend-dot" style="background:${t.color}"></div>
+      <span class="tier-legend-count" style="color:${t.color}">${count}</span>
+      <span>${t.label}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('portfolio-tier-bar').innerHTML = `
+    <div class="tier-bar-wrap">
+      <div class="tier-bar">${tierBarHtml}</div>
+      <div class="tier-legend">${tierLegendHtml}</div>
+    </div>`;
+
+  // ── 6 stat cards ──────────────────────────────────────────────────────────
+  const totalRev = m.totalFacilityRev + m.totalDekaRev;
+  document.getElementById('portfolio-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--green)">${m.activeCount}</div>
+      <div class="stat-label">Active Affiliates</div>
+      <div class="stat-sub">hosted &ge;1 event out of ${m.total} total in 2026</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--yellow)">${m.multiEventCount}</div>
+      <div class="stat-label">Multi-Event Affiliates</div>
+      <div class="stat-sub">of ${m.total} total &mdash; hosting 2+ events in 2026</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--blue)">${m.totalEvents}</div>
+      <div class="stat-label">Events in 2026 (YTD)</div>
+      <div class="stat-sub">${m.totalParticipants.toLocaleString()} participants</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--teal);font-size:26px">${fmtRev(totalRev)}</div>
+      <div class="stat-label">Total Revenue YTD</div>
+      <div class="stat-sub">Facility: ${fmtRev(m.totalFacilityRev)} &middot; DEKA HQ: ${fmtRev(m.totalDekaRev)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--purple)">${avgPPE}</div>
+      <div class="stat-label">Avg Participants / Event</div>
+      <div class="stat-sub">across all ${m.totalEvents} events</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--accent);font-size:26px">${fmtRev(avgRPE)}</div>
+      <div class="stat-label">Avg Facility Rev / Event</div>
+      <div class="stat-sub">per hosted event YTD</div>
+    </div>
+    <div class="stat-card" onclick="openThisMonthPanel()" style="cursor:pointer" title="Click to see gyms hosting this month">
+      <div class="stat-num" style="color:var(--green)">${m.thisMonthEvents}</div>
+      <div class="stat-label">Events in ${nowLabel}</div>
+      <div class="stat-sub">${m.thisMonthGyms.length} gym${m.thisMonthGyms.length !== 1 ? 's' : ''} hosting &mdash; click to view &amp; email</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--teal);font-size:26px">${fmtRev(avgCompletedRPE)}</div>
+      <div class="stat-label">Avg Completed Rev / Event</div>
+      <div class="stat-sub">from ${m.completedEvents} completed event${m.completedEvents !== 1 ? 's' : ''} only</div>
+    </div>
+    <div class="stat-card" onclick="openNoEventsPanel()" style="cursor:pointer;${m.noEventsScheduled > 0 ? 'border-color:rgba(230,57,70,0.3)' : ''}" title="Click to see affiliates with no events">
+      <div class="stat-num" style="color:${m.noEventsScheduled > 0 ? 'var(--accent)' : 'var(--text-dim)'}">${m.noEventsScheduled}</div>
+      <div class="stat-label">No Events Scheduled</div>
+      <div class="stat-sub">${m.noEventsScheduled > 0 ? 'click to view &amp; send event request email' : 'All affiliates have events on the calendar'}</div>
+    </div>
+  `;
+
+  // ── Lower two-col: Best Month + SMART Goal ────────────────────────────────
+  const bm = m.bestMonth;
+  const bestMonthHtml = bm
+    ? `<div class="best-month-card">
+        <div class="best-month-title">&#127942; Best Month So Far</div>
+        <div class="best-month-val">${bm.label}</div>
+        <div class="best-month-sub">${bm.participants.toLocaleString()} participants</div>
+        <div class="best-month-sub" style="margin-top:4px">${bm.events} event${bm.events !== 1 ? 's' : ''} &nbsp;&middot;&nbsp; ${fmtRev(bm.revenue)} total revenue</div>
+      </div>`
+    : `<div class="best-month-card">
+        <div class="best-month-title">&#127942; Best Month So Far</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-style:italic">No completed months yet &mdash; data will appear after your first full month of events.</div>
+      </div>`;
+
+  document.getElementById('portfolio-lower').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      ${bestMonthHtml}
+      ${renderSmartGoalCard(m, pm)}
+    </div>`;
+
+  // ── Stale affiliate list ───────────────────────────────────────────────────
+  const staleEl = document.getElementById('stale-list');
+  if (m.stale === 0) {
+    staleEl.innerHTML = '<div class="ok-msg">&#10003; All affiliates contacted within last 30 days</div>';
+  } else {
+    const itemsHtml = m.staleList.map(a => {
+      const safeId  = a.id.replace(/'/g,'');
+      const lastTxt = a.lastContact ? `Last: ${a.lastContact}` : 'Never logged';
+      return `<div class="alert-item" onclick="openOutreachPanel('${safeId}')" title="Click to log outreach">
+        &#9888; <span style="flex:1">${a.name}</span>
+        <span style="font-size:10px;color:var(--text-dim);margin-left:auto">${lastTxt}</span>
+        <span style="font-size:10px;color:var(--yellow);margin-left:8px">Log &#8594;</span>
+      </div>`;
+    }).join('');
+    staleEl.innerHTML =
+      '<div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Click any gym to log outreach without leaving this page</div>' +
+      itemsHtml +
+      (m.moreCount > 0 ? `<div style="font-size:11px;color:var(--text-dim);margin-top:4px">...and ${m.moreCount} more &mdash; check Relationship Health tab in the portfolio dashboard</div>` : '');
+  }
+}
+
+// ── Meeting summary ────────────────────────────────────────────────────────
+function genSummaryText() {
+  const entry = getCurrentEntry();
+  const act   = kpiCalcWeeklyActivity();
+  const pm    = pipelineMetrics();
+  const port  = kpiCalcPortfolioMetrics();
+
+  const lines = [
+    'DEKA Northeast — Weekly KPI Summary',
+    `Week of ${fmtDate(weekStart)} – ${fmtDate(weekEnd)}`,
+    '',
+  ];
+
+  // Activity
+  const actBullets = [];
+  if (act.calls)     actBullets.push(`${act.calls} calls made${act.voicemails ? ` (${act.voicemails} voicemails)` : ''}`);
+  if (act.emails)    actBullets.push(`${act.emails} emails sent`);
+  if (act.texts)     actBullets.push(`${act.texts} texts sent`);
+  if (act.inperson)  actBullets.push(`${act.inperson} in-person visit${act.inperson > 1 ? 's' : ''}`);
+  if (act.discovery) actBullets.push(`${act.discovery} discovery call${act.discovery > 1 ? 's' : ''} completed`);
+  if (act.proposals) actBullets.push(`${act.proposals} proposal${act.proposals > 1 ? 's' : ''} sent`);
+  if (act.signed)    actBullets.push(`${act.signed} new affiliate${act.signed > 1 ? 's' : ''} signed this week`);
+
+  if (actBullets.length) {
+    lines.push('ACTIVITY THIS WEEK');
+    actBullets.forEach(b => lines.push(`  • ${b}`));
+    lines.push('');
+  }
+
+  // Pipeline
+  lines.push('PIPELINE STATUS');
+  lines.push(`  • ${pm.total} active prospects in the pipeline (${pm.hot} hot, ${pm.warm} warm)`);
+
+  if (pm.hot > 0) {
+    lines.push(`  • Hot leads: ${pm.hotNames.join(', ')}`);
+  }
+
+  if (pm.byStage.discovery > 0) {
+    lines.push(`  • Discovery calls (${pm.byStage.discovery}): ${pm.discoveryNames.join(', ')}`);
+  }
+  if (pm.byStage.proposal > 0)    lines.push(`  • ${pm.byStage.proposal} proposal${pm.byStage.proposal > 1 ? 's' : ''} outstanding`);
+  if (pm.byStage.negotiating > 0) lines.push(`  • ${pm.byStage.negotiating} negotiating`);
+
+  const pct = Math.round((pm.signedYTD / pm.goal) * 100);
+  if (pm.signedYTD > 0) {
+    lines.push(`  • Signed YTD (${pm.signedYTD} of ${pm.goal}, ${pct}%): ${pm.signedNames.join(', ')}`);
+  } else {
+    lines.push(`  • Signed YTD: 0 of ${pm.goal} goal`);
+  }
+  if (pm.overdue) lines.push(`  • ${pm.overdue} prospect${pm.overdue > 1 ? 's' : ''} with overdue follow-ups to clear`);
+  lines.push('');
+
+  // Portfolio
+  lines.push('PORTFOLIO');
+  lines.push(`  • ${port.total} active affiliates in the Northeast region`);
+  if (port.stale > 0) {
+    lines.push(`  • ${port.stale} affiliate${port.stale > 1 ? 's' : ''} haven't been contacted in 30+ days — outreach queued`);
+  } else {
+    lines.push(`  • All affiliates contacted within the last 30 days`);
+  }
+  lines.push('');
+
+  // Wins (auto-generated + personal)
+  const autoWins = generateWins();
+  const personalWins = (entry.wins || '').trim();
+  if (autoWins || personalWins) {
+    lines.push('WINS / HIGHLIGHTS');
+    if (autoWins) autoWins.split('\n').forEach(l => lines.push(`  ${l}`));
+    if (personalWins) {
+      if (autoWins) lines.push('  ---');
+      personalWins.split('\n').forEach(l => lines.push(`  ${l}`));
+    }
+    lines.push('');
+  }
+
+  // Radar (auto-generated + personal)
+  const autoRadar = generateRadar();
+  const personalRadar = (entry.watch || '').trim();
+  if (autoRadar || personalRadar) {
+    lines.push('ON MY RADAR');
+    if (autoRadar) autoRadar.split('\n').forEach(l => lines.push(`  ${l}`));
+    if (personalRadar) {
+      if (autoRadar) lines.push('  ---');
+      personalRadar.split('\n').forEach(l => lines.push(`  ${l}`));
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+function refreshSummary() {
+  document.getElementById('summary-box').value = genSummaryText();
+}
+
+function copySummary() {
+  const val = document.getElementById('summary-box').value;
+  navigator.clipboard.writeText(val).then(() => showToast('Summary copied to clipboard'));
+}
+
+// ── Save week ─────────────────────────────────────────────────────────────
+function saveWeek() {
+  const entry = getCurrentEntry();
+  const pm   = pipelineMetrics();
+  const port = kpiCalcPortfolioMetrics();
+  entry.savedAt = new Date().toISOString();
+  entry.snapshot = {
+    pipeline:  {total:pm.total, hot:pm.hot, warm:pm.warm, signedYTD:pm.signedYTD, goal:pm.goal, overdue:pm.overdue},
+    portfolio: {total:port.total, stale:port.stale}
+  };
+  entry.summaryText = document.getElementById('summary-box').value;
+  persistEntry(entry);
+  renderHistory();
+  showToast('Week saved');
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const store = getKPIStore();
+  const past  = store.weeks.filter(w => w.weekOf !== currentWeekKey && w.savedAt)
+                           .sort((a,b) => b.weekOf.localeCompare(a.weekOf));
+  const el = document.getElementById('hist-list');
+
+  if (!past.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No saved weeks yet. Click &#128190; Save Week after your meeting to build your history.</div>';
+    return;
+  }
+
+  el.innerHTML = past.map((w, i) => {
+    const d    = new Date(w.weekOf+'T12:00:00');
+    const dEnd = new Date(d); dEnd.setDate(dEnd.getDate()+6);
+    const act  = w.activity || {};
+    const snap = w.snapshot || {};
+    const pl   = snap.pipeline || {};
+    const bits = [];
+    if (act.calls)  bits.push(`${act.calls} calls`);
+    if (act.emails) bits.push(`${act.emails} emails`);
+    if (act.signed) bits.push(`${act.signed} signed`);
+    if (pl.hot !== undefined) bits.push(`${pl.signedYTD||0}/${pl.goal||8} YTD`);
+    return `
+      <div class="hist-item">
+        <div class="hist-header" onclick="toggleHist(${i})">
+          <span class="hist-week">Week of ${fmtDate(d)}</span>
+          <span class="hist-stats">${bits.join(' &middot; ')}</span>
+        </div>
+        <div class="hist-body" id="hbody-${i}">
+          <pre class="hist-text">${(w.summaryText||'(no summary)').replace(/</g,'&lt;')}</pre>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleHist(i) {
+  document.getElementById(`hbody-${i}`).classList.toggle('open');
+}
+
+// ── Outreach panel ─────────────────────────────────────────────────────────
+let _outreachId = null;
+let _outreachMethod = 'call';
+
+function openOutreachPanel(affiliateId) {
+  _outreachId = affiliateId;
+  _outreachMethod = 'call';
+  const crm = getCRM();
+  const data = crm[affiliateId] || {};
+  const name = data.contactName || affiliateId.replace(/_/g,' ');
+
+  document.getElementById('op-gym-name').textContent = name;
+  document.getElementById('op-last-contact').textContent =
+    data.lastContact ? `Last contacted: ${data.lastContact}` : 'No contact logged yet';
+  document.getElementById('op-notes').value = '';
+  document.getElementById('op-next-date').value = '';
+  document.getElementById('op-next-action').value = data.nextAction || '';
+
+  ['call','email','text','inperson'].forEach(m => {
+    document.getElementById('opm-'+m).classList.toggle('active', m === 'call');
+  });
+
+  document.getElementById('outreach-overlay').classList.add('open');
+}
+
+function closeOutreachPanel() {
+  document.getElementById('outreach-overlay').classList.remove('open');
+  _outreachId = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('outreach-overlay')) closeOutreachPanel();
+}
+
+function setMethod(m) {
+  _outreachMethod = m;
+  ['call','email','text','inperson'].forEach(id => {
+    document.getElementById('opm-'+id).classList.toggle('active', id === m);
+  });
+}
+
+function markContactedToday() {
+  if (!_outreachId) return;
+  const crm = getCRM();
+  if (!crm[_outreachId]) crm[_outreachId] = {};
+  const todayStr = isoDate(new Date());
+  const notes = document.getElementById('op-notes').value.trim();
+  const nextDate = document.getElementById('op-next-date').value;
+  const nextAction = document.getElementById('op-next-action').value.trim();
+
+  crm[_outreachId].lastContact = todayStr;
+  crm[_outreachId].contactMethod = _outreachMethod;
+  if (nextDate)   crm[_outreachId].nextContactDate = nextDate;
+  if (nextAction) crm[_outreachId].nextAction = nextAction;
+
+  // Append to activity log
+  if (!crm[_outreachId].activityLog) crm[_outreachId].activityLog = [];
+  crm[_outreachId].activityLog.unshift({
+    date: todayStr, type: _outreachMethod,
+    notes: notes || `Contacted via ${_outreachMethod}`,
+  });
+
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+  closeOutreachPanel();
+  renderPortfolio();
+  refreshAutoInsights();
+  refreshSummary();
+  showToast('Logged — contact date updated');
+}
+
+// ── Prospect log panel ────────────────────────────────────────────────────
+let _prospectId   = null;
+let _prospectMethod = 'call';
+
+function openProspectLogPanel(prospectId) {
+  const pl = getPipeline();
+  const p  = (pl.prospects || []).find(x => (x.id||x.gymName) === prospectId || x.gymName === prospectId);
+  if (!p) { showToast('Prospect not found'); return; }
+  _prospectId     = prospectId;
+  _prospectMethod = 'call';
+
+  const now = new Date();
+  let metaStr = `Stage: ${STAGE_LABELS[p.stage] || p.stage}`;
+  if (p.nextActionDate) {
+    const dDiff = Math.round((new Date(p.nextActionDate+'T12:00:00') - now) / 86400000);
+    metaStr += dDiff < 0 ? ` · ${Math.abs(dDiff)}d overdue` : ` · due in ${dDiff}d`;
+  }
+
+  document.getElementById('pp-prospect-name').textContent = p.gymName || prospectId;
+  document.getElementById('pp-prospect-meta').textContent = metaStr;
+  document.getElementById('pp-status-label').textContent  = p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < now ? '⚠ Overdue Follow-up' : '📅 Upcoming Follow-up';
+  document.getElementById('pp-notes').value       = '';
+  document.getElementById('pp-next-date').value   = p.nextActionDate || '';
+  document.getElementById('pp-next-action').value = p.nextAction || '';
+
+  ['call','email','text','inperson'].forEach(m => {
+    document.getElementById('ppm-'+m).classList.toggle('active', m === 'call');
+  });
+
+  document.getElementById('prospect-overlay').classList.add('open');
+}
+
+function closeProspectPanel() {
+  document.getElementById('prospect-overlay').classList.remove('open');
+  _prospectId = null;
+}
+
+function handleProspectOverlayClick(e) {
+  if (e.target === document.getElementById('prospect-overlay')) closeProspectPanel();
+}
+
+function setProspectMethod(m) {
+  _prospectMethod = m;
+  ['call','email','text','inperson'].forEach(id => {
+    document.getElementById('ppm-'+id).classList.toggle('active', id === m);
+  });
+}
+
+function logProspectActivity() {
+  if (!_prospectId) return;
+  const pl = getPipeline();
+  const p  = (pl.prospects || []).find(x => (x.id||x.gymName) === _prospectId || x.gymName === _prospectId);
+  if (!p) return;
+
+  const todayStr  = isoDate(new Date());
+  const notes     = document.getElementById('pp-notes').value.trim();
+  const nextDate  = document.getElementById('pp-next-date').value;
+  const nextAction= document.getElementById('pp-next-action').value.trim();
+
+  if (!p.activityLog) p.activityLog = [];
+  p.activityLog.unshift({ date:todayStr, type:_prospectMethod, note: notes || `Contacted via ${_prospectMethod}` });
+  p.lastActivity = todayStr;
+  if (nextDate)   p.nextActionDate = nextDate;
+  if (nextAction) p.nextAction     = nextAction;
+
+  localStorage.setItem('deka_pipeline', JSON.stringify(pl));
+  closeProspectPanel();
+  renderPipeline();
+  renderActivity();
+  refreshSummary();
+  showToast('Activity logged to pipeline');
+}
+
+// ── Sync all data ─────────────────────────────────────────────────────────
+function syncAll() {
+  renderActivity();
+  renderMonthlyChart();
+  renderIntelligence();
+  renderPipeline();
+  renderPortfolio();
+  refreshAutoInsights();
+  refreshSummary();
+  showToast('Synced — all data refreshed from pipeline + portfolio');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+function init() {
+  document.getElementById('week-label').textContent = `${fmtDate(weekStart)} – ${fmtDate(weekEnd)}`;
+  renderActivity();
+  renderMonthlyChart();
+  renderIntelligence();
+  renderPipeline();
+  renderPortfolio();
+  refreshAutoInsights();
+  refreshSummary();
+  renderHistory();
+}
+
+// ── This Month panel ────────────────────────────────────────────────────────
+function openThisMonthPanel() {
+  const m = kpiCalcPortfolioMetrics();
+  const nowLabel = MONTHS[new Date().getMonth()] + ' ' + new Date().getFullYear();
+  document.getElementById('tm-title').textContent = nowLabel + ' Events';
+  document.getElementById('tm-sub').textContent = m.thisMonthGyms.length + ' gym' + (m.thisMonthGyms.length !== 1 ? 's' : '') + ' hosting this month';
+  document.getElementById('tm-gym-list').innerHTML = m.thisMonthGyms.length === 0
+    ? '<div style="font-size:12px;color:var(--text-dim);padding:10px 0">No events found for this month.</div>'
+    : m.thisMonthGyms.map(g => {
+        const safeId = g.id.replace(/'/g,'');
+        return `<div class="alert-item" style="border-color:rgba(74,222,128,0.3);background:rgba(74,222,128,0.05);color:var(--green)" onclick="openOutreachPanel('${safeId}')" title="Click to log individual outreach">
+          &#128197; <span style="flex:1">${g.name}</span>
+          <span style="font-size:10px;color:var(--text-dim)">Log &#8594;</span>
+        </div>`;
+      }).join('');
+  document.getElementById('thismonth-overlay').classList.add('open');
+}
+function closeThisMonthPanel() {
+  document.getElementById('thismonth-overlay').classList.remove('open');
+}
+function _kpiOpenGmail(gyms, crm, subject, body) {
+  const emails = gyms.map(g => ((crm[g.id] && crm[g.id].email) || '').trim()).filter(Boolean);
+  if (emails.length === 0) return false;
+  const to  = emails.length === 1 ? emails[0] : '';
+  const bcc = emails.length  > 1  ? emails.join(',') : '';
+  let url = `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (to)  url += `&to=${encodeURIComponent(to)}`;
+  if (bcc) url += `&bcc=${encodeURIComponent(bcc)}`;
+  window.open(url, 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+  return true;
+}
+
+function batchEmailThisMonth() {
+  const m = kpiCalcPortfolioMetrics();
+  if (m.thisMonthGyms.length === 0) return;
+  const crm = getCRM();
+
+  // Open Gmail FIRST — before any DOM/storage updates — user gesture must be fresh
+  const subject = 'Your DEKA Event is Coming Up \u2014 Let\u2019s Fill Those Seats!';
+  const body =
+`Hi,
+
+Just a quick note as your upcoming DEKA Fitness event approaches \u2014 now is the perfect time to push a hard recruit to your members!
+
+A few things that work well:
+\u2022 Post on your gym\u2019s social media 2\u20133 times this week
+\u2022 Send a dedicated email to your member list
+\u2022 Put up signage at the gym with the registration link
+\u2022 Mention it in your next class briefing
+
+Every seat filled is revenue for your gym. Let\u2019s make this event a big one.
+
+Let me know if you need any promotional materials or support \u2014 happy to help.
+
+Anthony
+DEKA Fitness \u2014 Northeast Account Manager`;
+
+  const hasEmails = _kpiOpenGmail(m.thisMonthGyms, crm, subject, body);
+
+  // THEN log activity + save
+  const today = new Date().toISOString().slice(0,10);
+  const followUp = new Date(); followUp.setDate(followUp.getDate() + 3);
+  const followUpStr = followUp.toISOString().slice(0,10);
+  m.thisMonthGyms.forEach(g => {
+    if (!crm[g.id]) crm[g.id] = {};
+    if (!crm[g.id].activityLog) crm[g.id].activityLog = [];
+    crm[g.id].activityLog.unshift({ date: today, type: 'email', notes: 'Batch email sent \u2014 Upcoming event: encourage participant recruitment and seat-filling' });
+    crm[g.id].lastContact = today;
+    crm[g.id].nextAction = 'Follow up on participant numbers';
+    crm[g.id].nextActionDate = followUpStr;
+  });
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+  closeThisMonthPanel();
+  renderPortfolio();
+  const gmailMsg = hasEmails ? ' \u2014 Gmail opened with recipients in BCC' : ' \u2014 no emails on file (add emails via affiliate CRM cards)';
+  showToast('\u2709 Batch email logged for ' + m.thisMonthGyms.length + ' gym' + (m.thisMonthGyms.length !== 1 ? 's' : '') + gmailMsg);
+}
+
+// ── No Events panel ─────────────────────────────────────────────────────────
+function openNoEventsPanel() {
+  const m = kpiCalcPortfolioMetrics();
+  document.getElementById('ne-title').textContent = m.noEventsScheduled + ' Affiliate' + (m.noEventsScheduled !== 1 ? 's' : '') + ' \u2014 No Events';
+  document.getElementById('ne-sub').textContent = 'These gyms have zero events scheduled in 2026';
+  document.getElementById('ne-gym-list').innerHTML = m.noEventsGyms.length === 0
+    ? '<div style="font-size:12px;color:var(--text-dim);padding:10px 0">All affiliates have at least one event scheduled.</div>'
+    : m.noEventsGyms.map(g => {
+        const safeId = g.id.replace(/'/g,'');
+        const tierColor = {A:'var(--green)',B:'var(--blue)',C:'var(--yellow)',D:'var(--accent)'}[g.tier] || 'var(--text-dim)';
+        return `<div class="alert-item" onclick="openOutreachPanel('${safeId}')" title="Click to log outreach">
+          &#9888; <span style="flex:1">${g.name}</span>
+          <span style="font-size:10px;color:${tierColor};margin-left:auto">Tier ${g.tier || '?'}</span>
+          <span style="font-size:10px;color:var(--yellow);margin-left:8px">Log &#8594;</span>
+        </div>`;
+      }).join('');
+  document.getElementById('noevents-overlay').classList.add('open');
+}
+function closeNoEventsPanel() {
+  document.getElementById('noevents-overlay').classList.remove('open');
+}
+function batchEmailNoEvents() {
+  const m = kpiCalcPortfolioMetrics();
+  if (m.noEventsGyms.length === 0) return;
+  const crm = getCRM();
+
+  // Open Gmail FIRST
+  const subject = 'DEKA Fitness \u2014 Let\u2019s Get Your First Event on the Calendar';
+  const body =
+`Hi,
+
+I wanted to follow up because we don\u2019t yet have any DEKA events scheduled for your facility in 2026 \u2014 and I\u2019d love to change that!
+
+Hosting a DEKA event is a great way to:
+\u2022 Drive new foot traffic and member interest
+\u2022 Generate additional facility revenue
+\u2022 Give your current members an exciting fitness challenge
+
+Getting started is simple \u2014 just submit your event request form and our team handles the rest.
+
+Can we get something on the calendar this quarter? Happy to jump on a quick call if that\u2019s easier.
+
+Anthony
+DEKA Fitness \u2014 Northeast Account Manager`;
+
+  const hasEmails = _kpiOpenGmail(m.noEventsGyms, crm, subject, body);
+
+  // THEN log
+  const today = new Date().toISOString().slice(0,10);
+  const followUp = new Date(); followUp.setDate(followUp.getDate() + 3);
+  const followUpStr = followUp.toISOString().slice(0,10);
+  m.noEventsGyms.forEach(g => {
+    if (!crm[g.id]) crm[g.id] = {};
+    if (!crm[g.id].activityLog) crm[g.id].activityLog = [];
+    crm[g.id].activityLog.unshift({ date: today, type: 'email', notes: 'Batch email sent \u2014 No events scheduled: encourage submitting event request form' });
+    crm[g.id].lastContact = today;
+    crm[g.id].nextAction = 'Confirm event request form submission';
+    crm[g.id].nextActionDate = followUpStr;
+  });
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+  closeNoEventsPanel();
+  renderPortfolio();
+  const gmailMsg = hasEmails ? ' \u2014 Gmail opened with recipients in BCC' : ' \u2014 no emails on file (add emails via affiliate CRM cards)';
+  showToast('\u2709 Batch email logged for ' + m.noEventsGyms.length + ' affiliate' + (m.noEventsGyms.length !== 1 ? 's' : '') + gmailMsg);
+}
+
+init();
+</script>
+
+<!-- This Month panel -->
+<div class="outreach-overlay" id="thismonth-overlay" onclick="if(event.target===this)closeThisMonthPanel()">
+  <div class="outreach-panel" id="thismonth-panel">
+    <div class="op-header">
+      <div>
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:4px">&#128197; Hosting This Month</div>
+        <div class="op-name" id="tm-title"></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="tm-sub"></div>
+      </div>
+      <button class="op-close" onclick="closeThisMonthPanel()">&#10005;</button>
+    </div>
+    <hr class="op-divider">
+    <button class="btn-full" style="background:var(--green);border:none;color:#0a0c10;margin-bottom:4px" onclick="batchEmailThisMonth()">&#9993; Batch Email All &mdash; Fill Your Seats</button>
+    <div style="font-size:10px;color:var(--text-dim);text-align:center;margin-bottom:8px">Logs email outreach + sets follow-up in 3 days for each gym</div>
+    <hr class="op-divider">
+    <div id="tm-gym-list" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+  </div>
+</div>
+
+<!-- No Events panel -->
+<div class="outreach-overlay" id="noevents-overlay" onclick="if(event.target===this)closeNoEventsPanel()">
+  <div class="outreach-panel" id="noevents-panel">
+    <div class="op-header">
+      <div>
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:4px">&#9888; No Events Scheduled</div>
+        <div class="op-name" id="ne-title"></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px" id="ne-sub"></div>
+      </div>
+      <button class="op-close" onclick="closeNoEventsPanel()">&#10005;</button>
+    </div>
+    <hr class="op-divider">
+    <button class="btn-full" style="background:var(--accent);border:none;color:#fff;margin-bottom:4px" onclick="batchEmailNoEvents()">&#9993; Batch Email All &mdash; Submit Event Request</button>
+    <div style="font-size:10px;color:var(--text-dim);text-align:center;margin-bottom:8px">Logs email outreach + sets follow-up in 3 days for each gym</div>
+    <hr class="op-divider">
+    <div id="ne-gym-list" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+  </div>
+</div>
+</body>
+</html>
