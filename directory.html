@@ -193,6 +193,8 @@
     .perf-lbl { color: #777 !important; }
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 </head>
 <body>
 
@@ -202,7 +204,7 @@
     <p>37 Affiliates &bull; Contact Information &bull; Relationship Data &bull; Synced with Portfolio Dashboard</p>
   </div>
   <div class="header-actions">
-    <a href="deka-northeast-portfolio-analysis.html" class="back-link btn btn-ghost">&#8592; Portfolio Dashboard</a>
+    <a href="index.html" class="back-link btn btn-ghost">&#8592; Portfolio Dashboard</a>
     <button class="btn btn-green" onclick="document.getElementById('add-affiliate-modal').style.display='flex'">&#43; Add Affiliate</button>
     <button class="btn btn-blue" onclick="document.getElementById('partner-import-modal').style.display='flex'">&#8593; Import from Sheet</button>
     <button class="btn btn-ghost" onclick="exportCSV()">&#8595; Export CSV</button>
@@ -544,7 +546,7 @@ function cardHTML(a) {
       <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="toggleEdit('${a.id}')">&#9998; Edit</button>
       ${gmailUrl ? `<a href="${gmailUrl}" target="_blank" class="btn btn-blue" style="font-size:11px;padding:5px 10px">&#9993; Email</a>` : (a.email ? `<a href="mailto:${a.email}" class="btn btn-blue" style="font-size:11px;padding:5px 10px">&#9993; Email</a>` : `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;opacity:0.4" disabled>&#9993; Email</button>`)}
       ${a.phone ? `<a href="tel:${a.phone.replace(/\D/g,'')}" class="btn btn-green" style="font-size:11px;padding:5px 10px">&#128222; Call</a>` : ''}
-      <a href="deka-northeast-portfolio-analysis.html" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;margin-left:auto">&#128202; Dashboard</a>
+      <a href="index.html" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;margin-left:auto">&#128202; Dashboard</a>
     </div>
     <div class="edit-panel" id="edit-${a.id}">
       ${editPanelHTML(a)}

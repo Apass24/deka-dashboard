@@ -178,14 +178,16 @@
     .two-col,.notes-grid{grid-template-columns:1fr;}
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 </head>
 <body>
 
 <div class="header">
   <div class="header-title">DEKA | Weekly KPI</div>
   <div class="header-week" id="week-label"></div>
-  <a href="deka-northeast-portfolio-analysis.html" class="btn no-print">&#8592; Portfolio</a>
-  <a href="deka-sales-pipeline.html" class="btn no-print">Pipeline</a>
+  <a href="index.html" class="btn no-print">&#8592; Portfolio</a>
+  <a href="pipeline.html" class="btn no-print">Pipeline</a>
   <button class="btn no-print" onclick="syncAll()" title="Re-read all data from pipeline and portfolio">&#8635; Sync Data</button>
   <button class="btn btn-green no-print" onclick="saveWeek()">&#128190; Save Week</button>
   <button class="btn btn-blue no-print" onclick="copySummary()">&#128203; Copy Summary</button>
