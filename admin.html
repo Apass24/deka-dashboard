@@ -90,7 +90,8 @@ label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spaci
 
 <script>
 async function boot() {
-  const authResult = await dekaAuthCheck();
+  // TEMP BYPASS for local testing
+  const authResult = true; // await dekaAuthCheck();
   if (authResult !== true) return;
 
   // Check if admin

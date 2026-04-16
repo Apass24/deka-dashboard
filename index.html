@@ -391,7 +391,7 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
 <div class="header">
   <div class="header-left">
     <h1><span>DEKA</span> <span id="header-region">Northeast</span> Portfolio Analysis</h1>
-    <p>37 Affiliates &bull; 2026 Performance Dashboard &bull; Revenue Target: $10K min / $15K stretch per club</p>
+    <p><span id="header-aff-count">—</span> Affiliates &bull; 2026 Performance Dashboard &bull; Revenue Target: $10K min / $15K stretch per club</p>
   </div>
   <div class="header-actions no-print">
     <button class="btn btn-ghost btn-sm" id="hdr-sales-btn" onclick="window.open('pipeline.html')" style="border-color:var(--accent);color:var(--accent);display:none">&#127919; Sales Pipeline</button>
@@ -456,9 +456,8 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
 
   <!-- TAB: OVERVIEW -->
   <div id="tab-overview" class="tab-content active">
-    <!-- NEW AFFILIATES IN ONBOARDING — injected by renderOnboardingSection() -->
+    <!-- NEW AFFILIATES IN ONBOARDING — only on Tiered Rankings tab -->
     <div id="onboarding-section"></div>
-
     <div class="insight-box"><strong>Portfolio Reality Check:</strong> Zero affiliates are hitting the $10K minimum target. Your top performer (Underdog Fitness) is at $5,953 — 59.5% of target. 50% of the portfolio has hosted zero events and generated zero revenue. The biggest lever is activating the 16 dormant affiliates and increasing event count + participant volume across the board.</div>
     <div class="section-title">Affiliate Performance Tiers <span class="badge">Ranked by Revenue</span></div>
     <div class="tier-grid" id="tier-grid-container"></div>
@@ -568,7 +567,7 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
     <div class="cal-header">
       <div class="cal-nav">
         <button class="cal-nav-btn" onclick="calChangeMonth(-1)">&#8249;</button>
-        <div class="cal-month-title" id="cal-month-title">March 2026</div>
+        <div class="cal-month-title" id="cal-month-title"></div>
         <button class="cal-nav-btn" onclick="calChangeMonth(1)">&#8250;</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;margin-left:8px" onclick="calGoToday()">Today</button>
       </div>
@@ -721,7 +720,7 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
         </div>
         <div style="font-size:12px;color:var(--text-dim);line-height:1.5">Full 12-week event planning dashboard with task checklists, revenue calculator, social calendar, and psychology-driven content templates.</div>
       </div>
-      <a href="https://affiliatetoolkit.dfrnt.com" target="_blank" style="text-decoration:none" class="resource-card">
+      <a href="https://www.spartan.com/en/deka/affiliate-toolkit" target="_blank" style="text-decoration:none" class="resource-card">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;cursor:pointer;transition:all 0.15s;border-left:3px solid var(--purple)">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
             <span style="font-size:22px">&#128187;</span>
@@ -1063,6 +1062,14 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
             <div class="dm-stat-row"><span style="color:var(--text-dim)">Upcoming Events</span><span id="dm-count-upcoming">0</span></div>
             <div class="dm-stat-row"><span style="color:var(--text-dim)">Affiliates w/ Projections</span><span id="dm-count-projections">0</span></div>
           </div>
+        </div>
+
+        <!-- Find & Merge Duplicates -->
+        <div class="dm-status">
+          <h4>&#128270; Find & Merge Duplicates</h4>
+          <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;line-height:1.5">Scan your portfolio for affiliates that might be the same gym under different names. Review each match before merging.</p>
+          <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="dmFindDuplicates()">&#128270; Scan for Duplicates</button>
+          <div id="dm-dedup-results" style="margin-top:12px"></div>
         </div>
 
         <!-- Template Download -->
@@ -1472,27 +1479,34 @@ function renderHeaderKPIs() {
   const active = data.filter(a => a.events > 0).length;
   const inactive = total - active;
   const totalEvents = data.reduce((s,a) => s + (a.events||0), 0);
-  const avgEventsPerAffiliate = total > 0 ? (totalEvents / total).toFixed(1) : 0;
-  // Use facility revenue (affiliate's share) as primary, fall back to revenue field
+  // Averages are computed against ACTIVE affiliates so inactives don't drag the picture to zero
+  const avgEventsPerActive = active > 0 ? (totalEvents / active).toFixed(1) : '0.0';
   const totalFacilityRev = data.reduce((s,a) => s + (a.facilityRevenue || a.revenue || 0), 0);
-  const avgRevPerAffiliate = total > 0 ? Math.round(totalFacilityRev / total).toLocaleString() : 0;
-  // DEKA HQ Revenue from actual synced data, not estimated percentage
+  const avgRevPerActive = active > 0 ? Math.round(totalFacilityRev / active).toLocaleString() : 0;
   const totalHQRev = data.reduce((s,a) => s + (a.dekaHQRevenue || 0), 0);
   const totalGrossRev = data.reduce((s,a) => s + (a.totalRevenue || a.revenue || 0), 0);
   const hqPct = totalGrossRev > 0 ? ((totalHQRev / totalGrossRev) * 100).toFixed(1) : 0;
   const totalParticipants = data.reduce((s,a) => s + (a.participants||0), 0);
   const avgPPEvent = totalEvents > 0 ? Math.round(totalParticipants / totalEvents) : 0;
-  const gapTo10K = data.reduce((s,a) => s + Math.max(0, 10000 - (a.facilityRevenue || a.revenue || 0)), 0);
-  const belowTarget = data.filter(a => (a.facilityRevenue || a.revenue || 0) < 10000).length;
-  const belowPct = total > 0 ? Math.round((belowTarget / total) * 100) : 0;
+  // Gap & % below — only count active affiliates so we're measuring real underperformers, not dormant zeros
+  const gapTo10K = data.reduce((s,a) => {
+    if ((a.events||0) === 0) return s;
+    return s + Math.max(0, 10000 - (a.facilityRevenue || a.revenue || 0));
+  }, 0);
+  const belowTargetActive = data.filter(a => (a.events||0) > 0 && (a.facilityRevenue || a.revenue || 0) < 10000).length;
+  const belowPct = active > 0 ? Math.round((belowTargetActive / active) * 100) : 0;
+
+  // Sync the header subtitle count
+  const hac = document.getElementById('header-aff-count');
+  if (hac) hac.textContent = total;
 
   document.getElementById('header-kpis').innerHTML = `
     <div class="kpi"><div class="kpi-label">Total Affiliates</div><div class="kpi-value">${total}</div><div class="kpi-sub">${active} active / ${inactive} inactive</div></div>
-    <div class="kpi"><div class="kpi-label">2026 Events</div><div class="kpi-value blue">${totalEvents}</div><div class="kpi-sub">Avg ${avgEventsPerAffiliate}/affiliate &bull; Target: 2\u20134</div></div>
-    <div class="kpi"><div class="kpi-label">2026 Facility Revenue</div><div class="kpi-value green">$${totalFacilityRev.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="kpi-sub">Avg $${avgRevPerAffiliate}/affiliate</div></div>
+    <div class="kpi"><div class="kpi-label">2026 Events</div><div class="kpi-value blue">${totalEvents}</div><div class="kpi-sub">Avg ${avgEventsPerActive}/active affiliate &bull; Target: 2\u20134</div></div>
+    <div class="kpi"><div class="kpi-label">2026 Facility Revenue</div><div class="kpi-value green">$${totalFacilityRev.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="kpi-sub">Avg $${avgRevPerActive}/active affiliate</div></div>
     <div class="kpi"><div class="kpi-label">DEKA HQ Revenue</div><div class="kpi-value">$${totalHQRev.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="kpi-sub">${hqPct}% of gross revenue</div></div>
     <div class="kpi"><div class="kpi-label">Total Participants</div><div class="kpi-value yellow">${totalParticipants.toLocaleString()}</div><div class="kpi-sub">Avg ${avgPPEvent}/event (active only)</div></div>
-    <div class="kpi"><div class="kpi-label">Gap to $10K Target</div><div class="kpi-value red">$${Math.round(gapTo10K/1000).toLocaleString()}K</div><div class="kpi-sub">${belowPct}% portfolio below min target</div></div>`;
+    <div class="kpi"><div class="kpi-label">Gap to $10K Target</div><div class="kpi-value red">$${Math.round(gapTo10K/1000).toLocaleString()}K</div><div class="kpi-sub">${belowPct}% of active below min target</div></div>`;
 }
 
 function renderTierGrid() {
@@ -1506,7 +1520,9 @@ function renderTierGrid() {
   let html = '';
   ['a','b','c','d'].forEach(tier => {
     const t = tierDefs[tier];
-    const affiliates = APP_DATA.filter(a => a.tier === tier);
+    const _obIds = window._onboardingAffIds || new Set();
+    const _norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const affiliates = APP_DATA.filter(a => a.tier === tier && !_obIds.has(_norm(a.name)));
     const tierRev = affiliates.reduce((s,a) => s + (a.revenue||0), 0);
     const countStr = `${affiliates.length} affiliate${affiliates.length!==1?'s':''} · $${tierRev.toLocaleString()}`;
     html += `<div class="tier-card tier-${tier}">
@@ -1692,11 +1708,26 @@ function toolkitOpenInGmail() {
   const ta = document.getElementById('toolkit-content');
   const lines = (ta?.value || '').split('\n');
   const subject = lines[0].replace(/^Subject:\s*/i,'').trim() || `DEKA Update — ${a?.name||''}`;
-  const bodyStart = lines.findIndex(l => l.toLowerCase().startsWith('subject:')) >= 0
+  const body = lines.findIndex(l => l.toLowerCase().startsWith('subject:')) >= 0
     ? lines.slice(1).join('\n').trim()
     : (ta?.value||'');
-  const url = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyStart)}`;
-  window.open(url, 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+
+  const buildUrl = (b) => `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(b)}`;
+  const fullUrl = buildUrl(body);
+  // Gmail compose URLs over ~7500 chars return Bad Request 400
+  if (fullUrl.length <= 7500) {
+    window.open(fullUrl, 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+    return;
+  }
+  // Long content (e.g. Social Media Plan) — copy full body to clipboard, open Gmail with a placeholder
+  const placeholder = '--- Full content copied to clipboard. Press \u2318V (or Ctrl+V) here to paste it. ---';
+  navigator.clipboard.writeText(body).then(() => {
+    window.open(buildUrl(placeholder), 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+    alert('This content is too long to fit in a Gmail URL.\n\nThe full text has been copied to your clipboard. In the Gmail compose window that just opened, click the body and paste (\u2318V) to drop it in.');
+  }).catch(() => {
+    if (ta) { ta.focus(); ta.select(); }
+    alert('This content is too long for Gmail. The textarea has been selected — copy it manually (\u2318C), then open Gmail and paste.');
+  });
 }
 
 function generateActionEmail() {
@@ -2397,12 +2428,12 @@ function buildSupport(a) {
     support.push('Offer co-marketing support: feature them in the regional newsletter, social spotlights, and DEKA HQ communications.');
   } else if (a.tier === 'b') {
     support.push('Send the top-performer marketing playbook (based on Fitness Appeal and Spooky Nook success patterns).');
-    support.push('Schedule a 30-minute strategy call to review their last event and map out their next 2–3 dates.');
-    support.push('Connect them with a Tier A affiliate in the same region for peer mentorship and best practices sharing.');
+    support.push('Schedule a 30-minute strategy call to review their last event and confirm their remaining 2026 dates.');
+    support.push('If their seats aren\'t filling, walk through the marketing checklist together and offer to co-promote their next event.');
   } else if (a.tier === 'c') {
     support.push('Deliver the 8-week event marketing template and walk through it step by step.');
     support.push('Review their event listing for optimization: photos, description, pricing, registration flow.');
-    support.push('Explore a co-hosted event with a nearby affiliate to inject participant volume and build momentum.');
+    support.push('Help them lock in one realistic event date and focus the entire conversation on filling that single event.');
     if (a.revenue <= 54 || a.participants <= 1) support.push('Consider a complimentary "DEKA Demo Day" format — free or low-cost event to build community and brand awareness before next paid event.');
   } else if (a.tier === 'd') {
     support.push('Provide the 90-Day Activation Checklist with week-by-week milestones toward first event.');
@@ -2416,12 +2447,35 @@ function buildSupport(a) {
 
 function openInlineOnboarding(gymName) {
   const pipeline = JSON.parse(localStorage.getItem('deka_pipeline')||'{"prospects":[]}');
+  if (!pipeline.prospects) pipeline.prospects = [];
   const normName = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const p = pipeline.prospects.find(x => normName(x.gymName) === normName(gymName));
+  let p = pipeline.prospects.find(x => normName(x.gymName) === normName(gymName));
+
+  // If prospect was pruned from the pipeline, recreate it from CRM so the checklist works
   if (!p) {
-    // Fallback: open pipeline page if prospect not found
-    window.open('pipeline.html?onboard=' + encodeURIComponent(gymName), '_blank');
-    return;
+    const crm = JSON.parse(localStorage.getItem('deka_crm')||'{}');
+    const crmEntry = Object.values(crm).find(v => normName(v.name) === normName(gymName));
+    if (!crmEntry) {
+      window.open('pipeline.html?onboard=' + encodeURIComponent(gymName), '_blank');
+      return;
+    }
+    p = {
+      id: 'p_ob_' + Date.now().toString(36),
+      gymName: crmEntry.name,
+      stage: 'signed',
+      state: crmEntry.state || '',
+      city: crmEntry.city || '',
+      gymType: crmEntry.gymType || '',
+      ownerName: crmEntry.contactName || '',
+      email: crmEntry.email || '',
+      phone: crmEntry.phone || '',
+      notes: '[Recreated for onboarding from portfolio]',
+      onboardingTasks: [],
+      onboardingStart: crmEntry.joinDate || new Date().toISOString().slice(0,10),
+      onboardingCodes: crmEntry.onboardingCodes || {},
+    };
+    pipeline.prospects.push(p);
+    localStorage.setItem('deka_pipeline', JSON.stringify(pipeline));
   }
 
   // Ensure tasks exist
@@ -2989,34 +3043,43 @@ function renderActionPlan() {
   }
 
   function focusBox(lines) {
-    return `<div style="background:rgba(255,255,255,0.03);border-left:3px solid rgba(255,255,255,0.12);border-radius:0 6px 6px 0;padding:10px 14px;margin:10px 0 14px;font-size:12px;color:var(--text-dim);line-height:1.8">
-      ${lines.map(l => `<div style="margin-bottom:2px">&#8594; ${l}</div>`).join('')}
+    return `<div style="margin:10px 0 14px">
+      <div onclick="var n=this.nextElementSibling;var open=n.style.display!=='none';n.style.display=open?'none':'block';this.querySelector('.chev').textContent=open?'\u25B8':'\u25BE'" style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:6px 0;user-select:none">
+        <span class="chev" style="font-size:10px">&#9656;</span><span>Coaching Notes</span>
+      </div>
+      <div style="display:none;background:rgba(255,255,255,0.03);border-left:3px solid rgba(255,255,255,0.12);border-radius:0 6px 6px 0;padding:10px 14px;font-size:12px;color:var(--text-dim);line-height:1.8">
+        ${lines.map(l => `<div style="margin-bottom:2px">&#8594; ${l}</div>`).join('')}
+      </div>
     </div>`;
   }
 
   const tierARev10k = tierA.reduce((s,a) => s + Math.max(0, 10000 - (a.revenue||0)), 0);
   const tierBUpside = Math.round(tierB.length * 2 * 26 * 44);
 
-  const tierARows  = tierA.map(a => {
-    const gap = Math.max(0, 10000 - (a.revenue||0));
+  // Uniform triage: no events → BOOK FIRST EVENT, has events but low fill → FILL SEATS, otherwise GROW
+  function triage(a) {
     const avgPP = a.events > 0 ? Math.round(a.participants / a.events) : 0;
-    const detail = gap > 0 ? `$${gap.toLocaleString()} to $10K &middot; avg ${avgPP}/event` : `$10K target hit &middot; avg ${avgPP}/event`;
-    return affRow(a, 'GROW', 'grow', detail);
+    if ((a.events||0) === 0) return { tag:'BOOK FIRST EVENT', tagClass:'activate', avgPP };
+    if (avgPP < 25) return { tag:'FILL SEATS', tagClass:'activate', avgPP };
+    return { tag:'GROW', tagClass:'grow', avgPP };
+  }
+
+  const tierARows  = tierA.map(a => {
+    const t = triage(a);
+    const gap = Math.max(0, 10000 - (a.revenue||0));
+    const detail = gap > 0 ? `$${gap.toLocaleString()} to $10K &middot; avg ${t.avgPP}/event` : `$10K target hit &middot; avg ${t.avgPP}/event`;
+    return affRow(a, t.tag, t.tagClass, detail);
   }).join('');
 
   const tierBRows  = tierB.map(a => {
-    const avgPP = a.events > 0 ? Math.round(a.participants / a.events) : 0;
-    const tagClass = avgPP >= 20 ? 'grow' : 'activate';
-    const tag = avgPP >= 20 ? 'ADD EVENTS' : 'FILL SEATS';
-    return affRow(a, tag, tagClass, `${a.events} events &middot; avg ${avgPP}/event &middot; $${(a.revenue||0).toLocaleString()} YTD`);
+    const t = triage(a);
+    return affRow(a, t.tag, t.tagClass, `${a.events} events &middot; avg ${t.avgPP}/event &middot; $${(a.revenue||0).toLocaleString()} YTD`);
   }).join('');
 
   const tierCRows  = tierC.map(a => {
-    const avgPP = a.events > 0 ? Math.round(a.participants / a.events) : 0;
-    const tagClass = (a.participants||0) === 0 ? 'rescue' : 'activate';
-    const tag = (a.participants||0) === 0 ? 'RESCUE' : 'FILL SEATS';
-    const detail = a.events > 0 ? `${a.events} events &middot; avg ${avgPP}/event &middot; $${(a.revenue||0).toLocaleString()} YTD` : 'No events yet';
-    return affRow(a, tag, tagClass, detail);
+    const t = triage(a);
+    const detail = a.events > 0 ? `${a.events} events &middot; avg ${t.avgPP}/event &middot; $${(a.revenue||0).toLocaleString()} YTD` : 'No events yet';
+    return affRow(a, t.tag, t.tagClass, detail);
   }).join('');
 
   const legacyRows = legacy.map(a => {
@@ -3051,10 +3114,10 @@ function renderActionPlan() {
         <div class="desc">${tierA.length} affiliates &bull; Already producing &bull; Close the gap to $10K</div>
         ${focusBox([
           'These are your revenue leaders. They have proven they can run events and fill seats — your job is to keep them moving forward, not manage them.',
-          'Focus on <strong>velocity and scheduling</strong>: help them lock in the next 2–3 events before the summer window closes.',
-          'Ask: "What does your 2026 calendar look like? What would make it easier to add two more events?" Then solve whatever they name.',
+          'Focus on <strong>locking in remaining 2026 dates</strong>. Most affiliates max out around 3–4 events per year, so the priority is making sure the dates they plan to run are on the calendar before the summer window closes.',
+          'Ask: "What does the rest of your 2026 calendar look like? Anything I can take off your plate to help confirm those dates?" Then solve whatever they name.',
           'Each Tier A affiliate is on average $' + (tierA.length > 0 ? Math.round(tierARev10k/tierA.length).toLocaleString() : '0') + ' away from the $10K milestone. A single scheduling call can close that gap.',
-          'These affiliates can also be powerful <strong>mentors</strong> for Tier C and D — connect them where it makes sense.',
+          'Once dates are confirmed, the next lever is <strong>fill rate</strong> — co-promote, push registration early, and help them sell out the rooms they\'ve already booked.',
         ])}
         ${tierARows}
         <div style="margin-top:12px;font-size:12px;color:var(--text-dim)"><strong>Revenue upside:</strong> +$${tierARev10k.toLocaleString()} to hit all $10K targets &bull; <strong>Time investment:</strong> Low</div>
@@ -3066,10 +3129,10 @@ function renderActionPlan() {
         <div class="desc">${tierB.length} affiliates &bull; Building momentum &bull; Find and unlock the bottleneck</div>
         ${focusBox([
           'Tier B affiliates are doing the right things but haven\'t found their stride yet. One focused conversation can unlock months of stagnation.',
-          'There are two types here: <strong>low frequency</strong> (not enough events) and <strong>low fill rate</strong> (not enough registrations). Diagnose which one before you prescribe a fix.',
-          'For low fill rate: marketing is the lever. Walk through the 12-week checklist together. Offer to co-promote their next event from your channels.',
-          'For low frequency: ask what\'s in the way of adding one more date. Operations? Confidence? Staff? Find the real blocker and solve it.',
-          'Your goal: every Tier B affiliate adds 2+ events and pushes average attendance above 25 per event by end of Q3.',
+          'Two diagnostics: do they have <strong>1–2 confirmed dates on the calendar</strong>? And are those rooms <strong>filling above 25 per event</strong>? Solve in that order.',
+          'If they have zero or one event booked: the first job is getting one or two dates locked in. Ask what\'s in the way — operations, confidence, staff — and remove it.',
+          'If they already have events booked but seats are empty: marketing is the lever. Walk through the 12-week checklist together. Offer to co-promote from your channels.',
+          'Your goal: every Tier B affiliate has <strong>1–2 confirmed dates</strong> and is filling them above 25 per event. Don\'t push them past their natural capacity — focus on filling what\'s already on the calendar.',
         ])}
         ${tierBRows}
         <div style="margin-top:12px;font-size:12px;color:var(--text-dim)"><strong>Revenue upside:</strong> +$${tierBUpside.toLocaleString()} combined &bull; <strong>Time investment:</strong> Medium</div>
@@ -3080,12 +3143,12 @@ function renderActionPlan() {
         <h4 style="color:var(--yellow)">Priority 3: Fix the Underperformers (Tier C)</h4>
         <div class="desc">${tierC.length} affiliates &bull; Active but struggling &bull; Coach them, don\'t audit them</div>
         ${focusBox([
-          'These affiliates are showing up — they are hosting events. Approach them as a coach, not an auditor.',
+          'These affiliates are showing up — they\'re hosting events. Approach them as a coach, not an auditor.',
           'The root cause is almost always <strong>marketing and promotion</strong>, not operations. They\'re setting up the course but not filling the room.',
           'Lead with curiosity: "Tell me about your last event — what worked? What would you change?" You\'ll hear the real problem.',
-          'Offer concrete tools, not vague advice: send the marketing checklist, review their registration page together, introduce them to a top performer.',
-          'For near-zero participation affiliates: consider a <strong>co-hosted event</strong> with a nearby stronger affiliate. Shared event, split work, social proof for the smaller gym.',
-          'Set a 90-day benchmark: 2 events, 20+ participants each. If not met, schedule a frank but supportive review conversation.',
+          'Offer concrete tools, not vague advice: send the marketing checklist, review their registration page together, walk through their email and social plan for the next event.',
+          'If they have no events on the calendar yet, that\'s priority one — get one date locked in. Then focus everything on filling that single event.',
+          'Benchmark: <strong>1–2 events booked</strong>, average 25+ participants per event. Quality of fill matters more than count.',
         ])}
         ${tierCRows}
         ${emailBtn('tierC', 'Tier C', 'var(--yellow)')}
@@ -3162,7 +3225,7 @@ Hi [First Name],
 
 Just wanted to reach out and see how things are going.
 
-You've put together a solid year so far and I want to make sure the rest of 2026 finishes just as strong. Most affiliates in your position end up hosting two or three events total for the year, so now is a good time to make sure your remaining dates are on the calendar before the fall fills up.
+You've put together a solid year so far and I want to make sure the rest of 2026 finishes just as strong. Now is a good time to lock in any remaining dates you're planning before the fall calendar fills up — and to make sure the events you already have on the books are filling the room.
 
 Nothing complicated on my end. I just want to check in on your schedule and see if there's anything I can help with on the registration or marketing side.
 
@@ -3178,7 +3241,7 @@ Hi [First Name],
 
 Hope things are good. I wanted to reach out and see where you're at with the rest of your 2026 events.
 
-You've done solid work getting events on the calendar. What I'd like to help with is making sure we're filling those rooms as much as possible and, if the timing works, getting one more date added before the year is out.
+You've done solid work getting events on the calendar. What I'd really like to help with is making sure we're filling those rooms as much as possible. If you also have room for one more date this year, we can talk through that — but the priority is selling out what's already booked.
 
 I'm not trying to pile on. I just think there's room to make this year more productive without adding a lot more to your plate.
 
@@ -4932,6 +4995,139 @@ function dmResetPasteArea() {
     </div>`;
 }
 
+// ── MANUAL DUPLICATE FINDER ──────────────────────────────────────────────────
+function dmFindDuplicates() {
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  const entries = Object.entries(crm).filter(([,v]) => v.name);
+  const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const normWords = s => (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+  const el = document.getElementById('dm-dedup-results');
+
+  const candidates = [];
+  const checked = new Set();
+
+  for (let i = 0; i < entries.length; i++) {
+    const [idA, a] = entries[i];
+    if (checked.has(idA)) continue;
+    for (let j = i + 1; j < entries.length; j++) {
+      const [idB, b] = entries[j];
+      if (checked.has(idB)) continue;
+
+      const na = normWords(a.name), nb = normWords(b.name);
+      const nameOverlap = na.includes(nb) || nb.includes(na);
+      const sameNorm = norm(a.name) === norm(b.name);
+      const sameEmail = !!(a.email && b.email && norm(a.email) === norm(b.email));
+      const samePhone = !!((a.phone && b.phone && norm(a.phone) === norm(b.phone)) || (a.cell && b.cell && norm(a.cell) === norm(b.cell)));
+      const sameContact = !!(a.contactName && b.contactName && norm(a.contactName) === norm(b.contactName));
+      const sameState = a.state && b.state && a.state !== '??' && b.state !== '??' && a.state === b.state;
+
+      let reason = '';
+      if (sameNorm) reason = 'Same name';
+      else if (sameEmail) reason = 'Same email';
+      else if (nameOverlap && (sameContact || sameEmail || samePhone)) reason = 'Similar name + same contact';
+      else if (nameOverlap && sameState) reason = 'Similar name + same state';
+      else if (samePhone && sameState) reason = 'Same phone + state';
+
+      if (reason) {
+        candidates.push({ idA, a, idB, b, reason });
+        checked.add(idB);
+      }
+    }
+  }
+
+  if (!candidates.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--green);padding:8px 0">&#10003; No duplicates found. Portfolio is clean.</div>';
+    return;
+  }
+
+  el.innerHTML = `<div style="font-size:11px;color:var(--yellow);margin-bottom:8px">${candidates.length} potential duplicate${candidates.length>1?'s':''} found</div>` +
+    candidates.map((c, i) => {
+      const aDetail = [c.a.state, c.a.contactName, c.a.email].filter(Boolean).join(' · ');
+      const bDetail = [c.b.state, c.b.contactName, c.b.email].filter(Boolean).join(' · ');
+      const aEvents = c.a.events || 0, bEvents = c.b.events || 0;
+      return `<div id="dedup-card-${i}" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="font-size:10px;color:var(--yellow);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">${c.reason}</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${c.a.name}</div>
+            <div style="font-size:10px;color:var(--text-dim)">${aDetail} · ${aEvents} events</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);align-self:center;padding:0 8px">⇄</div>
+          <div style="text-align:right">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${c.b.name}</div>
+            <div style="font-size:10px;color:var(--text-dim)">${bDetail} · ${bEvents} events</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-primary" style="font-size:10px;padding:4px 10px;flex:1" onclick="dmMergePair('${c.idA}','${c.idB}',${i})">&#10003; Merge</button>
+          <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;flex:1" onclick="document.getElementById('dedup-card-${i}').remove()">Skip</button>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function dmMergePair(keepId, loseId, cardIdx) {
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  const keep = crm[keepId], lose = crm[loseId];
+  if (!keep || !lose) return;
+
+  // Merge: keep entry with more events/revenue, fill in missing fields from the other
+  const keepScore = (keep.events||0) + (keep.revenue||0);
+  const loseScore = (lose.events||0) + (lose.revenue||0);
+  const [primaryId, primary, secondaryId, secondary] = keepScore >= loseScore
+    ? [keepId, keep, loseId, lose]
+    : [loseId, lose, keepId, keep];
+
+  // Fill missing fields from secondary
+  ['contactName','email','phone','cell','address','city','website','state','gymType','signYear','instagram','facebook'].forEach(f => {
+    if (!primary[f] && secondary[f]) primary[f] = secondary[f];
+  });
+
+  // Merge performance if primary has none
+  if ((primary.events||0) === 0 && (secondary.events||0) > 0) {
+    ['events','participants','revenue','totalRevenue','facilityRevenue','dekaHQRevenue'].forEach(f => {
+      primary[f] = secondary[f];
+    });
+  }
+
+  // Merge upcoming events
+  const pEvents = primary.upcomingEvents || [];
+  const sEvents = secondary.upcomingEvents || [];
+  const evKeys = new Set(pEvents.map(e => e.date + '|' + (e.format||'')));
+  sEvents.forEach(e => { if (!evKeys.has(e.date + '|' + (e.format||''))) pEvents.push(e); });
+  primary.upcomingEvents = pEvents;
+
+  // Merge activity logs
+  primary.activityLog = [...(primary.activityLog||[]), ...(secondary.activityLog||[])].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  // Use shorter canonical name
+  const normWords = s => (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+  const na = normWords(primary.name), nb = normWords(secondary.name);
+  if (primary.name.length > secondary.name.length && (na.includes(nb) || nb.includes(na))) {
+    primary.name = secondary.name;
+  }
+
+  crm[primaryId] = primary;
+  delete crm[secondaryId];
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+
+  // Track merged-away name so the migration doesn't recreate it
+  const mergedNames = JSON.parse(localStorage.getItem('deka_merged_names') || '[]');
+  if (!mergedNames.includes(secondary.name)) mergedNames.push(secondary.name);
+  localStorage.setItem('deka_merged_names', JSON.stringify(mergedNames));
+
+  // Refresh UI
+  APP_DATA = loadAppData();
+  renderHeaderKPIs();
+  renderTierGrid();
+  renderOnboardingSection();
+  dmRefreshStatus();
+
+  // Remove the card and show confirmation
+  const card = document.getElementById('dedup-card-' + cardIdx);
+  if (card) card.innerHTML = `<div style="font-size:11px;color:var(--green);padding:4px 0">&#10003; Merged "${secondary.name}" into "${primary.name}"</div>`;
+}
+
 function dmRefreshStatus() {
   const log = JSON.parse(localStorage.getItem('deka_import_log')||'[]');
   const last = log[0];
@@ -5759,6 +5955,30 @@ function dmApplyImport(parsed) {
         if (norm(val.name) === norm(p.name)) { existingId = key; break; }
       }
     }
+    // Check email match (strongest unique identifier — one gym = one email)
+    if (!existingId && p.email) {
+      const pEmail = norm(p.email);
+      for (const [key, val] of Object.entries(stored)) {
+        if (val.email && norm(val.email) === pEmail) { existingId = key; break; }
+      }
+    }
+    // "Name A contains Name B" + same contact or same email → same gym
+    if (!existingId) {
+      const pNorm = norm(p.name);
+      const pContact = norm(p.contactName || '');
+      const pEmail = norm(p.email || '');
+      const pFirstName = (p.contactName||'').trim().split(/\s+/)[0].toLowerCase();
+      for (const [key, val] of Object.entries(stored)) {
+        const vNorm = norm(val.name || '');
+        if (!vNorm) continue;
+        if (!(pNorm.includes(vNorm) || vNorm.includes(pNorm))) continue;
+        const vFirstName = (val.contactName||'').trim().split(/\s+/)[0].toLowerCase();
+        const sameContact = pContact && norm(val.contactName||'') === pContact;
+        const sameFirstName = pFirstName && vFirstName && pFirstName.length > 2 && pFirstName === vFirstName;
+        const sameEmail = pEmail && norm(val.email||'') === pEmail;
+        if (sameContact || sameFirstName || sameEmail) { existingId = key; break; }
+      }
+    }
 
     const affId = existingId || id;
     const existing = stored[affId] || {};
@@ -5795,15 +6015,24 @@ function dmApplyImport(parsed) {
     };
   });
 
+  // Graduate pipeline affiliates: if a synced name matches a pipeline-sourced CRM entry, clear the flag
+  parsed.forEach(p => {
+    const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    for (const [key, val] of Object.entries(stored)) {
+      if (val.source === 'pipeline' && norm(val.name) === norm(p.name)) {
+        delete stored[key].source; // graduated — now official from sheet data
+        console.log(`Onboarding graduated: ${val.name} (appeared in sync)`);
+      }
+    }
+  });
+
   localStorage.setItem('deka_crm', JSON.stringify(stored));
-  // Clean up legacy key
-  localStorage.removeItem('deka_affiliates_added');
   APP_DATA = loadAppData();
   console.log(`Sync complete: ${parsed.length} affiliates imported to deka_crm`);
 }
 
 // ─── Calendar ────────────────────────────────────────────────────────────────
-let calCurrentDate = new Date(2026, 2, 1); // March 2026
+let calCurrentDate = (() => { const n=new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); })();
 let calView = 'grid';
 let _plResultsOpen = null;
 let _plViewDow = null;   // null = auto-detect real day, 1–5 = manual override
@@ -6436,6 +6665,8 @@ function calRenderGrid() {
   document.getElementById('cal-days').innerHTML = html;
 }
 
+if (typeof window.calListSelected === 'undefined') window.calListSelected = new Set();
+
 function calRenderList() {
   const allEvents = calGetAllEvents();
   if (!allEvents.length) {
@@ -6443,6 +6674,9 @@ function calRenderList() {
       '<div style="padding:40px;text-align:center;color:var(--text-dim)">No events found. Sync your data from the Data Manager tab.</div>';
     return;
   }
+  // Drop selections that no longer match an event in the current view
+  const validKeys = new Set(allEvents.map(e => e._key));
+  [...window.calListSelected].forEach(k => { if (!validKeys.has(k)) window.calListSelected.delete(k); });
 
   // Group by week
   const weeks = {};
@@ -6467,22 +6701,87 @@ function calRenderList() {
         const fill = e.capacity ? Math.round((e.actualParticipants||0)/e.capacity*100) : null;
         const fillColor = fill===null?'var(--text-dim)':fill>=80?'var(--green)':fill>=50?'var(--yellow)':'var(--accent)';
         const isSelected = calSelectedEvent && calSelectedEvent._key === e._key;
+        const checked = window.calListSelected.has(e._key) ? 'checked' : '';
         return `<div class="cal-list-row${isSelected?' selected':''}" onclick="calSelectByKey(event,'${e._key}')">
           <div class="cal-list-date">${new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
           <div><div class="cal-format-dot" style="background:${dot}"></div></div>
           <div>
             <div class="cal-list-gym">${e.affiliateName} <span>${e.state||''}</span></div>
-            <div style="font-size:11px;color:${dot}">${e.format||'Event'}</div>
+            <div style="font-size:11px;color:${dot}">${({strong:'DEKA STRONG',mile:'DEKA MILE',atlas:'DEKA ATLAS',fit:'DEKA FIT'}[fc] || e.format || 'Event')}</div>
           </div>
           <div class="cal-list-stat" style="color:var(--text)">${e.actualParticipants||'—'}</div>
           <div class="cal-list-stat" style="color:${fillColor}">${fill!==null?fill+'%':'—'}</div>
           <div class="cal-list-stat" style="color:var(--green)">${e.revenue?'$'+e.revenue.toLocaleString():'—'}</div>
-          <button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;white-space:nowrap" onclick="event.stopPropagation();calEmailAffiliate('${e.affiliateId}','${e.date}')">✉</button>
+          <input type="checkbox" ${checked} onclick="event.stopPropagation();calToggleListSelect('${e._key}')" title="Select for batch email" style="cursor:pointer;width:16px;height:16px;accent-color:var(--accent)">
         </div>`;
       }).join('')}
     </div>`;
   });
-  document.getElementById('cal-list-body').innerHTML = html;
+  // Sticky action bar appears when at least one event is selected
+  const selCount = window.calListSelected.size;
+  const actionBar = selCount > 0 ? `<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <span style="font-size:12px;font-weight:600;color:var(--text)">${selCount} selected</span>
+    <button class="btn btn-primary" onclick="calBatchEmailSelected()" style="font-size:11px;padding:6px 12px">&#9993; Send Batch Email</button>
+    <button class="btn btn-ghost" onclick="calClearListSelection()" style="font-size:11px;padding:6px 12px">&#10005; Clear</button>
+  </div>` : '';
+  document.getElementById('cal-list-body').innerHTML = actionBar + html;
+}
+
+function calToggleListSelect(key) {
+  if (window.calListSelected.has(key)) window.calListSelected.delete(key);
+  else window.calListSelected.add(key);
+  calRenderList();
+}
+function calClearListSelection() {
+  window.calListSelected.clear();
+  calRenderList();
+}
+
+function calBatchEmailSelected() {
+  const allEvents = calGetAllEvents();
+  const selected = allEvents.filter(e => window.calListSelected.has(e._key));
+  if (!selected.length) return;
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  // Dedupe by affiliate so the same gym isn't BCC'd twice
+  const byAff = {};
+  selected.forEach(e => { if (!byAff[e.affiliateId]) byAff[e.affiliateId] = e; });
+  const affs = Object.values(byAff);
+  const emails = affs
+    .map(e => {
+      const a = APP_DATA.find(x => x.id === e.affiliateId);
+      return (crm[e.affiliateId]?.email || a?.email || '').trim();
+    })
+    .filter(Boolean);
+  const missingCount = affs.length - emails.length;
+  if (!emails.length) {
+    alert('None of the selected affiliates have an email on file. Add emails via their CRM cards.');
+    return;
+  }
+  const subject = `Quick check-in on your upcoming DEKA event`;
+  const body = `Hi there,\n\nWanted to reach out about your upcoming DEKA event. Let me know if there's anything I can help with on the marketing or registration side — happy to jump on a quick call or share resources.\n\n${_s('emailSignature','Anthony\\nDEKA Fitness — Northeast Account Manager')}`;
+  const bcc = emails.join(',');
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(bcc)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(gmailUrl, 'gmail-compose', 'width=960,height=720,menubar=no,toolbar=no,location=yes,resizable=yes');
+
+  // Log to each affiliate's activityLog so it shows in their profile
+  const today = new Date().toISOString().slice(0,10);
+  const followUp = new Date(); followUp.setDate(followUp.getDate()+3);
+  const fuStr = followUp.toISOString().slice(0,10);
+  affs.forEach(e => {
+    const id = e.affiliateId;
+    if (!crm[id]) crm[id] = {};
+    if (!crm[id].activityLog) crm[id].activityLog = [];
+    crm[id].activityLog.unshift({date:today, type:'email', notes:`Batch calendar email — ${subject}`});
+    crm[id].lastContact = today;
+    crm[id].nextAction = 'Follow up on event';
+    crm[id].nextActionDate = fuStr;
+  });
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+
+  window.calListSelected.clear();
+  calRenderList();
+  const note = missingCount > 0 ? ` (${missingCount} skipped — no email)` : '';
+  alert(`✓ Gmail opened with ${emails.length} recipient${emails.length===1?'':'s'}${note}. Activity logged.`);
 }
 
 function calSelectByKey(evt, key) {
@@ -6807,14 +7106,25 @@ function gsShowPreview(affRows, evRows, tabAff, tabEv, saved, selTabAff, selTabE
 // Smarter affiliate name matching — scores word overlap, rejects weak matches
 function affiliateFuzzyMatch(sheetName, appDataName) {
   const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-  const words = s => new Set(norm(s).split(' ').filter(w => w.length > 2));
+  const normStrip = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const sn = norm(sheetName), an = norm(appDataName);
-  if (sn === an) return 100; // exact match
-  if (sn.includes(an) || an.includes(sn)) return 80; // one contains the other
+  // Exact match (with or without spaces/punctuation)
+  if (sn === an || normStrip(sheetName) === normStrip(appDataName)) return 100;
+  // One contains the other (e.g. "Fitness Club" in "Fitness Club Northeast")
+  if (sn.includes(an) || an.includes(sn)) return 80;
+  // Word-level overlap — deprioritize generic gym words
+  const genericWords = new Set(['fitness','crossfit','gym','training','sports','the','and','club','center','inc','llc','performance','strength','athletic','athletics']);
+  const words = s => norm(s).split(' ').filter(w => w.length > 2);
   const sw = words(sheetName), aw = words(appDataName);
-  if (!sw.size || !aw.size) return 0;
-  const overlap = [...sw].filter(w => aw.has(w)).length;
-  return Math.round(overlap / Math.max(sw.size, aw.size) * 100);
+  if (!sw.length || !aw.length) return 0;
+  const awSet = new Set(aw);
+  const totalOverlap = sw.filter(w => awSet.has(w)).length;
+  const meaningfulOverlap = sw.filter(w => awSet.has(w) && !genericWords.has(w)).length;
+  // If both names have ONLY generic words, allow total-overlap matching but require high %
+  const swAllGeneric = sw.every(w => genericWords.has(w));
+  const awAllGeneric = aw.every(w => genericWords.has(w));
+  if (meaningfulOverlap === 0 && !(swAllGeneric && awAllGeneric)) return 0;
+  return Math.round(totalOverlap / Math.max(sw.length, aw.length) * 100);
 }
 
 function affiliateBestMatch(sheetName, appData) {
@@ -6823,7 +7133,117 @@ function affiliateBestMatch(sheetName, appData) {
     const score = affiliateFuzzyMatch(sheetName, a.name);
     if (score > bestScore) { bestScore = score; best = a; }
   });
-  return bestScore >= 50 ? best : null; // require ≥50% word overlap
+  return bestScore >= 60 ? best : null; // require ≥60% overlap
+}
+
+// ── SMART DEDUPLICATION ──────────────────────────────────────────────────────
+// Merges CRM entries that represent the same gym, using these rules:
+// 1. Name A contains Name B (or vice versa) + same contact/owner → same gym
+// 2. Same phone + same state → same gym regardless of name
+// 3. Same exact normalized name + different owner + different phone + different state → different gym (franchise)
+// When merging: keep the entry with more data (events, revenue). Combine contact info and activity logs.
+function deduplicateCRM() {
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  const entries = Object.entries(crm).filter(([,v]) => v.name);
+  if (entries.length < 2) return 0;
+
+  const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const normWords = s => (s||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+  const nameContains = (a, b) => {
+    const na = normWords(a), nb = normWords(b);
+    return na.includes(nb) || nb.includes(na);
+  };
+
+  // Build pairs to merge
+  const merged = new Set(); // IDs already consumed
+  let mergeCount = 0;
+
+  for (let i = 0; i < entries.length; i++) {
+    const [idA, a] = entries[i];
+    if (merged.has(idA)) continue;
+
+    for (let j = i + 1; j < entries.length; j++) {
+      const [idB, b] = entries[j];
+      if (merged.has(idB)) continue;
+
+      const sameNormName = norm(a.name) === norm(b.name);
+      const nameOverlap = nameContains(a.name, b.name);
+      const aFirst = (a.contactName||'').trim().split(/\s+/)[0].toLowerCase();
+      const bFirst = (b.contactName||'').trim().split(/\s+/)[0].toLowerCase();
+      const sameContact = !!(a.contactName && b.contactName && norm(a.contactName) === norm(b.contactName));
+      const sameFirstName = !!(aFirst && bFirst && aFirst.length > 2 && aFirst === bFirst);
+      const samePhone = !!((a.phone && b.phone && norm(a.phone) === norm(b.phone))
+                        || (a.cell && b.cell && norm(a.cell) === norm(b.cell)));
+      const sameEmail = !!(a.email && b.email && norm(a.email) === norm(b.email));
+      const sameState = !!(a.state && b.state && a.state !== '??' && b.state !== '??' && a.state === b.state);
+
+      let shouldMerge = false;
+
+      // Rule 1: Name contains the other + same contact, first name, or email → same gym
+      if (nameOverlap && (sameContact || sameFirstName || sameEmail)) shouldMerge = true;
+      // Rule 1b: Same email alone → same gym (strongest signal)
+      if (sameEmail) shouldMerge = true;
+      // Rule 2: Same phone + same state → same gym regardless of name
+      if (samePhone && sameState) shouldMerge = true;
+      // Rule 3: Exact same name → same gym UNLESS different owner AND different phone AND different state (franchise)
+      if (sameNormName) {
+        const diffOwner = a.contactName && b.contactName && norm(a.contactName) !== norm(b.contactName);
+        const diffPhone = !samePhone;
+        const diffState = a.state !== b.state;
+        if (diffOwner && diffPhone && diffState) shouldMerge = false; // franchise — keep separate
+        else shouldMerge = true;
+      }
+
+      if (!shouldMerge) continue;
+
+      // Merge B into A (keep whichever has more events/revenue as primary)
+      const aScore = (a.events||0) + (a.revenue||0);
+      const bScore = (b.events||0) + (b.revenue||0);
+      const [keepId, keep, loseId, lose] = aScore >= bScore ? [idA, a, idB, b] : [idB, b, idA, a];
+
+      // Merge performance: sum events if they come from different sources, otherwise keep the higher
+      // Since sync recalculates from events, keep the one with authoritative data
+      if ((keep.events||0) === 0 && (lose.events||0) > 0) {
+        keep.events = lose.events;
+        keep.participants = lose.participants;
+        keep.revenue = lose.revenue;
+        keep.totalRevenue = lose.totalRevenue;
+        keep.facilityRevenue = lose.facilityRevenue;
+        keep.dekaHQRevenue = lose.dekaHQRevenue;
+      }
+      // Merge upcoming events (dedupe by date+format)
+      const keepEvents = keep.upcomingEvents || [];
+      const loseEvents = lose.upcomingEvents || [];
+      const evKeys = new Set(keepEvents.map(e => e.date + '|' + (e.format||'')));
+      loseEvents.forEach(e => { if (!evKeys.has(e.date + '|' + (e.format||''))) keepEvents.push(e); });
+      keep.upcomingEvents = keepEvents;
+      // Merge activity logs
+      const keepLog = keep.activityLog || [];
+      const loseLog = lose.activityLog || [];
+      keep.activityLog = [...keepLog, ...loseLog].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      // Fill in any missing contact fields from the losing entry
+      ['contactName','email','phone','cell','address','city','website','state','gymType','signYear'].forEach(f => {
+        if (!keep[f] && lose[f]) keep[f] = lose[f];
+      });
+      // Use the shorter/canonical name (without location suffix) as primary
+      if (keep.name.length > lose.name.length && nameOverlap) keep.name = lose.name;
+
+      crm[keepId] = keep;
+      delete crm[loseId];
+      merged.add(loseId);
+      mergeCount++;
+      // Track merged-away name so migration doesn't recreate it
+      const _mn = JSON.parse(localStorage.getItem('deka_merged_names') || '[]');
+      if (!_mn.includes(lose.name)) _mn.push(lose.name);
+      localStorage.setItem('deka_merged_names', JSON.stringify(_mn));
+      console.log(`Dedup: merged "${lose.name}" (${loseId}) into "${keep.name}" (${keepId})`);
+    }
+  }
+
+  if (mergeCount > 0) {
+    localStorage.setItem('deka_crm', JSON.stringify(crm));
+  }
+  return mergeCount;
 }
 
 function gsCommitSync() {
@@ -6894,7 +7314,33 @@ function gsCommitSync() {
       storedCrm[affId].avgRevenuePerEvent = evCount > 0 ? Math.round(storedCrm[affId].facilityRevenue / evCount * 100) / 100 : 0;
       storedCrm[affId].avgParticipantsPerEvent = evCount > 0 ? Math.round(evRegistered / evCount) : 0;
     });
+    // Step 1: Save event data, then dedup BEFORE zeroing so merged entries keep their numbers
     localStorage.setItem('deka_crm', JSON.stringify(storedCrm));
+    const deduped = deduplicateCRM();
+    window._lastDeduped = deduped;
+    // Re-read CRM after dedup (dedup may have merged/deleted entries)
+    const postDedupCrm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+    // Rebuild byAffId keys after dedup (merged IDs may have changed)
+    const activeAffIds = new Set(Object.values(nameToAffId));
+
+    // Step 2: Zero out performance ONLY for affiliates that previously had events but no longer do.
+    Object.keys(postDedupCrm).forEach(affId => {
+      if (!activeAffIds.has(affId) && !byAffId[affId] && postDedupCrm[affId].name) {
+        const hadEvents = (postDedupCrm[affId].events || 0) > 0 || (postDedupCrm[affId].upcomingEvents || []).length > 0;
+        if (hadEvents) {
+          postDedupCrm[affId].events = 0;
+          postDedupCrm[affId].participants = 0;
+          postDedupCrm[affId].revenue = 0;
+          postDedupCrm[affId].totalRevenue = 0;
+          postDedupCrm[affId].facilityRevenue = 0;
+          postDedupCrm[affId].dekaHQRevenue = 0;
+          postDedupCrm[affId].avgRevenuePerEvent = 0;
+          postDedupCrm[affId].avgParticipantsPerEvent = 0;
+          postDedupCrm[affId].upcomingEvents = [];
+        }
+      }
+    });
+    localStorage.setItem('deka_crm', JSON.stringify(postDedupCrm));
     APP_DATA = loadAppData();
   }
 
@@ -6909,6 +7355,7 @@ function gsCommitSync() {
   // Restore any backed-up CRM data (from reset flow)
   restoreCRMBackup();
   APP_DATA = loadAppData();
+  const deduped = typeof window._lastDeduped === 'number' ? window._lastDeduped : 0;
 
   // Regenerate roster for cross-dashboard sync
   localStorage.setItem('deka_affiliate_roster', JSON.stringify(
@@ -6917,8 +7364,9 @@ function gsCommitSync() {
 
   renderHeaderKPIs();
   renderTierGrid();
+  if (typeof renderActionPlan === 'function') renderActionPlan();
 
-  gsStatus(`\u2705 Dashboard updated — ${affRows.length} affiliates \u00b7 ${evCount} events imported \u00b7 ${APP_DATA.length} total in portfolio`, 'var(--green)');
+  gsStatus(`\u2705 Dashboard updated — ${affRows.length} affiliates \u00b7 ${evCount} events imported \u00b7 ${APP_DATA.length} total in portfolio${deduped ? ` \u00b7 ${deduped} duplicate${deduped>1?'s':''} merged` : ''}`, 'var(--green)');
   window._gsPendingAff = null; window._gsPendingEvents = null;
 }
 
@@ -6986,7 +7434,7 @@ function loadSettings() {
   const showDir     = s.showAffiliateDirectory !== undefined ? s.showAffiliateDirectory : true;
   const showEvents  = s.showEventPlanner !== undefined ? s.showEventPlanner : false;
   const showKPI     = s.showKPITracker !== undefined ? s.showKPITracker : true;
-  const eventUrl    = s.eventPlannerUrl || 'localhost:5173';
+  const eventUrl    = s.eventPlannerUrl || 'events.html';
   document.getElementById('tog-sales').checked   = showSales;
   document.getElementById('tog-dir').checked     = showDir;
   document.getElementById('tog-events').checked  = showEvents;
@@ -7019,8 +7467,8 @@ function saveSettings() {
 
 function openEventPlanner(affiliateName, ownerName) {
   const s = JSON.parse(localStorage.getItem('deka_settings') || '{}');
-  let url = s.eventPlannerUrl || 'localhost:5173';
-  if (!url.startsWith('http')) url = 'http://' + url;
+  let url = s.eventPlannerUrl || 'events.html';
+  if (!url.startsWith('http') && !url.endsWith('.html')) url = 'http://' + url;
   if (affiliateName) url += '?gym=' + encodeURIComponent(affiliateName);
   if (!ownerName && affiliateName) {
     const a = APP_DATA.find(x => x.name === affiliateName);
@@ -7051,19 +7499,35 @@ function renderOnboardingSection() {
   const el = document.getElementById('onboarding-section');
   if (!el) return;
 
+  const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+
+  // Build list of pipeline-sourced affiliates from two sources:
+  // 1. deka_affiliates_added (legacy array from transferToPortfolio)
+  // 2. deka_crm entries with source === 'pipeline' (new flag)
   const added = JSON.parse(localStorage.getItem('deka_affiliates_added') || '[]');
-  if (!added.length) { el.innerHTML = ''; return; }
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+
+  // CRM entries flagged as pipeline-sourced
+  const crmPipeline = Object.entries(crm)
+    .filter(([,v]) => v.source === 'pipeline' && v.name)
+    .map(([id,v]) => ({ id, name:v.name, state:v.state||'??', city:v.city||'', signYear:v.signYear||new Date().getFullYear(), gymType:v.gymType||'' }));
+
+  // Merge and dedupe (prefer CRM entry if both exist)
+  const seen = new Set();
+  const allOnboarding = [];
+  crmPipeline.forEach(a => { seen.add(norm(a.name)); allOnboarding.push(a); });
+  added.forEach(a => { if (!seen.has(norm(a.name))) { seen.add(norm(a.name)); allOnboarding.push(a); } });
+
+  if (!allOnboarding.length) { el.innerHTML = ''; return; }
 
   // Pull onboarding task data from the pipeline
   const pipeline = JSON.parse(localStorage.getItem('deka_pipeline') || '{}');
   const prospects = pipeline.prospects || [];
 
-  // Build card data for each added affiliate that still has incomplete tasks
-  const cards = added.map(aff => {
-    // Match by crmId (pipeline gymName → crmId) or by name
+  const cards = allOnboarding.map(aff => {
     const prospect = prospects.find(p => {
       const pid = (p.gymName||'').toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
-      return pid === aff.id || (p.gymName||'').toLowerCase() === (aff.name||'').toLowerCase();
+      return pid === aff.id || norm(p.gymName) === norm(aff.name);
     });
     const tasks = prospect?.onboardingTasks || [];
     const total = tasks.length;
@@ -7071,23 +7535,19 @@ function renderOnboardingSection() {
     const pct   = total ? Math.round((done / total) * 100) : 0;
     const complete = total > 0 && done === total;
 
-    // Current phase label
     const nextTask = tasks.find(t => !t.done);
-    const phaseLabels = {1:'Phase 1: Day 1 Admin', 2:'Phase 2: Emails & Outreach', 3:'Phase 3: Event Planning'};
-    const phase = nextTask ? (phaseLabels[nextTask.week] || 'In Progress') : 'Complete';
+    const phaseLabels = {1:'Phase 1: Setup & Admin', 2:'Phase 2: Outreach & Event Launch'};
+    const phase = nextTask ? (phaseLabels[nextTask.week] || 'In Progress') : (complete ? 'Complete' : 'Open Pipeline to Start');
 
     return { aff, done, total, pct, complete, phase, prospectId: prospect?.id };
   });
 
-  // Only show affiliates that have an active pipeline prospect with onboarding tasks in progress
-  // Exclude: completed checklists, affiliates from sync with no pipeline entry
-  const active = cards.filter(c => {
-    if (c.complete) return false;  // All tasks done — hide
-    if (c.total > 0) return true;  // Has tasks in progress — show
-    // No tasks: only show if they have an actual pipeline prospect (came through sales pipeline)
-    return !!c.prospectId;
-  });
+  // Show all pipeline-sourced affiliates that haven't completed onboarding
+  const active = cards.filter(c => !c.complete);
   if (!active.length) { el.innerHTML = ''; return; }
+
+  // Store active onboarding IDs so renderTierGrid can exclude them
+  window._onboardingAffIds = new Set(active.map(c => norm(c.aff.name)));
 
   el.innerHTML = `
     <div style="background:rgba(230,57,70,0.05);border:1px solid rgba(230,57,70,0.2);border-radius:10px;padding:18px;margin-bottom:20px">
@@ -7117,8 +7577,8 @@ function renderOnboardingSection() {
 }
 
 async function initDashboard() {
-  // Supabase Auth check
-  if (typeof dekaAuthCheck === 'function') {
+  // Supabase Auth check (TEMP BYPASS for local testing)
+  if (false && typeof dekaAuthCheck === 'function') {
     const authResult = await dekaAuthCheck();
     if (authResult === false) return; // shows login screen
     if (authResult === 'needs_setup') return; // shows settings setup
@@ -7128,8 +7588,63 @@ async function initDashboard() {
   const hrEl=document.getElementById('header-region'); if(hrEl) hrEl.textContent=_s('region','Northeast');
 
   // Clean architecture: all data from deka_crm, no hardcoded defaults
-  // Legacy cleanup: remove deka_affiliates_added if it still exists
-  localStorage.removeItem('deka_affiliates_added');
+  // deka_affiliates_added is preserved for pipeline→portfolio onboarding flow
+  // Migration: stamp pipeline-sourced affiliates in CRM
+  // Checks two sources: deka_affiliates_added AND signed pipeline prospects
+  try {
+    const _crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+    const _norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    let _changed = false;
+
+    // Source 1: deka_affiliates_added (legacy transfer array)
+    const _added = JSON.parse(localStorage.getItem('deka_affiliates_added') || '[]');
+    _added.forEach(a => {
+      for (const [k,v] of Object.entries(_crm)) {
+        if (_norm(v.name) === _norm(a.name) && !v.source) {
+          _crm[k].source = 'pipeline'; _changed = true;
+        }
+      }
+    });
+
+    // Source 2: signed pipeline prospects — stamp existing CRM entries or create new ones
+    // Also check merged-away names (stored by dmMergePair) so we don't recreate merged affiliates
+    const _mergedAway = JSON.parse(localStorage.getItem('deka_merged_names') || '[]');
+    const _mergedSet = new Set(_mergedAway.map(n => _norm(n)));
+    const _pl = JSON.parse(localStorage.getItem('deka_pipeline') || '{}');
+    const _signed = (_pl.prospects || []).filter(p => p.stage === 'signed');
+    _signed.forEach(p => {
+      const pNorm = _norm(p.gymName);
+      // Skip if this name was merged into another affiliate
+      if (_mergedSet.has(pNorm)) return;
+      // Check if already in CRM (exact name match OR name-contains match)
+      let found = false;
+      for (const [k,v] of Object.entries(_crm)) {
+        const vNorm = _norm(v.name);
+        if (vNorm === pNorm || vNorm.includes(pNorm) || pNorm.includes(vNorm)) {
+          if (!v.source && (v.events||0) === 0) {
+            _crm[k].source = 'pipeline'; _changed = true;
+          }
+          found = true; break;
+        }
+      }
+      // Not in CRM at all — create from pipeline data
+      if (!found) {
+        const crmId = (p.gymName||'').toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,50);
+        _crm[crmId] = {
+          name: p.gymName, state: p.state || '??', city: p.city || '',
+          contactName: p.ownerName || '', email: p.email || '', phone: p.phone || '',
+          gymType: p.gymType || '', signYear: new Date().getFullYear(),
+          events: 0, participants: 0, revenue: 0, facilityRevenue: 0, totalRevenue: 0, dekaHQRevenue: 0,
+          joinDate: p.onboardingStart || new Date().toISOString().slice(0,10),
+          source: 'pipeline',
+          notes: `[Signed via pipeline]\n${p.notes||''}`,
+        };
+        _changed = true;
+      }
+    });
+
+    if (_changed) localStorage.setItem('deka_crm', JSON.stringify(_crm));
+  } catch(e) {}
 
   APP_DATA = loadAppData();
   loadSettings();

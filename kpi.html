@@ -212,15 +212,6 @@
   </div>
   <div id="bar-tooltip" class="bar-tooltip-box" style="display:none"></div>
 
-  <!-- INTELLIGENCE SUMMARY -->
-  <div class="card">
-    <div class="section-head">
-      <div class="card-title">&#128161; Insights &amp; Action Items</div>
-      <button class="btn no-print" onclick="renderIntelligence()" style="font-size:10px;padding:2px 8px">&#8635; Refresh</button>
-    </div>
-    <div id="intel-list"></div>
-  </div>
-
   <div class="two-col">
 
     <!-- PIPELINE SNAPSHOT -->
@@ -241,6 +232,15 @@
       <div class="alert-list" id="stale-list"></div>
     </div>
 
+  </div>
+
+  <!-- INTELLIGENCE SUMMARY -->
+  <div class="card">
+    <div class="section-head">
+      <div class="card-title">&#128161; Insights &amp; Action Items</div>
+      <button class="btn no-print" onclick="renderIntelligence()" style="font-size:10px;padding:2px 8px">&#8635; Refresh</button>
+    </div>
+    <div id="intel-list"></div>
   </div>
 
   <!-- WINS & RADAR NOTES -->
@@ -1409,7 +1409,7 @@ function saveWeek() {
 // ── History ────────────────────────────────────────────────────────────────
 function renderHistory() {
   const store = getKPIStore();
-  const past  = store.weeks.filter(w => w.weekOf !== currentWeekKey && w.savedAt)
+  const past  = store.weeks.filter(w => w.savedAt)
                            .sort((a,b) => b.weekOf.localeCompare(a.weekOf));
   const el = document.getElementById('hist-list');
 
