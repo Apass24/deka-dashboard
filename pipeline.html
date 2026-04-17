@@ -815,7 +815,10 @@ function toggleSelect(id) {
 }
 
 function toggleSelectAll(stage, cb) {
-  const stageProspects = pipelineData.prospects.filter(p => p.stage === stage);
+  // Only select prospects that match the current search/filter state.
+  // Prevents the "hidden prospects get emailed too" bug where clicking All
+  // with a search active BCCs every matching gym in the data, not just the visible ones.
+  const stageProspects = getFiltered(true).filter(p => p.stage === stage);
   stageProspects.forEach(p => {
     if (cb.checked) selectedIds.add(p.id);
     else selectedIds.delete(p.id);
@@ -830,7 +833,7 @@ function _syncColCheckbox(id) {
   if (!p) return;
   const cb = document.getElementById('colcheck-' + p.stage);
   if (!cb) return;
-  const stageProspects = pipelineData.prospects.filter(x => x.stage === p.stage);
+  const stageProspects = getFiltered(true).filter(x => x.stage === p.stage);
   cb.checked = stageProspects.length > 0 && stageProspects.every(x => selectedIds.has(x.id));
   cb.indeterminate = !cb.checked && stageProspects.some(x => selectedIds.has(x.id));
 }
@@ -1168,17 +1171,23 @@ function renderActionQueue() {
     const dateStr = p.nextActionDate || '';
     const checked = _aqSelectedIds.has(p.id) ? 'checked' : '';
     const isCheckReply = (p.nextAction || '').toLowerCase().includes('check for reply');
-    const isEmailDue   = (p.nextAction || '').toLowerCase().includes('send day') || (p.nextAction || '').toLowerCase().includes('send day');
+    const isEmailDue   = (p.nextAction || '').toLowerCase().includes('send day');
 
     // Outcome buttons for "Check for reply" state — replace the standard "Open →" link
-    const trailingHtml = isCheckReply
-      ? `<button onclick="event.stopPropagation();handleNoReply('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--yellow);color:var(--yellow);white-space:nowrap" title="No reply → Follow Up Later (90d)">😶 No Reply</button>
+    let trailingHtml;
+    if (isCheckReply) {
+      trailingHtml = `<button onclick="event.stopPropagation();handleNoReply('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--yellow);color:var(--yellow);white-space:nowrap" title="No reply → Follow Up Later (90d)">😶 No Reply</button>
          <button onclick="event.stopPropagation();handleReplied('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--green);color:var(--green);white-space:nowrap" title="Replied → Discovery Call">💬 Replied</button>
-         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`
-      : isEmailDue && p.email
-      ? `<button onclick="event.stopPropagation();draftEmail('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--blue);color:var(--blue);white-space:nowrap">✉ Draft</button>
-         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`
-      : `<span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
+         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
+    } else if (isEmailDue && p.email) {
+      trailingHtml = `<button onclick="event.stopPropagation();draftEmail('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--blue);color:var(--blue);white-space:nowrap">✉ Draft</button>
+         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
+    } else if (isEmailDue && !p.email) {
+      trailingHtml = `<button onclick="event.stopPropagation();openDetail('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--yellow);color:var(--yellow);white-space:nowrap" title="No email on file — click to add one and then draft">⚠ Add Email</button>
+         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
+    } else {
+      trailingHtml = `<span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
+    }
 
     return `<div id="aqrow-${p.id}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''">
       <input type="checkbox" ${checked} onclick="event.stopPropagation();_aqToggle('${p.id}')" style="flex-shrink:0;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
@@ -1462,12 +1471,16 @@ function aqBatchEmail() {
 }
 
 function _renderSecondarySection(stage, cards, bgColor, textColor, alertBadge) {
+  const checkboxHtml = cards.length > 0
+    ? `<label class="col-check-wrap" onclick="event.stopPropagation()" title="Select all visible in this stage" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;cursor:pointer"><input type="checkbox" class="col-check-all" id="colcheck-${stage}" onchange="event.stopPropagation();toggleSelectAll('${stage}',this)" style="cursor:pointer"><span style="font-size:10px;color:${textColor};opacity:0.8">All</span></label>`
+    : '';
   return `
     <details class="secondary-section" ondragover="onDragOver(event,'${stage}')" ondrop="onDrop(event,'${stage}')" ondragleave="onDragLeave(event)">
       <summary style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${bgColor};border-radius:8px;cursor:pointer;border:1px solid ${textColor}30;user-select:none;list-style:none" onclick="event.stopPropagation()">
         <span style="font-size:13px">${STAGE_ICONS[stage]}</span>
         <span style="font-size:12px;font-weight:700;color:${textColor};letter-spacing:0.5px;text-transform:uppercase">${STAGE_LABELS[stage]}</span>
         <span style="font-size:11px;color:${textColor};opacity:0.7">${cards.length}</span>
+        ${checkboxHtml}
         ${alertBadge}
         ${cards.length > 0 ? `<button onclick="event.stopPropagation();clearSecondaryStage('${stage}')" title="Remove all from this list" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid ${textColor}40;background:transparent;color:${textColor};cursor:pointer;font-family:'DM Sans',sans-serif;opacity:0.6">\u2715 Clear All</button>` : ''}
         <span style="${cards.length > 0 ? '' : 'margin-left:auto;'}font-size:10px;color:var(--text-dim)">\u25BC</span>
