@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEKA Event Host Accountability System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:#0C0C0C;color:#F0F0F0;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#2C2C2C;border-radius:2px;}
+::-webkit-scrollbar-thumb:hover{background:#E02020;}
+input,textarea,select{font-family:'DM Sans',sans-serif;font-size:14px;color:#F0F0F0;}
+button{font-family:'DM Sans',sans-serif;cursor:pointer;}
+input[type=range]{accent-color:#E02020;}
+::selection{background:rgba(224,32,32,0.12);color:#E02020;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:slideIn 0.2s ease forwards;}
+.pulse{animation:pulse 2s infinite;}
+a{color:inherit;}
+select option{background:#1C1C1C;color:#F0F0F0;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─── DESIGN TOKENS ───────────────────────────────────────────────
+const T={
+  bg:"#0C0C0C",surface:"#141414",panel:"#1C1C1C",border:"#2C2C2C",borderHi:"#3C3C3C",
+  red:"#E02020",redDim:"#7A1010",redGlow:"rgba(224,32,32,0.12)",
+  gold:"#D4A017",green:"#1DB954",blue:"#2B7FE0",orange:"#E07820",
+  text:"#F0F0F0",sub:"#888888",muted:"#444444",white:"#FFFFFF"
+};
+const CAT_COLOR={Marketing:T.blue,Operations:T.orange,Revenue:T.green,Community:"#A855F7",Sponsorship:T.gold,Admin:T.sub,Logistics:T.blue};
+const PHASE_META={
+  "-12":{name:"IGNITION",color:"#E02020",desc:"Members-first launch window"},
+  "-10":{name:"LAUNCH",color:"#E07820",desc:"Go public — build momentum"},
+  "-8":{name:"MOMENTUM",color:"#D4A017",desc:"Standards series + spotlights"},
+  "-6":{name:"BUILD",color:"#1DB954",desc:"Teams, merch, leaderboard hype"},
+  "-4":{name:"URGENCY",color:"#2B7FE0",desc:"Price up — scarcity language"},
+  "-3":{name:"PRESSURE",color:"#7C3AED",desc:"Referral push + heat preview"},
+  "-2":{name:"LOCKDOWN",color:"#E02020",desc:"Final push — equipment build"},
+  "-1":{name:"EVE",color:"#E02020",desc:"Confirm everything"},
+  "0":{name:"RACE DAY",color:"#E02020",desc:"Execute the plan"},
+  "post":{name:"CONVERT",color:"#1DB954",desc:"Turn athletes into members"}
+};
+const FORMAT_DEFS=[
+  {id:"strong",label:"DEKA STRONG",color:"#E02020",desc:"10 zones · no running",completionMin:20},
+  {id:"mile",label:"DEKA MILE",color:"#2B7FE0",desc:"10 zones · 1-mile run loop",completionMin:30},
+  {id:"atlas",label:"DEKA ATLAS",color:"#D4A017",desc:"10 zones · heavy implements",completionMin:35}
+];
+const REG_TYPES=[
+  {id:"solo",label:"Solo",feat:null},
+  {id:"team2",label:"2-Person Team",feat:"team"},
+  {id:"youth",label:"Youth (10–13)",feat:"youth"},
+  {id:"vip",label:"VIP / Elite",feat:"vip"}
+];
+// ─── UTILS ───────────────────────────────────────────────────────
+const daysDiff=d=>{if(!d)return null;const now=new Date();now.setHours(0,0,0,0);return Math.round((new Date(d)-now)/86400000);};
+const fmtDate=d=>{if(!d)return"";return new Date(d+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
+const pct=(a,b)=>b===0?0:Math.round(a/b*100);
+const clamp=(v,lo,hi)=>Math.min(Math.max(v,lo),hi);
+const iid=()=>Math.random().toString(36).slice(2,8);
+
+const calcCapacity=(lanes,eventWindowHrs,intervalMin=10)=>{
+  const windowMins=eventWindowHrs*60;
+  const heatsPerLane=Math.floor(windowMins/intervalMin);
+  const totalHeats=lanes*heatsPerLane;
+  const startsPerHour=Math.floor(60/intervalMin);
+  return{heatsPerLane,totalHeats,startsPerHour,windowMins};
+};
+const mkDefaultCategories=()=>({
+  strong:{enabled:true,lanes:2,eventWindowHrs:3,intervalMin:15,slots:{solo:{price:65,target:20},team2:{price:110,target:4},youth:{price:40,target:0},vip:{price:85,target:0}}},
+  mile:{enabled:true,lanes:2,eventWindowHrs:3,intervalMin:20,slots:{solo:{price:70,target:16},team2:{price:120,target:4},youth:{price:45,target:0},vip:{price:90,target:0}}},
+  atlas:{enabled:false,lanes:2,eventWindowHrs:3,intervalMin:15,slots:{solo:{price:75,target:16},team2:{price:130,target:0},youth:{price:0,target:0},vip:{price:95,target:0}}}
+});
+const mkBudget=()=>({
+  merchCost:500,equipmentRent:0,staffPay:200,marketingSpend:150,venueExtra:0,foodCost:0,giveaways:100,miscExpenses:100,
+  staffCount:5,staffPayType:"flat",staffRate:40,staffHours:8,
+  merchRevPPA:28,sponsorTotal:2500,sponsorCount:5,sponsorAvg:500,foodRevShare:100,foodSpendPPA:18,rafflePPA:8,prepSignups:0,prepPrice:120
+});
+const mkConfig=()=>({
+  gymName:"",ownerName:"",eventName:"",eventDate:"",eventStart:"09:00",eventEnd:"17:00",
+  categories:mkDefaultCategories(),
+  features:{sponsor:true,merch:true,food:true,raffle:true,vip:true,youth:true,team:true},
+  budget:mkBudget(),prepWeeks:12,
+  customTasks:{edits:{},deleted:[],added:{pre:[],weekly:[],daily:[]},order:{pre:[],weekly:[],daily:[]}},
+  hub:{links:[],contacts:[],notes:[]},setupDone:false
+});
+const deriveTotals=(cfg)=>{
+  const cats=cfg.categories||mkDefaultCategories();
+  const feats=cfg.features||{};
+  let totalAthletes=0,grossRevenue=0;
+  const allEntries=[],byFormat=[];
+  FORMAT_DEFS.forEach(fd=>{
+    const cat=cats[fd.id];
+    if(!cat?.enabled)return;
+    const lanes=cat.lanes||2,eventWindowHrs=cat.eventWindowHrs||3,intervalMin=cat.intervalMin||10;
+    const cap=calcCapacity(lanes,eventWindowHrs,intervalMin);
+    let fmtEntries=0,fmtAthletes=0,fmtGross=0;
+    REG_TYPES.forEach(rt=>{
+      if(rt.feat&&feats[rt.feat]===false)return;
+      const slot=cat.slots?.[rt.id]||{price:0,target:0};
+      const entries=slot.target||0,teamSz=rt.id==="team2"?2:1;
+      const athletes=entries*teamSz,rev=entries*(slot.price||0);
+      totalAthletes+=athletes;grossRevenue+=rev;fmtEntries+=entries;fmtAthletes+=athletes;fmtGross+=rev;
+      if(entries>0)allEntries.push({fid:fd.id,fLabel:fd.label,fColor:fd.color,type:rt.label,teamSz,entries,athletes,price:slot.price,rev});
+    });
+    const overCapacity=fmtEntries>cap.totalHeats;
+    byFormat.push({id:fd.id,label:fd.label,color:fd.color,lanes,eventWindowHrs,intervalMin,athletes:fmtAthletes,entries:fmtEntries,gross:fmtGross,capacity:cap,overCapacity});
+  });
+  const hostRevTickets=Math.round(grossRevenue*0.6);
+  const merch=feats.merch?Math.round(totalAthletes*28):0;
+  const sponsor=feats.sponsor?2500:0;
+  const food=feats.food?Math.round(totalAthletes*3):0;
+  const raffle=feats.raffle?Math.round(totalAthletes*8):0;
+  const prep=Math.round(totalAthletes*0.25*120);
+  const total=hostRevTickets+merch+sponsor+food+raffle+prep;
+  return{totalAthletes,grossRevenue,hostRevTickets,merch,sponsor,food,raffle,prep,total,allEntries,byFormat};
+};
+// ─── APP STATE ───────────────────────────────────────────────────
+let cfg=mkConfig();
+let activeTab="presetup";
+let checks={};
+let preChecks={};
+let taskNotes={};
+let scores={};
+let archives=[];
+// UI sub-state
+let openWeekMap={};
+let openTaskId=null;
+let openPreTaskId=null;
+let openDayMap={};
+let checklistCat="All";
+let preEditing=false;
+let weeklyEditing=false;
+let dailyEditing=false;
+let taskEditorDraft={pre:null,weekly:null,daily:null};
+let taskEditorShowHidden={pre:false,weekly:false,daily:false};
+// RevCalc
+let revInc=null;
+let revExp=null;
+// Social
+let socialSched=null;
+let socialDraftModal=null;
+let socialEditCell=null;
+let socialActivePillar=null;
+let socialCopiedIdx=null;
+// Scorecard
+let scorecardSelW=null;
+// Hub
+let hubNewLink={label:"",url:"",desc:""};
+let hubNewContact={label:"",name:"",company:"",role:"Sponsor",phone:"",email:"",notes:""};
+let hubNewNote={title:"",body:"",color:"#E0202033"};
+let hubExpandedC=null;
+// Templates
+let tmplTypeFilter="all";
+let tmplSearch="";
+let tmplCopied=null;
+let tmplExpanded={};
+// Playbook
+let playbookOpen={overview:true};
+let playbookOpenWeek={};
+let playbookOpenDay={};
+// Setup local state
+let setupL=null;
+let setupPaysStaff=true;
+
+// ─── PERSISTENCE ─────────────────────────────────────────────────
+function loadState(){
+  try{
+    const s=localStorage.getItem('deka_event_host');
+    if(s){const d=JSON.parse(s);if(d.cfg)cfg=d.cfg;if(d.checks)checks=d.checks;if(d.preChecks)preChecks=d.preChecks;if(d.notes)taskNotes=d.notes;if(d.scores)scores=d.scores;}
+    const a=localStorage.getItem('dekaArchives');
+    if(a)archives=JSON.parse(a);
+  }catch(e){}
+  const params=new URLSearchParams(window.location.search);
+  const gym=params.get('gym');
+  if(gym&&!cfg.gymName)cfg.gymName=gym;
+  const owner=params.get('owner');
+  if(owner&&!cfg.ownerName)cfg.ownerName=owner;
+}
+function saveState(){
+  try{localStorage.setItem('deka_event_host',JSON.stringify({cfg,checks,preChecks,notes:taskNotes,scores}));}catch(e){}
+}
+
+// ─── TASK BUILDERS ───────────────────────────────────────────────
+function buildPreTasks(){
+  return[
+    {id:"pre05",cat:"Operations",title:"Equipment compliance audit — all 10 zones",detail:"Cross-reference every piece of equipment against the current DEKA standards list. Zone 6 (D-Ball): max 1.5 lbs under standard. Zones 1 & 10 (RAM Lunges/Burpees): exact weight. Flag any gaps now — sourcing takes weeks. Do this per format if running multiple (STRONG vs MILE equipment lists differ)."},
+    {id:"pre06",cat:"Operations",title:"Map your event floor layout",detail:"Sketch the zone-by-zone layout for each lane. STRONG: minimum 1,800 sq ft for 2 lanes. MILE: requires an 80m run loop in addition to the zone floor space. Confirm lane spacing, transition paths, and judge sightlines. This locks your equipment order quantities."},
+    {id:"pre07",cat:"Operations",title:"Confirm athlete check-in and flow areas",detail:"Designate: check-in table, bib/wristband pickup, warm-up zone, spectator area, results/leaderboard display point, and athlete bag storage. Walk the path an athlete takes from arrival to start line."},
+    {id:"pre08",cat:"Operations",title:"AED and first aid check",detail:"Confirm your AED is accessible, charged, and within expiry. Designate a trained responder for the event. Know the nearest urgent care and ER. Have a first aid kit stocked and at the floor."},
+    {id:"pre10",cat:"Operations",title:"Identify and brief your head judge",detail:"Your head judge is responsible for standards consistency across all zones and resolving any no-rep disputes. This person needs to know every zone standard cold before race day. Brief them now, not the week before."},
+    {id:"pre11",cat:"Admin",title:"Set up your event communication channels",detail:"Create a group for registered athletes (Facebook group, email list, or SMS broadcast tool). You'll use this for heat assignments, day-of logistics, and last-minute updates. Have it ready before registrations open."}
+  ];
+}
+function buildTasks(c){
+  const on=tag=>c.features?.[tag]!==false;
+  const t=(id,week,cat,title,detail,script=null,tags=[])=>({id,week,cat,title,detail,script,tags,show:tags.every(on)});
+  return[
+    t("w12a",-12,"Marketing","Send Founder's Rate email to all members","72-hour window. Members only. Subject: 'You're first — [Event] is live.' Include direct registration link and countdown timer.","Hey [Name] — before we say a word publicly, I want you to have first access.\n\nFounder's Rate is live for the next 72 hours. [Price] vs [public price] after that. Register: [LINK]\n\n— [Owner]"),
+    t("w12b",-12,"Operations","Submit event to DEKA affiliate portal","Get live on the official DEKA event finder. Confirm registration flow end-to-end. Test the waiver."),
+    t("w12c",-12,"Operations","Equipment compliance audit — all 10 zones","Cross-check every piece against the approved DEKA list. Zone 6: max 1.5 lbs under standard. Zones 1 & 10: exact weight. Flag gaps now — sourcing takes weeks."),
+    t("w12d",-12,"Revenue","Launch DEKA Prep Program enrollment","8-week training program. Price $89–$199. This converts a $65 ticket into a $200–$400 training client. 100% margin. Open sales before classes start.",null,[]),
+    t("w12e",-12,"Sponsorship","Build sponsor target list — top 10","Local: supplement shops, PT/chiro, sports nutrition, apparel. Goal: 1 Title ($1,500+), 2 Silver ($500), 2 Bronze ($250). Lead with audience, not the event.",null,["sponsor"]),
+    t("w12f",-12,"Community","Coach briefing: daily in-class DEKA mentions start today","Every coach, every class: 30-second DEKA update. Call out 1–2 athletes by name as naturals who should compete. Directive, not asking.","Coach script: '[Name] — your row split today was elite. I'm telling you, you belong on that leaderboard.'"),
+    t("w12g",-12,"Operations","Map event floor layout + zone positions","STRONG needs 1,800 sq ft min (2 lanes). MILE needs 1,800 sq ft + 80m run loop. Sketch this now so equipment order is accurate."),
+    t("w10a",-10,"Marketing","Public launch — email + social + in-class","Early bird pricing opens. Hit email list, IG feed, FB, and in-class announcement same day. Include registration link and event date in every touchpoint."),
+    t("w10b",-10,"Marketing","Standards & Tips Reel #1 — Zone 1 RAM Lunge","60-sec Reel. Show: what a perfect rep looks like, what a no-rep looks like, and the exact depth standard."),
+    t("w10c",-10,"Community","Personal phone calls to 5–10 local gym owners","Call — do not DM. Personal call only. Offer: bring 10 athletes, head coach races free + gym logo on Community Partner banner.","Script: 'Hey [Name], it's [You]. I'm hosting an official DEKA World Championship qualifier on [Date]. I want your athletes there. Bring 10 people and your head coach competes free — I'll put your gym on our banner. Can I send you the link?'"),
+    t("w10d",-10,"Revenue","DEKA Prep Program classes begin","Track enrollment weekly. Target 15–25 athletes in the program. These are your highest-retention event leads."),
+    t("w10e",-10,"Sponsorship","First sponsor outreach — calls and emails","Top 5 on your list. Lead with demographics: 'Our athletes are [age range], [location], [income/fitness level]. They are your core customer.'",null,["sponsor"]),
+    t("w10f",-10,"Marketing","Post athlete spotlight #1","Member training for the event. Candid photo + 1 sentence about why they signed up. Tag them."),
+    t("w8a",-8,"Marketing","Standards & Tips Reel #2 — Zone 7 Air Bike + Zone 9 Tank","These two zones generate the most pre-event anxiety. Show the exact push/pull path on the tank and the pacing strategy on the Air Bike."),
+    t("w8b",-8,"Marketing","Post current registration count","Post the exact number — never round. '47 athletes registered. [X] spots left in AM heats.' Specificity creates urgency that round numbers don't."),
+    t("w8c",-8,"Sponsorship","Collect sponsor deposits — 50% non-refundable","Do not hold booths without deposits. Send invoice with 5-day payment deadline. No exceptions.",null,["sponsor"]),
+    t("w8d",-8,"Operations","Confirm volunteer roster — 12 minimum","1 judge per lane per zone (10 min) + 2 at registration + 2 floaters. Ask members first."),
+    t("w8e",-8,"Marketing","Athlete spotlights #2 and #3","Feature one first-timer and one competitive athlete in the same week."),
+    t("w8f",-8,"Revenue","Open merchandise pre-orders — 10% off event-day price","Pre-orders lock revenue and allow accurate inventory. Min SKUs: event tee, hoodie, headband. Close pre-orders at ED-4.",null,["merch"]),
+    t("w6a",-6,"Marketing","Post 'Who to Watch' leaderboard graphic","4–6 registered athletes from different gyms. Tag all of them."),
+    t("w6b",-6,"Community","Host free DEKA simulation class — open to public","Run all 10 zones at reduced intensity. Have tablet with registration open at the door. This is your highest-converting lead-gen activity."),
+    t("w6c",-6,"Marketing","Standards & Tips Reel #3 — Zone 4 Med Ball + Zone 10 Burpee","Most no-repped zones. Show exact standard, then a perfect rep, side by side if possible."),
+    t("w6d",-6,"Revenue","Push team registrations","Post: 'Competing alone is hard. Competing with your training partner is different. Team spots are open.'",null,["team"]),
+    t("w6e",-6,"Sponsorship","Confirm sponsor booth assignments + deliverable doc","Send each sponsor a one-page confirmation: booth size, setup time, what they provide, what you provide.",null,["sponsor"]),
+    t("w6f",-6,"Operations","Place merchandise inventory order","Size ratio: 30% S · 35% M · 25% L · 10% XL. Add 10% buffer over pre-orders.",null,["merch"]),
+    t("w4a",-4,"Marketing","Price increase #1 — announce and execute","Raise price by $10. Post: 'Prices go up at midnight. [X] spots left in AM heats.' No apology for the increase — scarcity is a feature.","'Heads up — early bird pricing ends at midnight tonight. After that, registration goes up $10. [X] spots left in AM heats. Don't say I didn't warn you: [LINK]'"),
+    t("w4b",-4,"Marketing","Shift all messaging: Benefits → Scarcity","Stop explaining what DEKA is. Start telling people what they'll miss. Every post from ED-4 forward includes a specific scarcity signal."),
+    t("w4c",-4,"Marketing","Standards & Tips Reel #4 — full course walkthrough","Walk the complete course on video. Every zone, every transition. Final fear-elimination piece. Pin this to your IG profile."),
+    t("w4d",-4,"Community","Launch member referral competition","Track on a whiteboard or weekly IG Story post. Prize: free month or merch bundle."),
+    t("w4e",-4,"Revenue","Open VIP / Elite Heat registrations","12–16 spots max. +$20 premium. Perks: priority check-in, dedicated judge, reserved parking, Elite Heat banner in photo.",null,["vip"]),
+    t("w4f",-4,"Operations","Draft full event day schedule — all heats with times","Assign heat start times based on confirmed registrations. STRONG: ~25 min/heat. MILE: ~35 min/heat. 15-min buffers between heats."),
+    t("w4g",-4,"Marketing","Post heat scarcity message","Specific language only. Vague urgency doesn't work.","'AM heats are 85% full. Once they're gone, only afternoon slots remain. Don't get stuck racing at 3PM: [LINK]'"),
+    t("w3a",-3,"Marketing","Post preliminary heat schedule publicly","Show all heat times. This creates urgency for people who want a specific slot."),
+    t("w3b",-3,"Community","Week 2 referral leaderboard update","Name the top 3 referrers in class and on IG Stories."),
+    t("w3c",-3,"Operations","Host heat preview session for registered athletes","30-min open gym. Walk the zone flow. Answer questions. This reduces no-shows and builds excitement."),
+    t("w3d",-3,"Operations","Confirm food vendor — final logistics","Confirm arrival time, setup location, power needs, menu. Finalize deal: 15–20% revenue share or $200–$400 flat fee.",null,["food"]),
+    t("w3e",-3,"Sponsorship","Collect all remaining sponsor balances","Full payment due this week. Send 'balance due' invoice. No payment = no booth.",null,["sponsor"]),
+    t("w3f",-3,"Operations","Order race-day supplies","Bibs, wristbands, cones, tape, zip ties, backup wristbands, extra bibs, pens, printed heat sheets, water cups, first aid kit, AED check."),
+    t("w2a",-2,"Marketing","Price increase #2 — final public price","Raise another $10. Post: 'This is the last price. Registration closes [date].' Final scarcity push.","'This is the last price increase before registration closes. After [Date], it's walk-in only with no guaranteed heat time. [LINK]'"),
+    t("w2b",-2,"Operations","Build final heat brackets — assign every bib","Every registered athlete gets a heat, lane, and bib number. Upload to a shared spreadsheet. Print 3 copies for race day."),
+    t("w2c",-2,"Operations","Full equipment weigh-in and tagging","Every RAM, DB, KB, med ball, dead ball — weighed and tagged with colored tape by weight class. Zone 1 & 10: exact weight only."),
+    t("w2d",-2,"Marketing","'Last warning' post","Post: 'Registration closes [date]. After that, walk-in only — no guaranteed heat time.'"),
+    t("w2e",-2,"Revenue","Close pre-orders — finalize inventory","Lock exact counts by size. Confirm delivery ETA. Set up merch display layout on paper so setup on race day is fast.",null,["merch"]),
+    t("w2f",-2,"Operations","MC script first draft complete","Script includes: intro, sponsor acknowledgments per heat, heat briefings, youth division feature moment, awards structure. Time it."),
+    t("w2g",-2,"Operations","Emergency protocols confirmed","AED location posted and tested. Nearest ER identified and address printed. Incident report form ready."),
+    t("w1a",-1,"Operations","Send athlete confirmation emails with heat assignments","Include: heat time, bib number, what to bring, parking, waiver link (complete before arrival), full schedule.","Subject: Your DEKA [Event] confirmation — everything you need for [Date]\n\nHeat [X] · Bib [#] · Check-in at [Time-15min]\n\nWaiver (complete before arrival): [LINK]\nFull schedule: [LINK]\n\nSee you on the floor. — [Owner]"),
+    t("w1b",-1,"Operations","Full volunteer briefing session","Cover: zone positions, judging standards, communication protocol, emergency word ('HOLD'), heat transition timing."),
+    t("w1c",-1,"Marketing","Post athlete heat roster graphic","'Here are your Heat 1 athletes. Tag your training partner.' Gets athletes sharing your content in the final week."),
+    t("w1d",-1,"Sponsorship","Send sponsor setup confirmation + load-in instructions","Include: exact booth dimensions, setup start time, load-in entrance, your on-site contact's cell number.",null,["sponsor"]),
+    t("w1e",-1,"Revenue","Raffle ticket sales begin in-gym","$5 each or 3 for $10. Drawing at awards. Prizes from local sponsors. Announce the prizes in advance to drive ticket sales.",null,["raffle"]),
+    t("w1f",-1,"Operations","MC script finalized + rehearsed","Full walkthrough with MC. Time every section. Confirm sponsor mentions (2x per heat). Confirm awards order. MC should know it cold."),
+    t("w1g",-1,"Operations","Emergency protocols confirmed","AED location posted and tested. Nearest ER identified and address printed. Incident report form ready. Every staff member knows the protocol."),
+    t("post1",99,"Marketing","ED+1: Post recap highlights within 24 hours","Photo/video dump. Tag every athlete you can identify. Stories + feed post. Caption: 'That's a wrap. See you at the leaderboard.'"),
+    t("post2",99,"Revenue","ED+3: Send thank-you + conversion email","Segment: members vs non-members. Non-member offer: free trial week + 20% off first month, this week only.","Subject: [Name], you earned your DEKA Mark. Here's what comes next.\n\nYou showed up and competed. That takes something.\n\nWe want you training here year-round. This week only: free trial + 20% off your first month if you join. Reply or click: [LINK]\n\n— [Owner]"),
+    t("post3",99,"Marketing","ED+3: Collect reviews and testimonials","Text athletes personally: 'Your performance today was incredible. Would you leave us a Google review? 30 seconds: [LINK]'"),
+    t("post4",99,"Revenue","ED+7: Open early bird for next event — alumni discount","Post highlight reel. 'Next event: [Date]. Alumni discount: $10 off this week only.' Strike while race-day endorphins are still fresh."),
+    t("post5",99,"Community","ED+7: Personal calls to top non-member finishers","Call (not text) your 5 best non-member performers. 'You crushed it today. I want you here every week. Let's talk about what that looks like.'"),
+    t("post6",99,"Revenue","ED+14: Open next DEKA Prep Program cohort","Email: 'Next event is [Date]. 8-week prep program is open now. Spots fill fast: [LINK]'"),
+    t("post7",99,"Revenue","ED+30: Final membership conversion close","Last email to non-member leads. 'This offer expires [Date]. Join us — or wait until next year's event.' Attach their finish photo."),
+  ].filter(x=>x.show&&(x.week>=-c.prepWeeks||x.week===99));
+}
+function buildDailyTasks(c){
+  const on=tag=>c.features?.[tag]!==false;
+  const t=(id,day,cat,title,detail,script=null,tags=[])=>({id,day,cat,title,detail,script,tags,show:tags.every(on)});
+  const byDay={
+    "-14":[t("d14a",-14,"Marketing","Email blast — logistics + waiver reminder","Subject: 'Your DEKA [Event] checklist — read before race day.' Heat time, parking, waiver link, what to bring."),t("d14b",-14,"Marketing","Begin daily countdown posts","Each post: one specific thing to get excited about — the Tank push, a specific athlete rivalry, the leaderboard. Not just 'X days left.'"),t("d14c",-14,"Operations","Confirm food vendor ETA + get a race-day cell number","One last confirmation call. Confirm arrival time, setup spot, and get a number you can text on race morning.",null,["food"]),t("d14d",-14,"Operations","Order all remaining race-day supplies","Zip ties, duct tape, cones, backup wristbands, extra bibs, pens, printed heat sheets.")],
+    "-7":[t("d7a",-7,"Operations","Full staff meeting — roles, timeline, emergency protocol","Walk through the entire day hour-by-hour. Every role assigned. No ambiguity."),t("d7b",-7,"Operations","Re-weigh and tag all implements","Final weight verification. Tag every plate, KB, DB, med ball with colored tape by weight class."),t("d7c",-7,"Marketing","Post 'Who's Ready?' hype graphic","Leaderboard-style graphic with registered athletes. Create a rivalry angle.")],
+    "-3":[t("d3a",-3,"Marketing","SMS blast — all registered athletes","From owner's personal number or gym number. Not email. 98% open rate vs 20%.","Hey [Name], it's [Owner]. Your DEKA race is [Day]. You're in Heat [X] at [Time]. Check in at [Time -15min]. Let's go: [LINK]"),t("d3b",-3,"Marketing","Post full event schedule + athlete names publicly","Gets athletes sharing their heat times. Creates organic reach the week of the event."),t("d3c",-3,"Operations","AED tested + first aid kit stocked","Check battery and pads. Verify expiration dates on all supplies. Post ER address at check-in table.")],
+    "-2":[t("d2a",-2,"Operations","Full equipment build-out + zone numbering","Set all 10 zones. Zone numbers visible from 20 feet. Judge chairs in position. Test every machine. Tape lanes."),t("d2b",-2,"Operations","Registration table tech test","Athlete roster on tablet. Test barcode scanner if using. Print backup heat sheets. Test waiver system."),t("d2c",-2,"Revenue","Merchandise display staged at finish line exit","Merch goes at the ONLY exit from the finish line. Bundle offer cards printed. Pre-orders separated and labeled.",null,["merch"]),t("d2d",-2,"Operations","Sponsor booth spaces marked and tables set","Tape booth perimeters. Tables and chairs in position. Post numbers matching sponsor confirmation doc.",null,["sponsor"])],
+    "-1":[t("d1a",-1,"Operations","Text every volunteer — confirm tomorrow","'See you tomorrow at [Time]. You're at [Zone/Role]. Any questions?' No surprises."),t("d1b",-1,"Marketing","Post behind-the-scenes setup footage","Stories + feed. 'We're ready. Are you?' Creates anticipation for tomorrow."),t("d1c",-1,"Operations","MC script full rehearsal — timed run-through","Time every section. Confirm sponsor mentions (2x per heat). Confirm awards order. MC knows it cold."),t("d1d",-1,"Operations","Stage crew nutrition + water","Staff works 8+ hours. Have food and water at the crew station. Overlooked every time.")],
+    "0":[t("d0a",0,"Operations","6:00 AM — Event Director final walk-through","Every zone: equipment check, weight tags, lane markings, zone numbers visible, judge chairs in position."),t("d0b",0,"Operations","6:30 AM — Volunteer all-hands briefing","5 minutes max. Roles, comms, emergency word ('HOLD'), heat transition protocol. Energy up."),t("d0c",0,"Operations","7:00 AM — Registration opens","Two lines: Pre-registered (fast lane) and Walk-in. Pre-reg flow: name check → bib → wristband."),t("d0d",0,"Operations","7:15 AM — MC sound check + music on","High-energy music from the moment registration opens. MC tests mic at all zones. Merch table opens."),t("d0e",0,"Revenue","7:30 AM — Membership upsell station active","Staffed with tablet + 1-page offer. Approach within 10 minutes of an athlete finishing."),t("d0f",0,"Operations","7:45 AM — Heat 1 athlete briefing (5 min max)","MC: Welcome → DEKA Mark intro → sponsor thanks → judge/athlete check → 3-2-1-GO. Short. High energy. No speeches."),t("d0g",0,"Operations","Between every heat — 15-min transition protocol","Reset equipment → next heat check-in → previous heat leaderboard update → MC bridges energy."),t("d0h",0,"Community","Youth division — MC features each youth athlete by name","Room stops. MC: '[Name] is [age] years old and about to conquer all 10 DEKA zones. Let's make some noise.'",null,["youth"]),t("d0i",0,"Revenue","Awards + raffle draw at close","Sponsor presents awards where possible. Top 3 per division. Raffle drawing. Next event early-bird announced with same-day discount.",null,[]),t("d0j",0,"Community","Owner closing remarks — announce next event date","30-second personal thank-you. Announce the next date. 'Same-day early bird ends tonight. Register before you leave.'")],
+    "1":[t("dp1",1,"Marketing","Post results + finisher photos within 24 hours","Leaderboard screenshot + candid finisher photos. Tag every athlete you can identify."),t("dp2",1,"Operations","Internal debrief email to staff and volunteers","What worked. What didn't. Three improvements for next event. Do this while it's fresh.")]
+  };
+  return Object.entries(byDay).map(([day,tasks])=>({day:Number(day),tasks:tasks.filter(x=>x.show)})).sort((a,b)=>a.day-b.day);
+}
+function applyCustomTasks(baseTasks,customTasks,listKey){
+  if(!customTasks)return baseTasks;
+  const{edits={},deleted=[],added={},order={}}=customTasks;
+  const merged=[...baseTasks,...(added[listKey]||[]).filter(t=>!baseTasks.find(b=>b.id===t.id))]
+    .filter(t=>!deleted.includes(t.id))
+    .map(t=>edits[t.id]?{...t,...edits[t.id]}:t);
+  const savedOrder=order[listKey];
+  if(!savedOrder||!savedOrder.length)return merged;
+  return[...merged].sort((a,b)=>{const ai=savedOrder.indexOf(a.id),bi=savedOrder.indexOf(b.id);if(ai<0&&bi<0)return 0;if(ai<0)return 1;if(bi<0)return-1;return ai-bi;});
+}
+// ─── SHARED STYLE HELPERS ────────────────────────────────────────
+function IS(extra){return`width:100%;background:#1C1C1C;border:1px solid #2C2C2C;border-radius:7px;color:#F0F0F0;font-size:14px;padding:11px 13px;outline:none;${extra||''}`;}
+function LS(){return`display:block;color:#888;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;`;}
+function progBar(val,width,color){
+  return`<div style="width:${width}px;height:4px;background:#2C2C2C;border-radius:2px;overflow:hidden;flex-shrink:0"><div style="height:100%;width:${val}%;background:${color||T.red};border-radius:2px;transition:width 0.3s"></div></div>`;
+}
+function badge(label,color){
+  return`<span style="font-size:9px;background:${color};color:#fff;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:1px">${label}</span>`;
+}
+
+// ─── EXPORT/IMPORT ───────────────────────────────────────────────
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({cfg,checks,preChecks,notes:taskNotes,scores},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=`deka-${cfg.gymName||"event"}-${new Date().toISOString().slice(0,10)}.json`;a.click();
+}
+function importJSON(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.cfg)cfg=d.cfg;if(d.checks)checks=d.checks;if(d.preChecks)preChecks=d.preChecks;if(d.notes)taskNotes=d.notes;if(d.scores)scores=d.scores;
+      render();
+    }catch(err){}
+  };
+  r.readAsText(file);
+}
+function exportPDF(){
+  const doc=new window.jspdf.jsPDF({unit:'pt',format:'letter'});
+  const weekLabel=w=>w===99?"Post-Event":w<0?`ED ${w}`:"Event Day";
+  doc.setFontSize(18);doc.text(cfg.eventName||"DEKA Event",40,40);
+  doc.setFontSize(12);doc.text(`Gym: ${cfg.gymName}`,40,60);doc.text(`Date: ${cfg.eventDate}`,40,74);
+  let y=100;
+  buildTasks(cfg).forEach(t=>{
+    if(y>700){doc.addPage();y=40;}
+    doc.setFontSize(10);doc.text(`${weekLabel(t.week)} - ${t.cat}: ${t.title}`,40,y);y+=14;
+    if(t.detail){const lines=doc.splitTextToSize(t.detail,500);doc.setFontSize(8);doc.text(lines,40,y);y+=lines.length*10+6;}
+  });
+  doc.save(`deka-${cfg.eventName||"event"}-${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// ─── ARCHIVE ─────────────────────────────────────────────────────
+function saveArchive(name){
+  const snap={id:iid(),name,date:new Date().toLocaleDateString(),cfg:JSON.parse(JSON.stringify(cfg)),checks:{...checks},preChecks:{...preChecks},notes:{...taskNotes},scores:{...scores}};
+  archives=[...archives,snap];
+  localStorage.setItem('dekaArchives',JSON.stringify(archives));
+}
+function loadArchive(id){
+  const a=archives.find(x=>x.id===id);if(!a)return;
+  cfg=JSON.parse(JSON.stringify(a.cfg));
+  checks={...(a.checks||{})};preChecks={...(a.preChecks||{})};taskNotes={...(a.notes||{})};scores={...(a.scores||{})};
+  activeTab='dashboard';render();
+}
+function deleteArchive(id){
+  archives=archives.filter(a=>a.id!==id);
+  localStorage.setItem('dekaArchives',JSON.stringify(archives));
+  render();
+}
+
+// ─── MAIN RENDER ─────────────────────────────────────────────────
+function render(){
+  saveState();
+  const app=document.getElementById('app');
+  if(!cfg.setupDone){
+    app.innerHTML=renderSetup();
+    bindSetup();
+  } else {
+    const tasks=buildTasks(cfg);
+    const dailyDays=buildDailyTasks(cfg);
+    const totals=deriveTotals(cfg);
+    const allIds=[...tasks.map(t=>t.id),...dailyDays.flatMap(d=>d.tasks.map(t=>t.id))];
+    const doneCount=allIds.filter(id=>checks[id]).length;
+    const totalCount=allIds.length;
+    const overallPct=pct(doneCount,totalCount);
+    const dLeft=daysDiff(cfg.eventDate);
+    const PRE_TASKS=buildPreTasks();
+    const preApplied=applyCustomTasks(PRE_TASKS,cfg.customTasks,"pre");
+    const presetupDone=preApplied.every(t=>preChecks[t.id]);
+    app.innerHTML=renderShell(cfg,dLeft,overallPct,doneCount,totalCount,presetupDone,tasks,dailyDays,totals);
+    bindApp(tasks,dailyDays,totals,dLeft,overallPct,doneCount,totalCount,presetupDone);
+  }
+}
+// ─── SETUP SCREEN ────────────────────────────────────────────────
+function renderSetup(){
+  const L=setupL||(cfg.setupDone?cfg:mkConfig());
+  if(!setupL)setupL=JSON.parse(JSON.stringify(L));
+  const b=setupL.budget||mkBudget();
+  const cats=setupL.categories||mkDefaultCategories();
+  const feats=setupL.features||{};
+  const totals=deriveTotals(setupL);
+  const ath=totals.totalAthletes;
+  const isHourly=b.staffPayType==="hourly";
+  const staffTotal=setupPaysStaff?(isHourly?(b.staffCount||5)*(b.staffRate||40)*(b.staffHours||8):(b.staffCount||5)*(b.staffRate||40)):0;
+  const ready=setupL.gymName&&setupL.eventDate&&setupL.eventName;
+
+  // Format cards
+  let formatCards='';
+  FORMAT_DEFS.forEach(fd=>{
+    const cat=cats[fd.id]||{};
+    const isOn=cat.enabled;
+    const lanes=cat.lanes||2,eventWindowHrs=cat.eventWindowHrs||3,intervalMin=cat.intervalMin||10;
+    const cap=calcCapacity(lanes,eventWindowHrs,intervalMin);
+    let fmtEntries=0,fmtAthletes=0,fmtGross=0;
+    REG_TYPES.forEach(rt=>{
+      if(rt.feat&&feats[rt.feat]===false)return;
+      const slot=cat.slots?.[rt.id]||{price:0,target:0};
+      const entries=slot.target||0,teamSz=rt.id==="team2"?2:1;
+      fmtEntries+=entries;fmtAthletes+=entries*teamSz;fmtGross+=entries*(slot.price||0);
+    });
+    const overCap=fmtEntries>cap.totalHeats;
+    const nearCap=fmtEntries/cap.totalHeats>=0.8&&!overCap;
+    const capColor=overCap?T.red:nearCap?T.orange:T.green;
+    const pctFill=Math.min(100,Math.round(fmtEntries/Math.max(cap.totalHeats,1)*100));
+    let slotRows='';
+    REG_TYPES.forEach(rt=>{
+      const featOff=rt.feat&&feats[rt.feat]===false;
+      const slot=cat.slots?.[rt.id]||{price:0,target:0};
+      const athletes=slot.target*(rt.id==="team2"?2:1);
+      slotRows+=`<div style="display:grid;grid-template-columns:180px 1fr 1fr;gap:10px;padding:9px 0;border-bottom:1px solid ${T.border}18;align-items:center;opacity:${featOff?0.3:1}">
+        <div><div style="font-size:13px;color:${featOff?T.muted:T.text};font-weight:500">${rt.label}</div><div style="font-size:10px;color:${T.muted}">${rt.id==="team2"?"2 athletes · 1 entry slot":"1 athlete · 1 entry slot"}${featOff?" · feature off":""}</div></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="color:${T.sub};font-size:13px">$</span><input type="number" min="0" max="500" value="${slot.price}" ${featOff?"disabled":""} data-setup-slot="${fd.id}|${rt.id}|price" style="${IS('width:88px;padding:6px 10px;font-size:13px')}"></div>
+        <div style="display:flex;align-items:center;gap:8px"><input type="number" min="0" max="${cap.totalHeats}" value="${slot.target}" ${featOff?"disabled":""} data-setup-slot="${fd.id}|${rt.id}|target" style="${IS(`width:88px;padding:6px 10px;font-size:13px;${overCap?"border-color:rgba(224,32,32,0.5)":""}`)}"><span style="font-size:11px;color:${T.sub};white-space:nowrap">${slot.target>0?athletes+" athlete"+(athletes!==1?"s":""):""}</span></div>
+      </div>`;
+    });
+    const lanesBtns=[1,2,3,4].map(n=>`<button data-setup-catfield="${fd.id}|lanes|${n}" style="flex:1;padding:8px 0;border-radius:5px;border:1px solid ${lanes===n?fd.color:T.border};background:${lanes===n?fd.color+"18":"transparent"};color:${lanes===n?fd.color:T.sub};font-family:'Bebas Neue';font-size:16px;letter-spacing:0.5px;cursor:pointer">${n}</button>`).join('');
+    const winBtns=[2,3,4,5,6,8,10,12].map(n=>`<button data-setup-catfield="${fd.id}|eventWindowHrs|${n}" style="flex:1 1 auto;padding:8px 4px;border-radius:5px;border:1px solid ${eventWindowHrs===n?fd.color:T.border};background:${eventWindowHrs===n?fd.color+"18":"transparent"};color:${eventWindowHrs===n?fd.color:T.sub};font-family:'Bebas Neue';font-size:14px;cursor:pointer">${n}h</button>`).join('');
+    const intBtns=[10,12,15,20].map(n=>`<button data-setup-catfield="${fd.id}|intervalMin|${n}" style="flex:1;padding:8px 0;border-radius:5px;border:1px solid ${intervalMin===n?fd.color:T.border};background:${intervalMin===n?fd.color+"18":"transparent"};color:${intervalMin===n?fd.color:T.sub};font-family:'Bebas Neue';font-size:15px;letter-spacing:0.5px;cursor:pointer">${n}m</button>`).join('');
+    const intNote=intervalMin===20?"typical for MILE — 3/lane/hr":intervalMin===15?"typical for new affiliates — 4/lane/hr":intervalMin===12?"5/lane/hr":intervalMin===10?"aggressive — 6/lane/hr":"";
+    formatCards+=`<div style="border:1px solid ${isOn?fd.color:T.border};border-radius:9px;overflow:hidden;transition:border-color 0.2s">
+      <div data-setup-toggle-format="${fd.id}" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:${isOn?fd.color+"0E":T.panel};cursor:pointer;user-select:none">
+        <div style="width:9px;height:9px;border-radius:50%;background:${isOn?fd.color:T.muted};flex-shrink:0"></div>
+        <div style="flex:1"><span style="font-family:'Bebas Neue';font-size:17px;letter-spacing:1px;color:${isOn?fd.color:T.sub}">${fd.label}</span><span style="font-size:11px;color:${T.muted};margin-left:10px">${fd.desc}</span></div>
+        ${isOn?`<span style="font-size:12px;color:${capColor};font-family:'DM Mono';font-weight:600">${fmtEntries}/${cap.totalHeats} entries</span>`:""}
+        <span style="font-size:10px;letter-spacing:1px;font-weight:700;color:${isOn?fd.color:T.muted};flex-shrink:0">${isOn?"ACTIVE":"OFF"}</span>
+      </div>
+      ${isOn?`<div style="padding:12px 16px 16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;padding:12px 14px;background:${T.panel};border-radius:8px;border:1px solid ${T.border}">
+          <div><label style="${LS()}">Lanes</label><div style="display:flex;gap:4px">${lanesBtns}</div><div style="font-size:10px;color:${T.muted};margin-top:4px">1 set of equipment per lane</div></div>
+          <div><label style="${LS()}">Event Window</label><div style="display:flex;gap:4px;flex-wrap:wrap">${winBtns}</div><div style="font-size:10px;color:${T.muted};margin-top:4px">total time the start window is open (2–12 hrs)</div></div>
+          <div><label style="${LS()}">Start Interval</label><div style="display:flex;gap:4px">${intBtns}</div><div style="font-size:10px;color:${T.muted};margin-top:4px">${intNote}</div></div>
+        </div>
+        <div style="margin-bottom:14px;padding:10px 14px;background:${T.panel};border-radius:8px;border:1px solid ${capColor}40">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:10px;color:${T.muted}">${lanes} lane${lanes>1?"s":""} × ${cap.heatsPerLane} starts/lane (${intervalMin}-min intervals, ${eventWindowHrs}hr window) = <strong style="color:${T.text}">${cap.totalHeats} total heats</strong></span>
+            <span style="font-size:12px;font-weight:700;color:${capColor};font-family:'DM Mono'">${fmtEntries}/${cap.totalHeats} filled ${overCap?"⚠ OVER CAPACITY":nearCap?"NEARLY SOLD OUT":""}</span>
+          </div>
+          <div style="height:6px;background:${T.border};border-radius:3px;overflow:hidden"><div style="height:100%;width:${pctFill}%;background:${capColor};border-radius:3px"></div></div>
+          ${overCap?`<div style="margin-top:8px;font-size:11px;color:${T.red}">⚠ Target entries (${fmtEntries}) exceed available heats (${cap.totalHeats}). Extend the event window, add a lane, or tighten intervals.</div>`:`<div style="margin-top:6px;font-size:10px;color:${T.muted}">e.g. 9:00 · 9:10 · 9:20 · … per lane · ${cap.startsPerHour} starts/hr per lane</div>`}
+        </div>
+        <div style="display:grid;grid-template-columns:180px 1fr 1fr;gap:10px;padding:8px 0 4px;border-bottom:1px solid ${T.border}">
+          <span style="font-size:10px;color:${T.muted};letter-spacing:1px;text-transform:uppercase">Registration Type</span>
+          <span style="font-size:10px;color:${T.muted};letter-spacing:1px;text-transform:uppercase">Price / Entry ($)</span>
+          <span style="font-size:10px;color:${T.muted};letter-spacing:1px;text-transform:uppercase">Target Entries</span>
+        </div>
+        ${slotRows}
+      </div>`:""}
+    </div>`;
+  });
+
+  // Live totals preview
+  let totalsPreview='';
+  if(totals.totalAthletes>0){
+    const byFmtBadges=totals.byFormat.map(f=>`<div style="background:${T.surface};border-radius:6px;padding:8px 12px;border-left:2px solid ${f.color}"><div style="font-size:11px;color:${f.color};font-weight:600;letter-spacing:0.5px">${f.label}</div><div style="font-size:11px;color:${T.sub}">${f.athletes} athletes · ${f.entries} entries · $${f.gross.toLocaleString()}</div></div>`).join('');
+    totalsPreview=`<div style="background:${T.panel};border:1px solid ${T.green}30;border-radius:10px;padding:16px 20px">
+      <div style="font-family:'Bebas Neue';font-size:12px;letter-spacing:2px;color:${T.green};margin-bottom:12px">LIVE TOTALS PREVIEW</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+        ${[{label:"Total Athletes",val:totals.totalAthletes,color:T.blue},{label:"Total Heats",val:totals.byFormat.reduce((s,f)=>s+f.capacity.totalHeats,0),color:T.orange},{label:"Gross Tickets",val:"$"+totals.grossRevenue.toLocaleString(),color:T.sub},{label:"Your 60%",val:"$"+totals.hostRevTickets.toLocaleString(),color:T.green}].map(m=>`<div style="text-align:center;background:${T.surface};border-radius:8px;padding:10px"><div style="font-family:'Bebas Neue';font-size:26px;color:${m.color};letter-spacing:1px;line-height:1">${m.val}</div><div style="font-size:10px;color:${T.sub};margin-top:4px;letter-spacing:0.5px">${m.label}</div></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${byFmtBadges}</div>
+    </div>`;
+  }
+
+  // Financial forecast
+  const iTix=totals.hostRevTickets||0;
+  const iMerch=feats.merch!==false?Math.round(ath*(b.merchRevPPA||28)):0;
+  const iSpon=feats.sponsor!==false?(b.sponsorCount||5)*(b.sponsorAvg||500):0;
+  const iFood=feats.food!==false?Math.round(ath*(b.foodSpendPPA||18)):0;
+  const iRaff=feats.raffle!==false?Math.round(ath*(b.rafflePPA||8)):0;
+  const totInc=iTix+iMerch+iSpon+iFood+iRaff;
+  const eMerch=feats.merch!==false?(b.merchCost||0):0;
+  const eFood=feats.food!==false?(b.foodCost||0):0;
+  const eFixed=(b.giveaways||0)+(b.marketingSpend||0)+(b.equipmentRent||0)+(b.venueExtra||0)+(b.miscExpenses||0);
+  const totExp=staffTotal+eMerch+eFood+eFixed;
+  const net=totInc-totExp;
+  const nc=net>0?T.green:net<0?T.red:T.sub;
+
+  // event duration
+  let durationBanner='';
+  if(setupL.eventStart&&setupL.eventEnd){
+    const[sh,sm]=setupL.eventStart.split(":").map(Number);const[eh,em]=setupL.eventEnd.split(":").map(Number);
+    const totalMins=(eh*60+em)-(sh*60+sm);
+    if(totalMins>0){
+      const hrs=Math.floor(totalMins/60),mins=totalMins%60;
+      const fmt12=t=>{const[h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";return`${h%12||12}:${String(m).padStart(2,"0")} ${ap}`;};
+      durationBanner=`<div style="margin-top:12px;padding:10px 14px;background:rgba(43,127,224,0.07);border:1px solid rgba(43,127,224,0.2);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:${T.sub}">${fmt12(setupL.eventStart)} → ${fmt12(setupL.eventEnd)}</span>
+        <span style="font-family:'Bebas Neue';font-size:22px;color:${T.blue};letter-spacing:1px">${hrs>0?hrs+"h ":""}${mins>0?mins+"m":""} total event</span>
+      </div>`;
+    }
+  }
+
+  return`<div style="min-height:100vh;background:${T.bg};overflow-y:auto;padding:40px 20px 80px">
+  <div style="width:100%;max-width:800px;margin:0 auto" class="fade-in">
+    <div style="margin-bottom:12px;text-align:left">
+      <a href="index.html" style="font-size:12px;color:${T.sub};text-decoration:none">← Portfolio Dashboard</a>
+    </div>
+    <div style="margin-bottom:36px;text-align:center">
+      <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:14px">
+        <div style="width:34px;height:34px;background:${T.red};border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="font-family:'Bebas Neue';font-size:19px;color:#fff">D</span></div>
+        <span style="font-family:'Bebas Neue';font-size:13px;letter-spacing:4px;color:${T.sub}">EVENT HOST SYSTEM</span>
+      </div>
+      <h1 style="font-family:'Bebas Neue';font-size:52px;letter-spacing:2px;color:${T.text};line-height:1">EVENT SETUP</h1>
+      <p style="color:${T.sub};margin-top:10px;font-size:14px">Configure your formats, lanes, categories, and pricing. Your playbook adapts automatically.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <!-- EVENT INFO -->
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:20px">
+        <div style="font-family:'Bebas Neue';font-size:12px;letter-spacing:2px;color:${T.red};margin-bottom:14px">EVENT INFO</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div><label style="${LS()}">Gym / Facility Name</label><input data-setup="gymName" type="text" value="${escH(setupL.gymName||'')}" placeholder="e.g. Iron North Fitness" style="${IS()}"></div>
+          <div><label style="${LS()}">Your Name</label><input data-setup="ownerName" type="text" value="${escH(setupL.ownerName||'')}" placeholder="Owner or coordinator" style="${IS()}"></div>
+          <div><label style="${LS()}">Event Name</label><input data-setup="eventName" type="text" value="${escH(setupL.eventName||'')}" placeholder="e.g. DEKA Iron North 2026" style="${IS()}"></div>
+          <div><label style="${LS()}">Event Date</label><input data-setup="eventDate" type="date" value="${setupL.eventDate||''}" style="${IS()}"></div>
+          <div><label style="${LS()}">Preparation Weeks</label><input data-setup="prepWeeks" type="number" min="4" max="12" value="${setupL.prepWeeks||12}" style="${IS()}"></div>
+          <div><label style="${LS()}">Event Start Time</label><input data-setup="eventStart" type="time" value="${setupL.eventStart||'09:00'}" style="${IS()}"></div>
+          <div><label style="${LS()}">Event End Time</label><input data-setup="eventEnd" type="time" value="${setupL.eventEnd||'17:00'}" style="${IS()}"></div>
+        </div>
+        ${durationBanner}
+      </div>
+      <!-- LANE EXPLAINER -->
+      <div style="background:rgba(43,127,224,0.07);border:1px solid rgba(43,127,224,0.2);border-radius:9px;padding:14px 18px">
+        <div style="font-family:'Bebas Neue';font-size:12px;letter-spacing:2px;color:${T.blue};margin-bottom:8px">HOW LANES & HEATS WORK</div>
+        <p style="font-size:12px;color:${T.sub};line-height:1.75;margin:0">A <strong style="color:${T.text}">lane</strong> is one complete set of equipment for all 10 zones. A <strong style="color:${T.text}">heat</strong> is each individual start. Total heats = floor(eventWindowMins / intervalMin). Total capacity = lanes × heats per lane.<br><br>Example: 2 lanes, 3-hr window, 10-min intervals → heats/lane = 18 → total capacity = 36 athletes</p>
+      </div>
+      <!-- FORMAT CARDS -->
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:20px">
+        <div style="font-family:'Bebas Neue';font-size:12px;letter-spacing:2px;color:${T.red};margin-bottom:14px">EVENT FORMATS — LANES, CAPACITY & PRICING</div>
+        <p style="font-size:12px;color:${T.sub};margin-bottom:16px;line-height:1.6">Toggle each format on or off. Set lanes, heats, and pricing per registration type.</p>
+        <div style="display:flex;flex-direction:column;gap:12px" id="format-cards">${formatCards}</div>
+      </div>
+      ${totalsPreview}
+      <!-- REVENUE STREAMS -->
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:20px">
+        <div style="font-family:'Bebas Neue';font-size:12px;letter-spacing:2px;color:${T.red};margin-bottom:14px">REVENUE STREAMS & BUDGET</div>
+        <p style="font-size:12px;color:${T.sub};margin-bottom:20px;line-height:1.6">Answer each question to build your financial forecast. Your playbook task list adapts automatically based on your selections.</p>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${renderSetupMerch(feats,b,ath)}
+          ${renderSetupSponsor(feats,b)}
+          ${renderSetupStaff(feats,b,isHourly,staffTotal)}
+          ${renderSetupFood(feats,b,ath)}
+          ${renderSetupRaffle(feats,b,ath)}
+          ${renderSetupRegOptions(feats)}
+          ${renderSetupFixedCosts(b)}
+          ${renderSetupForecast(feats,b,totals,iTix,iMerch,iSpon,iFood,iRaff,totInc,staffTotal,eMerch,eFood,eFixed,totExp,net,nc,ath)}
+        </div>
+      </div>
+      <button id="setup-submit" style="padding:15px;background:${ready?T.red:T.muted};color:#fff;border:none;border-radius:8px;font-family:'Bebas Neue';font-size:22px;letter-spacing:3px;cursor:${ready?"pointer":"not-allowed"};transition:background 0.2s">${ready?"BUILD MY PLAYBOOK →":"Fill in Gym Name, Event Name and Date to continue"}</button>
+    </div>
+  </div>
+</div>`;
+}
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function ynBtn(active,color,key,val){return`<button data-setup-feat="${key}|${val}" style="padding:8px 20px;border-radius:6px;font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;cursor:pointer;border:1px solid ${active?color:T.border};background:${active?color+"20":"transparent"};color:${active?color:T.sub};transition:all 0.15s">${val==="true"?"YES":"NO"}</button>`;}
+function ynBtnSm(active,color,key,val){return`<button data-setup-feat="${key}|${val}" style="padding:5px 14px;border-radius:5px;font-family:'Bebas Neue';font-size:13px;letter-spacing:1px;cursor:pointer;border:1px solid ${active?color:T.border};background:${active?color+"20":"transparent"};color:${active?color:T.sub};transition:all 0.15s">${val==="true"?"YES":"NO"}</button>`;}
+
+function renderSetupMerch(feats,b,ath){
+  const on=feats.merch!==false;
+  const inc=on?Math.round(ath*(b.merchRevPPA||28)):0;
+  return`<div style="background:${T.surface};border:1px solid ${on?T.orange:T.borderHi};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:${T.panel};gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${on?T.orange:T.sub};margin-bottom:4px">MERCHANDISE</div><div style="font-size:13px;color:${T.text};line-height:1.4">Will you sell branded merchandise at your event?</div><div style="font-size:11px;color:${T.muted};margin-top:2px">shirts, hats, stickers, patches, etc.</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">${ynBtn(on,T.green,"merch","true")}${ynBtn(!on,T.red,"merch","false")}</div>
+    </div>
+    ${on?`<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px" class="fade-in">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="${LS()}">Cost to stock your inventory ($)</label><input type="number" min="0" data-setup-budget="merchCost" value="${b.merchCost||0}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">What you pay to buy or print the merch</div></div>
+        <div><label style="${LS()}">Expected avg purchase per athlete ($)</label><input type="number" min="0" data-setup-budget="merchRevPPA" value="${b.merchRevPPA||28}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">Industry avg: $25–$35 per athlete</div></div>
+      </div>
+      ${ath>0?`<div style="padding:9px 13px;background:${T.panel};border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:${T.sub}">${ath} athletes × $${b.merchRevPPA||28} avg = projected merch revenue</span><span style="font-family:'Bebas Neue';font-size:22px;color:${T.orange};letter-spacing:1px">$${inc.toLocaleString()}</span></div>`:""}
+    </div>`:""}
+  </div>`;
+}
+function renderSetupSponsor(feats,b){
+  const on=feats.sponsor!==false;
+  const proj=(b.sponsorCount||5)*(b.sponsorAvg||500);
+  return`<div style="background:${T.surface};border:1px solid ${on?T.gold:T.borderHi};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:${T.panel};gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${on?T.gold:T.sub};margin-bottom:4px">SPONSORS & VENDORS</div><div style="font-size:13px;color:${T.text};line-height:1.4">Will you look to get sponsors or vendor partners?</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">${ynBtn(on,T.green,"sponsor","true")}${ynBtn(!on,T.red,"sponsor","false")}</div>
+    </div>
+    ${on?`<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px" class="fade-in">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="${LS()}">How many sponsors are you targeting?</label><input type="number" min="0" max="20" data-setup-budget="sponsorCount" value="${b.sponsorCount||5}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">Goal: 1 Title, 2 Silver, 2 Bronze = 5 sponsors</div></div>
+        <div><label style="${LS()}">Average contribution per sponsor ($)</label><input type="number" min="0" data-setup-budget="sponsorAvg" value="${b.sponsorAvg||500}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">Title: $1,500+ · Silver: $500 · Bronze: $250</div></div>
+      </div>
+      <div style="padding:9px 13px;background:${T.panel};border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:${T.sub}">${b.sponsorCount||5} sponsors × $${(b.sponsorAvg||500).toLocaleString()} avg = projected sponsorship</span><span style="font-family:'Bebas Neue';font-size:22px;color:${T.gold};letter-spacing:1px">$${proj.toLocaleString()}</span></div>
+    </div>`:""}
+  </div>`;
+}
+function renderSetupStaff(feats,b,isHourly,staffTotal){
+  const on=setupPaysStaff;
+  return`<div style="background:${T.surface};border:1px solid ${on?T.blue:T.borderHi};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:${T.panel};gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${on?T.blue:T.sub};margin-bottom:4px">STAFF & JUDGES</div><div style="font-size:13px;color:${T.text};line-height:1.4">Will you pay your judges and staff?</div><div style="font-size:11px;color:${T.muted};margin-top:2px">cash, gift cards, or comp memberships</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button id="staff-yes" style="padding:8px 20px;border-radius:6px;font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;cursor:pointer;border:1px solid ${on?T.green:T.border};background:${on?"rgba(29,185,84,0.15)":"transparent"};color:${on?T.green:T.sub}">YES</button>
+        <button id="staff-no" style="padding:8px 20px;border-radius:6px;font-family:'Bebas Neue';font-size:15px;letter-spacing:1px;cursor:pointer;border:1px solid ${!on?T.red:T.border};background:${!on?"rgba(224,32,32,0.15)":"transparent"};color:${!on?T.red:T.sub}">NO</button>
+      </div>
+    </div>
+    ${on?`<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px" class="fade-in">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="${LS()}">How many judges / staff do you need?</label><input type="number" min="1" max="50" data-setup-budget="staffCount" value="${b.staffCount||5}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">1 judge per zone per lane + reg desk + floaters</div></div>
+        <div><label style="${LS()}">Pay structure</label>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button data-setup-stafftype="flat" style="flex:1;padding:10px 6px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ${!isHourly?T.blue:T.border};background:${!isHourly?"rgba(43,127,224,0.15)":"transparent"};color:${!isHourly?T.blue:T.sub}">Flat / Person</button>
+            <button data-setup-stafftype="hourly" style="flex:1;padding:10px 6px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ${isHourly?T.blue:T.border};background:${isHourly?"rgba(43,127,224,0.15)":"transparent"};color:${isHourly?T.blue:T.sub}">Hourly Rate</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:${isHourly?"1fr 1fr":"1fr"};gap:12px">
+        <div><label style="${LS()}">${isHourly?"Hourly rate per staff member ($)":"Amount per staff member ($)"}</label><input type="number" min="0" data-setup-budget="staffRate" value="${b.staffRate||40}" style="${IS()}"></div>
+        ${isHourly?`<div><label style="${LS()}">Estimated hours per staff member</label><input type="number" min="1" max="16" data-setup-budget="staffHours" value="${b.staffHours||8}" style="${IS()}"></div>`:""}
+      </div>
+      <div style="padding:9px 13px;background:${T.panel};border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:${T.sub}">${b.staffCount||5} staff × $${b.staffRate||40}${isHourly?"/hr × "+(b.staffHours||8)+" hrs":" flat"} = total staff cost</span><span style="font-family:'Bebas Neue';font-size:22px;color:${T.blue};letter-spacing:1px">$${staffTotal.toLocaleString()}</span></div>
+    </div>`:""}
+  </div>`;
+}
+function renderSetupFood(feats,b,ath){
+  const on=feats.food!==false;
+  const inc=on?Math.round(ath*(b.foodSpendPPA||18)):0;
+  return`<div style="background:${T.surface};border:1px solid ${on?T.green:T.borderHi};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:${T.panel};gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${on?T.green:T.sub};margin-bottom:4px">FOOD & DRINKS</div><div style="font-size:13px;color:${T.text};line-height:1.4">Will you offer food or drinks for purchase at your event?</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">${ynBtn(on,T.green,"food","true")}${ynBtn(!on,T.red,"food","false")}</div>
+    </div>
+    ${on?`<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px" class="fade-in">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label style="${LS()}">Total cost to stock food & drinks ($)</label><input type="number" min="0" data-setup-budget="foodCost" value="${b.foodCost||0}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">What you spend buying everything you'll sell</div></div>
+        <div><label style="${LS()}">Expected avg athlete spend on food ($)</label><input type="number" min="0" data-setup-budget="foodSpendPPA" value="${b.foodSpendPPA||18}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">How much each athlete typically spends</div></div>
+      </div>
+      ${ath>0?`<div style="padding:9px 13px;background:${T.panel};border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:${T.sub}">${ath} athletes × $${b.foodSpendPPA||18} avg = projected food revenue</span><span style="font-family:'Bebas Neue';font-size:22px;color:${T.green};letter-spacing:1px">$${inc.toLocaleString()}</span></div>`:""}
+    </div>`:""}
+  </div>`;
+}
+function renderSetupRaffle(feats,b,ath){
+  const on=feats.raffle!==false;
+  const inc=on?Math.round(ath*(b.rafflePPA||8)):0;
+  return`<div style="background:${T.surface};border:1px solid ${on?"#A855F7":T.borderHi};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:${T.panel};gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${on?"#A855F7":T.sub};margin-bottom:4px">RAFFLE</div><div style="font-size:13px;color:${T.text};line-height:1.4">Will you run a raffle at your event?</div></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">${ynBtn(on,T.green,"raffle","true")}${ynBtn(!on,T.red,"raffle","false")}</div>
+    </div>
+    ${on?`<div style="padding:16px 20px;display:flex;flex-direction:column;gap:14px" class="fade-in">
+      <div><label style="${LS()}">Expected raffle revenue per athlete ($)</label><input type="number" min="0" max="50" data-setup-budget="rafflePPA" value="${b.rafflePPA||8}" style="${IS('max-width:220px')}"><div style="font-size:10px;color:${T.muted};margin-top:4px">Tickets at $5 each or 3 for $10. Industry avg: $6–$12/person.</div></div>
+      ${ath>0?`<div style="padding:9px 13px;background:${T.panel};border-radius:7px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:${T.sub}">${ath} athletes × $${b.rafflePPA||8} avg = projected raffle revenue</span><span style="font-family:'Bebas Neue';font-size:22px;color:#A855F7;letter-spacing:1px">$${inc.toLocaleString()}</span></div>`:""}
+    </div>`:""}
+  </div>`;
+}
+function renderSetupRegOptions(feats){
+  const opts=[{k:"team",label:"2-Person Teams",desc:"Adds team registration slots (2 athletes, 1 entry) and team-related playbook tasks"},{k:"youth",label:"Youth Athletes (10+)",desc:"Adds a youth division with age-appropriate judging protocols and special MC moment"},{k:"vip",label:"VIP / Elite Heat",desc:"Priority check-in, dedicated judge, reserved spots — charge a $20 premium"}];
+  const rows=opts.map((f,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:${i<opts.length-1?`1px solid ${T.border}`:"none"};gap:12px">
+    <div style="flex:1"><div style="font-size:13px;font-weight:500;color:${T.text}">${f.label}</div><div style="font-size:11px;color:${T.muted};margin-top:2px">${f.desc}</div></div>
+    <div style="display:flex;gap:5px;flex-shrink:0">${ynBtnSm(feats[f.k]!==false,T.green,f.k,"true")}${ynBtnSm(feats[f.k]===false,T.red,f.k,"false")}</div>
+  </div>`).join('');
+  return`<div style="background:${T.surface};border:1px solid ${T.borderHi};border-radius:10px;overflow:hidden">
+    <div style="padding:14px 20px;background:${T.panel};border-bottom:1px solid ${T.border}"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.sub};margin-bottom:2px">REGISTRATION OPTIONS</div><div style="font-size:12px;color:${T.muted}">These add related tasks to your playbook and registration slots to your event capacity.</div></div>
+    <div style="padding:4px 20px">${rows}</div>
+  </div>`;
+}
+function renderSetupFixedCosts(b){
+  const fields=[{label:"Awards & Giveaways ($)",k:"giveaways",note:"Podium awards, raffle prizes, sponsor gifts"},{label:"Marketing & Signage ($)",k:"marketingSpend",note:"Ads, printing, banners, social promotion"},{label:"Equipment Rental / Gaps ($)",k:"equipmentRent",note:"Gear you need to rent or borrow to meet DEKA standards"},{label:"Venue / Facility Extra ($)",k:"venueExtra",note:"Any space cost beyond your own gym"},{label:"Misc Day-Of Expenses ($)",k:"miscExpenses",note:"Tape, zip ties, cups, printing, last-minute supplies"}];
+  const rows=fields.map(f=>`<div><label style="${LS()}">${f.label}</label><input type="number" min="0" data-setup-budget="${f.k}" value="${(b[f.k]??0)}" style="${IS()}"><div style="font-size:10px;color:${T.muted};margin-top:4px">${f.note}</div></div>`).join('');
+  return`<div style="background:${T.surface};border:1px solid ${T.borderHi};border-radius:10px;overflow:hidden">
+    <div style="padding:14px 20px;background:${T.panel};border-bottom:1px solid ${T.border}"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.sub};margin-bottom:2px">FIXED EVENT COSTS</div><div style="font-size:12px;color:${T.muted}">Standard costs that apply to every event regardless of revenue stream choices.</div></div>
+    <div style="padding:16px 20px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${rows}</div></div>
+  </div>`;
+}
+function renderSetupForecast(feats,b,totals,iTix,iMerch,iSpon,iFood,iRaff,totInc,staffTotal,eMerch,eFood,eFixed,totExp,net,nc,ath){
+  const incRows=[{label:"Ticket Revenue (your 60%)",val:iTix,sub:"DEKA keeps 40% of gross tickets",always:true},{label:"Merchandise",val:iMerch,show:feats.merch!==false},{label:`Sponsorships (${b.sponsorCount||5} × $${b.sponsorAvg||500})`,val:iSpon,show:feats.sponsor!==false},{label:"Food Revenue",val:iFood,show:feats.food!==false},{label:"Raffle",val:iRaff,show:feats.raffle!==false}].filter(r=>r.always||r.show).map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid ${T.border}20"><div><div style="font-size:12px;color:${T.sub}">${r.label}</div>${r.sub?`<div style="font-size:10px;color:${T.muted}">${r.sub}</div>`:""}</div><span style="font-family:'Bebas Neue';font-size:18px;color:${r.val>0?T.green:T.muted};letter-spacing:0.5px">$${r.val.toLocaleString()}</span></div>`).join('');
+  const expItems=[{label:`Staff & Judges (${b.staffCount||5} people)`,val:staffTotal,show:setupPaysStaff},{label:"Merch Inventory",val:eMerch,show:feats.merch!==false&&eMerch>0},{label:"Food & Drinks Cost",val:eFood,show:feats.food!==false&&eFood>0},{label:"Awards & Giveaways",val:b.giveaways||0,always:true},{label:"Marketing & Signage",val:b.marketingSpend||0,always:true},{label:"Equipment Rental",val:b.equipmentRent||0,show:(b.equipmentRent||0)>0},{label:"Venue Extra",val:b.venueExtra||0,show:(b.venueExtra||0)>0},{label:"Misc Day-Of",val:b.miscExpenses||0,always:true}].filter(r=>r.always||r.show).map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid ${T.border}20"><span style="font-size:12px;color:${T.sub}">${r.label}</span><span style="font-family:'Bebas Neue';font-size:18px;color:${r.val>0?T.orange:T.muted};letter-spacing:0.5px">−$${r.val.toLocaleString()}</span></div>`).join('');
+  return`<div style="background:${T.surface};border:2px solid ${nc}40;border-radius:10px;overflow:hidden">
+    <div style="padding:14px 20px;background:${T.panel};border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;color:${T.text}">FINANCIAL FORECAST</div>
+      ${ath===0?`<span style="font-size:11px;color:${T.orange}">Set athlete targets in the format section above to see full projections</span>`:""}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+      <div style="padding:16px 20px;border-right:1px solid ${T.border}">
+        <div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:10px">PROJECTED INCOME</div>
+        ${incRows}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid ${T.border}"><span style="font-size:11px;font-weight:600;color:${T.sub};letter-spacing:0.5px">TOTAL INCOME</span><span style="font-family:'Bebas Neue';font-size:28px;color:${T.green};letter-spacing:1px">$${totInc.toLocaleString()}</span></div>
+      </div>
+      <div style="padding:16px 20px">
+        <div style="font-size:10px;color:${T.orange};letter-spacing:1.5px;font-weight:700;margin-bottom:10px">ESTIMATED EXPENSES</div>
+        ${expItems}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid ${T.border}"><span style="font-size:11px;font-weight:600;color:${T.sub};letter-spacing:0.5px">TOTAL EXPENSES</span><span style="font-family:'Bebas Neue';font-size:28px;color:${T.orange};letter-spacing:1px">$${totExp.toLocaleString()}</span></div>
+      </div>
+    </div>
+    <div style="padding:16px 20px;border-top:1px solid ${T.border};background:${T.panel};text-align:center">
+      <div style="font-size:10px;color:${T.sub};letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Projected Net Profit</div>
+      <div style="font-family:'Bebas Neue';font-size:52px;color:${nc};letter-spacing:2px;line-height:1">${net>=0?"":"-"}$${Math.abs(net).toLocaleString()}</div>
+      <div style="font-size:11px;color:${T.muted};margin-top:6px">$${totInc.toLocaleString()} income − $${totExp.toLocaleString()} expenses</div>
+      ${net<0?`<div style="margin-top:8px;font-size:12px;color:${T.red}">⚠ Increase athlete targets, add sponsors, or reduce costs to reach profitability.</div>`:""}
+      ${net>0&&net<500?`<div style="margin-top:8px;font-size:12px;color:${T.orange}">Thin margin. Consider adding non-ticket revenue or reducing variable costs.</div>`:""}
+    </div>
+  </div>`;
+}
+function bindSetup(){
+  // Basic text/date/number fields
+  document.querySelectorAll('[data-setup]').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const k=e.target.dataset.setup;
+      setupL[k]=e.target.type==='number'?Number(e.target.value):e.target.value;
+      if(k==='eventDate'&&setupL.eventDate){const w=clamp(Math.ceil(daysDiff(setupL.eventDate)/7),4,12);setupL.prepWeeks=w;}
+      render();
+    });
+  });
+  // Budget fields
+  document.querySelectorAll('[data-setup-budget]').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const k=e.target.dataset.setupBudget;
+      setupL.budget[k]=Number(e.target.value);
+      render();
+    });
+  });
+  // Feature toggles
+  document.querySelectorAll('[data-setup-feat]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      const[k,v]=e.target.dataset.setupFeat.split('|');
+      setupL.features[k]=(v==='true');
+      render();
+    });
+  });
+  // Format toggle
+  document.querySelectorAll('[data-setup-toggle-format]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      const fid=e.currentTarget.dataset.setupToggleFormat;
+      setupL.categories[fid].enabled=!setupL.categories[fid].enabled;
+      render();
+    });
+  });
+  // Format category fields (lanes/window/interval)
+  document.querySelectorAll('[data-setup-catfield]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      const[fid,field,val]=e.currentTarget.dataset.setupCatfield.split('|');
+      setupL.categories[fid][field]=Math.max(1,Number(val));
+      render();
+    });
+  });
+  // Slot inputs (price/target)
+  document.querySelectorAll('[data-setup-slot]').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const[fid,rid,field]=e.target.dataset.setupSlot.split('|');
+      if(!setupL.categories[fid].slots[rid])setupL.categories[fid].slots[rid]={price:0,target:0};
+      setupL.categories[fid].slots[rid][field]=Math.max(0,Number(e.target.value));
+      render();
+    });
+  });
+  // Staff pay type
+  document.querySelectorAll('[data-setup-stafftype]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      setupL.budget.staffPayType=e.currentTarget.dataset.setupStafftype;
+      render();
+    });
+  });
+  // Staff yes/no
+  const sy=document.getElementById('staff-yes');const sn=document.getElementById('staff-no');
+  if(sy)sy.addEventListener('click',()=>{setupPaysStaff=true;if(!(setupL.budget.staffCount>0))setupL.budget.staffCount=5;render();});
+  if(sn)sn.addEventListener('click',()=>{setupPaysStaff=false;render();});
+  // Submit
+  const sub=document.getElementById('setup-submit');
+  if(sub)sub.addEventListener('click',()=>{
+    if(!(setupL.gymName&&setupL.eventDate&&setupL.eventName))return;
+    const b=setupL.budget||mkBudget();
+    const isHourly=b.staffPayType==="hourly";
+    const staffTotal=setupPaysStaff?(isHourly?(b.staffCount||5)*(b.staffRate||40)*(b.staffHours||8):(b.staffCount||5)*(b.staffRate||40)):0;
+    cfg={...setupL,budget:{...b,staffPay:staffTotal,sponsorTotal:(setupL.features?.sponsor!==false?(b.sponsorCount||5)*(b.sponsorAvg||500):0),foodRevShare:100},setupDone:true};
+    setupL=null;
+    activeTab='dashboard';
+    render();
+  });
+}
+
+// ─── MAIN APP SHELL ──────────────────────────────────────────────
+function renderShell(cfg,dLeft,overallPct,doneCount,totalCount,presetupDone,tasks,dailyDays,totals){
+  return`<div style="display:flex;flex-direction:column;min-height:100vh">
+    ${renderTopBar(cfg,dLeft,overallPct,doneCount,totalCount)}
+    ${renderNav(presetupDone,cfg)}
+    <main style="flex:1;max-width:1120px;width:100%;margin:0 auto;padding:28px 20px 100px">
+      ${renderTabContent(tasks,dailyDays,totals,dLeft,overallPct,doneCount,totalCount,presetupDone)}
+    </main>
+  </div>
+  <input type="file" id="file-input" accept=".json" style="display:none">`;
+}
+
+function renderTopBar(cfg,dLeft,overallPct,doneCount,totalCount){
+  const urgent=dLeft!==null&&dLeft<=14&&dLeft>=0;
+  const col=dLeft===null?T.sub:dLeft<=7?T.red:dLeft<=21?T.orange:T.green;
+  const barColor=overallPct>70?T.green:overallPct>40?T.orange:T.red;
+  return`<header style="background:${T.surface};border-bottom:1px solid ${T.border};position:sticky;top:0;z-index:100">
+    <div style="max-width:1120px;margin:0 auto;padding:0 20px;height:56px;display:flex;align-items:center;gap:16px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <a href="index.html" style="font-size:11px;color:${T.sub};text-decoration:none;white-space:nowrap">← Portfolio</a>
+        <div style="width:1px;height:20px;background:${T.border}"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:30px;height:30px;background:${T.red};border-radius:5px;display:flex;align-items:center;justify-content:center"><span style="font-family:'Bebas Neue';font-size:18px;color:#fff">D</span></div>
+        <div style="line-height:1.2">
+          <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:${T.text}">${escH(cfg.gymName||"DEKA EVENT")}</div>
+          <div style="font-size:11px;color:${T.sub}">${escH(cfg.eventName||"")}</div>
+        </div>
+      </div>
+      <div style="flex:1"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:${T.sub};font-family:'DM Mono'">${doneCount}/${totalCount}</span>
+        <div style="width:100px;height:4px;background:${T.border};border-radius:2px;overflow:hidden"><div style="height:100%;width:${overallPct}%;background:${barColor};border-radius:2px"></div></div>
+        <span style="font-size:11px;color:${T.sub};font-family:'DM Mono'">${overallPct}%</span>
+      </div>
+      ${dLeft!==null?`<div style="display:flex;flex-direction:column;align-items:center;padding:4px 12px;background:${T.panel};border-radius:6px;border:1px solid ${urgent?T.red:T.border}"><span style="font-family:'Bebas Neue';font-size:22px;color:${col};line-height:1;letter-spacing:1px">${dLeft}</span><span style="font-size:9px;color:${T.sub};letter-spacing:1.5px">DAYS OUT</span></div>`:""}
+      <button id="btn-export-json" style="${BSM_style}">💾 Export</button>
+      <button id="btn-export-pdf" style="${BSM_style}">📄 PDF</button>
+      <button id="btn-import" style="${BSM_style}">📂 Import</button>
+      <button id="btn-settings" style="${BSM_style}">⚙️</button>
+    </div>
+  </header>`;
+}
+function BSM_style(){return`background:transparent;border:1px solid #2C2C2C;color:#888;border-radius:6px;padding:6px 11px;font-size:12px;letter-spacing:0.3px;cursor:pointer;`;}
+
+function renderNav(presetupDone,cfg){
+  const TABS=[
+    {id:"presetup",label:"Pre-Event Setup",icon:"🔧"},
+    {id:"dashboard",label:"Dashboard",icon:"⚡"},
+    {id:"checklist",label:`${cfg?.prepWeeks||12}-Week Plan`,icon:"📋"},
+    {id:"daily",label:"Final 14-Day Plan",icon:"🗓"},
+    {id:"scorecard",label:"Scorecard",icon:"📊"},
+    {id:"social",label:"Social",icon:"📱"},
+    {id:"revenue",label:"Revenue & Budget",icon:"💰"},
+    {id:"playbook",label:"Complete Playbook",icon:"📖"},
+    {id:"hub",label:"Links & Notes",icon:"🔗"},
+    {id:"archives",label:"Archives",icon:"📁"},
+    {id:"templates",label:"Templates",icon:"✉"},
+  ];
+  const tabs=TABS.map(t=>`<button data-tab="${t.id}" style="background:transparent;border:none;border-bottom:2px solid ${activeTab===t.id?T.red:"transparent"};color:${activeTab===t.id?T.text:T.sub};padding:13px 16px;font-size:13px;font-weight:500;letter-spacing:0.3px;white-space:nowrap;transition:all 0.15s;position:relative;cursor:pointer">${t.icon} ${t.label}${t.id==="presetup"&&!presetupDone?`<span style="position:absolute;top:10px;right:6px;width:6px;height:6px;border-radius:50%;background:${T.orange}"></span>`:""}</button>`).join('');
+  return`<nav style="background:${T.surface};border-bottom:1px solid ${T.border};overflow-x:auto"><div style="max-width:1120px;margin:0 auto;padding:0 20px;display:flex">${tabs}</div></nav>`;
+}
+
+function renderTabContent(tasks,dailyDays,totals,dLeft,overallPct,doneCount,totalCount,presetupDone){
+  if(activeTab==="presetup")return renderPreEventSetup();
+  if(activeTab==="dashboard")return renderDashboard(tasks,dailyDays,dLeft,overallPct,doneCount,totalCount,totals,presetupDone);
+  if(activeTab==="checklist")return renderChecklist(tasks);
+  if(activeTab==="daily")return renderDailyMgr(dailyDays);
+  if(activeTab==="scorecard")return renderScorecard();
+  if(activeTab==="social")return renderSocial();
+  if(activeTab==="revenue")return renderRevCalc(totals);
+  if(activeTab==="playbook")return renderPlaybook(tasks,dailyDays);
+  if(activeTab==="hub")return renderHub();
+  if(activeTab==="archives")return renderArchives();
+  if(activeTab==="templates")return renderTemplates();
+  return'';
+}
+// ─── PRE-EVENT SETUP TAB ─────────────────────────────────────────
+function renderPreEventSetup(){
+  const baseTasks=buildPreTasks();
+  const tasks=applyCustomTasks(baseTasks,cfg.customTasks,"pre");
+  const cats=[...new Set(tasks.map(t=>t.cat))];
+  const doneN=tasks.filter(t=>preChecks[t.id]).length;
+  const pctDone=pct(doneN,tasks.length);
+  const done=tasks.every(t=>preChecks[t.id]);
+  let catSections='';
+  cats.forEach(cat=>{
+    const catTasks=tasks.filter(t=>t.cat===cat);
+    const catDone=catTasks.filter(t=>preChecks[t.id]).length;
+    const catColor=CAT_COLOR[cat]||T.sub;
+    let taskRows='';
+    catTasks.forEach(task=>{
+      const isOpen=openPreTaskId===task.id;
+      const isDone=preChecks[task.id];
+      taskRows+=`<div style="border-bottom:1px solid ${T.border}">
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;cursor:pointer" data-pre-expand="${task.id}">
+          <div data-pre-check="${task.id}" style="width:20px;height:20px;border-radius:5px;border:2px solid ${isDone?catColor:T.border};background:${isDone?catColor:"transparent"};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s">${isDone?'<span style="color:#fff;font-size:12px;font-weight:700">✓</span>':''}</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:500;color:${isDone?T.muted:T.text};text-decoration:${isDone?"line-through":"none"};line-height:1.4">${escH(task.title)}</div>
+            ${!isOpen?`<div style="font-size:11px;color:${T.muted};margin-top:3px;line-height:1.4">${escH(task.detail.slice(0,80))}…</div>`:""}
+          </div>
+          <span style="font-size:11px;color:${T.muted};flex-shrink:0">${isOpen?"▲":"▼"}</span>
+        </div>
+        ${isOpen?`<div style="padding:0 20px 16px 54px"><p style="font-size:13px;color:${T.sub};line-height:1.7;margin:0">${escH(task.detail)}</p>
+          <button data-pre-check="${task.id}" style="margin-top:12px;padding:7px 16px;border-radius:6px;border:1px solid ${isDone?T.border:catColor};background:${isDone?"transparent":catColor+"18"};color:${isDone?T.muted:catColor};font-size:12px;font-weight:600;cursor:pointer">${isDone?"✓ Mark Incomplete":"Mark Complete"}</button>
+        </div>`:""}
+      </div>`;
+    });
+    catSections+=`<div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid ${T.border};display:flex;align-items:center;gap:12px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${catColor}"></div>
+        <span style="font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;color:${catColor}">${cat}</span>
+        <span style="font-size:11px;color:${T.sub};font-family:'DM Mono';margin-left:auto">${catDone}/${catTasks.length}</span>
+        ${progBar(pct(catDone,catTasks.length),60,catColor)}
+      </div>
+      ${taskRows}
+    </div>`;
+  });
+  const taskEditorHtml=preEditing?renderTaskEditor(baseTasks,"pre",["Admin","Operations"],[]):'' ;
+  return`<div style="display:flex;flex-direction:column;gap:20px" class="fade-in">
+    <div style="background:${T.surface};border:1px solid ${done?T.green:T.orange};border-radius:10px;padding:20px 24px">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:${done?T.green:T.orange};margin-bottom:4px">${done?"✓ PRE-EVENT SETUP COMPLETE":"PRE-EVENT SETUP"}</div>
+          <p style="font-size:13px;color:${T.sub};margin:0;line-height:1.6">These are one-time prerequisites that must be completed <strong style="color:${T.text}">before your ${cfg.prepWeeks||12}-week campaign begins</strong>. The portal submission, equipment audit, and insurance check are not part of the weekly plan — they are the foundation it runs on.</p>
+        </div>
+        <div style="text-align:center;min-width:80px">
+          <div style="font-family:'Bebas Neue';font-size:44px;color:${done?T.green:T.orange};line-height:1;letter-spacing:1px">${pctDone}%</div>
+          <div style="font-size:10px;color:${T.sub};letter-spacing:1px">${doneN}/${tasks.length} COMPLETE</div>
+          <div style="height:4px;background:${T.border};border-radius:2px;margin-top:6px;overflow:hidden;width:80px"><div style="height:100%;width:${pctDone}%;background:${done?T.green:T.orange};border-radius:2px"></div></div>
+        </div>
+      </div>
+      ${!done?`<div style="margin-top:14px;padding:10px 14px;background:rgba(224,120,32,0.08);border-radius:7px;border:1px solid rgba(224,120,32,0.2);font-size:12px;color:${T.sub}">⚠ Complete these items before sending any public promotion or opening athlete registration. The ${cfg.prepWeeks||12}-week checklist assumes these are already done.</div>`:""}
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button id="pre-edit-btn" style="padding:7px 14px;border-radius:6px;border:1px solid ${preEditing?T.gold:T.border};background:${preEditing?"rgba(212,160,23,0.1)":"transparent"};color:${preEditing?T.gold:T.sub};font-size:12px;font-weight:500;cursor:pointer">${preEditing?"✓ Done Editing":"✏ Edit Tasks"}</button>
+    </div>
+    ${taskEditorHtml}
+    ${catSections}
+    ${done?`<div style="background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.25);border-radius:10px;padding:16px 20px;text-align:center"><div style="font-family:'Bebas Neue';font-size:18px;color:${T.green};letter-spacing:2px;margin-bottom:4px">ALL PREREQUISITES COMPLETE</div><p style="font-size:12px;color:${T.sub};margin:0">Your foundation is set. Head to the Dashboard and start your 12-week campaign.</p></div>`:""}
+  </div>`;
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────────
+function renderDashboard(tasks,dailyDays,dLeft,overallPct,doneCount,totalCount,totals,presetupDone){
+  const upcomingWeekly=tasks.filter(t=>{
+    if(t.week===99)return false;
+    const wd=Math.abs(t.week)*7;
+    return dLeft!==null&&dLeft<=wd+3&&dLeft>wd-10&&!checks[t.id];
+  }).slice(0,4);
+  const urgentDaily=dailyDays.flatMap(d=>d.tasks).filter(t=>{
+    if(!cfg.eventDate)return false;
+    const diff=Math.round((new Date(cfg.eventDate).getTime()+t.day*86400000-new Date().setHours(0,0,0,0))/86400000);
+    return diff>=0&&diff<=3&&!checks[t.id];
+  }).slice(0,3);
+  const allUrgent=[...urgentDaily,...upcomingWeekly].slice(0,5);
+  const barColor=overallPct>70?T.green:overallPct>40?T.orange:T.red;
+  const dLeftColor=dLeft!==null&&dLeft<=14?T.red:T.text;
+
+  const formatBreakdown=totals.byFormat.map(f=>{
+    const pctFill=Math.min(100,Math.round(f.entries/Math.max(f.capacity.totalHeats,1)*100));
+    const capColor=f.overCapacity?T.red:f.entries/f.capacity.totalHeats>=0.8?T.orange:T.green;
+    const entryRows=totals.allEntries.filter(e=>e.fid===f.id).map(e=>`<div style="display:flex;gap:10px;padding:4px 0;font-size:11px;color:${T.sub};border-bottom:1px solid ${T.border}20"><span style="color:${e.fColor};min-width:90px;font-weight:600">${e.fLabel}</span><span style="flex:1">${e.type}</span><span style="font-family:'DM Mono';color:${T.muted}">${e.entries} × $${e.price}</span><span style="font-family:'DM Mono';color:${T.text};min-width:70px;text-align:right">$${e.rev.toLocaleString()}</span></div>`).join('');
+    return`<div style="padding:10px 0;border-bottom:1px solid ${T.border}">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${f.color};flex-shrink:0"></div>
+        <span style="font-family:'Bebas Neue';font-size:15px;color:${f.color};letter-spacing:0.5px;min-width:110px">${f.label}</span>
+        <span style="font-size:12px;color:${T.sub};flex:1">${f.lanes} lane${f.lanes>1?"s":""} · ${f.eventWindowHrs}hr window · ${f.intervalMin}-min intervals · <strong style="color:${T.text}">${f.capacity.totalHeats} heats</strong></span>
+        <span style="font-family:'DM Mono';font-size:12px;color:${T.text}">$${f.gross.toLocaleString()} gross</span>
+        <span style="font-family:'DM Mono';font-size:12px;color:${T.green}">$${Math.round(f.gross*0.6).toLocaleString()} yours</span>
+      </div>
+      <div style="padding-left:22px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:10px;color:${T.muted}">${f.lanes}L × ${f.capacity.heatsPerLane} starts/lane = ${f.capacity.totalHeats} total heats</span><span style="font-size:10px;color:${f.overCapacity?T.red:T.sub};font-family:'DM Mono'">${f.entries}/${f.capacity.totalHeats} filled ${f.overCapacity?"⚠ OVER":""}</span></div>
+        <div style="height:4px;background:${T.border};border-radius:2px;overflow:hidden"><div style="height:100%;width:${pctFill}%;background:${capColor};border-radius:2px"></div></div>
+      </div>
+      ${entryRows}
+    </div>`;
+  }).join('');
+
+  const revStreams=[
+    {label:"Tickets (your 60%)",val:totals.hostRevTickets,color:T.red},
+    {label:"Merchandise",val:totals.merch,color:"#A855F7"},
+    {label:"Sponsorships",val:totals.sponsor,color:T.blue},
+    {label:"Food Vendor",val:totals.food,color:T.orange},
+    {label:"Raffle",val:totals.raffle,color:T.green},
+    {label:"Prep Program",val:totals.prep,color:T.gold},
+  ].map(r=>`<div style="background:${T.panel};border-radius:8px;padding:12px 14px;border-left:2px solid ${r.color}"><div style="font-size:10px;color:${T.sub};letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">${r.label}</div><div style="font-family:'Bebas Neue';font-size:26px;color:${r.color};letter-spacing:1px">$${r.val.toLocaleString()}</div></div>`).join('');
+
+  const urgentPanel=allUrgent.length>0?`<div style="background:${T.surface};border:1px solid ${T.red};border-radius:10px;padding:18px 20px">
+    <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">⚠ NEEDS ATTENTION</div>
+    ${allUrgent.map(t=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid ${T.border}"><div style="width:6px;height:6px;border-radius:50%;background:${T.red};margin-top:6px;flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:${T.text};line-height:1.4">${escH(t.title)}</div><div style="font-size:11px;color:${T.sub};margin-top:2px">${t.cat}${t.week!==undefined?` · Week ${t.week}`:t.day!==undefined?` · ED ${t.day}`:""}</div></div></div>`).join('')}
+  </div>`:"";
+
+  const infoPanel=`<div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+    <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">EVENT INFO</div>
+    ${[{label:"Gym",val:cfg.gymName||"—"},{label:"Owner",val:cfg.ownerName||"—"},{label:"Event",val:cfg.eventName||"—"},{label:"Date",val:cfg.eventDate?fmtDate(cfg.eventDate):"—"},{label:"Total Athletes",val:totals.totalAthletes},{label:"Total Heats",val:totals.byFormat.reduce((s,f)=>s+f.capacity.totalHeats,0)}].map(r=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid ${T.border}"><span style="font-size:11px;color:${T.sub}">${r.label}</span><span style="font-size:13px;color:${T.text};font-weight:500">${escH(String(r.val))}</span></div>`).join('')}
+  </div>`;
+
+  const featPanel=`<div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+    <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">FEATURES ACTIVE</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${Object.entries(cfg.features||{}).map(([k,v])=>`<span style="font-size:11px;padding:4px 10px;border-radius:20px;background:${v?"rgba(29,185,84,0.1)":"rgba(68,68,68,0.3)"};color:${v?T.green:T.muted};border:1px solid ${v?T.green:T.border}">${v?"✓ ":""}${k}</span>`).join('')}
+    </div>
+  </div>`;
+
+  const phases=[
+    {label:"IGNITION",weeks:"ED -12",color:"#E02020",note:"Members-first launch window"},
+    {label:"LAUNCH",weeks:"ED -10",color:"#E07820",note:"Go public — build momentum"},
+    {label:"BUILD",weeks:"ED -8 to -6",color:"#D4A017",note:"Leaderboard hype · Team push · Merch pre-orders"},
+    {label:"URGENCY",weeks:"ED -4",color:"#2B7FE0",note:"Price increase #1 · Scarcity language"},
+    {label:"PRESSURE",weeks:"ED -3 to -2",color:"#7C3AED",note:"Price increase #2 · Referral competition"},
+    {label:"LOCKDOWN",weeks:"ED -2",color:"#E02020",note:"Final push — equipment build"},
+    {label:"EVE",weeks:"ED -1",color:"#E02020",note:"Confirm everything"},
+    {label:"EXECUTE",weeks:"ED 0",color:"#E02020",note:"Race day execution"},
+    {label:"CONVERT",weeks:"Post",color:"#1DB954",note:"Turn athletes into members"},
+  ].map(p=>`<div style="display:flex;align-items:flex-start;gap:14px;padding:9px 0;border-bottom:1px solid ${T.border}"><div style="min-width:72px;font-family:'Bebas Neue';font-size:13px;letter-spacing:1px;color:${p.color}">${p.label}</div><div style="min-width:90px;font-size:11px;color:${T.muted};font-family:'DM Mono'">${p.weeks}</div><div style="font-size:12px;color:${T.sub};line-height:1.5">${p.note}</div></div>`).join('');
+
+  return`<div style="display:flex;flex-direction:column;gap:20px" class="fade-in">
+    ${!presetupDone?`<div data-goto-tab="presetup" style="background:rgba(224,120,32,0.08);border:1px solid rgba(224,120,32,0.35);border-radius:9px;padding:12px 18px;display:flex;align-items:center;gap:14px;cursor:pointer"><span style="font-size:18px">🔧</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:${T.orange};margin-bottom:2px">Pre-Event Setup Incomplete</div><div style="font-size:12px;color:${T.sub}">Portal submission, equipment audit, insurance, and other prerequisites are not yet checked off.</div></div><span style="font-size:12px;color:${T.orange};font-weight:600;white-space:nowrap">Go to Pre-Event Setup →</span></div>`:""}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-size:10px;color:${T.sub};letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Days Until Event</div><div style="font-family:'Bebas Neue';font-size:40px;color:${dLeftColor};line-height:1;letter-spacing:1px">${dLeft!==null?dLeft:"—"}</div><div style="font-size:11px;color:${T.sub};margin-top:8px">${cfg.eventDate?fmtDate(cfg.eventDate):"Set event date"}</div></div>
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-size:10px;color:${T.sub};letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Progress</div><div style="font-family:'Bebas Neue';font-size:40px;color:${T.green};line-height:1;letter-spacing:1px">${overallPct}%</div><div style="height:3px;background:${T.border};border-radius:2px;margin:10px 0 4px;overflow:hidden"><div style="height:100%;width:${overallPct}%;background:${barColor};border-radius:2px"></div></div><div style="font-size:11px;color:${T.sub}">${doneCount} of ${totalCount} tasks</div></div>
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-size:10px;color:${T.sub};letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Projected Revenue</div><div style="font-family:'Bebas Neue';font-size:40px;color:${T.gold};line-height:1;letter-spacing:1px">$${totals.total.toLocaleString()}</div><div style="font-size:11px;color:${T.sub};margin-top:8px">All streams</div></div>
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-size:10px;color:${T.sub};letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Total Athletes</div><div style="font-family:'Bebas Neue';font-size:40px;color:${T.blue};line-height:1;letter-spacing:1px">${totals.totalAthletes}</div><div style="font-size:11px;color:${T.sub};margin-top:8px">${totals.byFormat.reduce((s,f)=>s+f.capacity.totalHeats,0)} total heats available</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        ${totals.byFormat.length>0?`<div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">FORMAT BREAKDOWN</div>${formatBreakdown}</div>`:""}
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">ALL REVENUE STREAMS</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${revStreams}</div></div>
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px"><div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">CAMPAIGN PHASES</div>${phases}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">${urgentPanel}${infoPanel}${featPanel}</div>
+    </div>
+  </div>`;
+}
+// ─── TASK ITEM (shared) ──────────────────────────────────────────
+function renderTaskItem(task,checked,note,expanded,dataPrefix){
+  const cc=CAT_COLOR[task.cat]||T.sub;
+  return`<div style="border-bottom:1px solid ${T.border};background:${checked?"rgba(29,185,84,0.03)":"transparent"}">
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 18px">
+      <button data-${dataPrefix}-check="${task.id}" style="width:18px;height:18px;border-radius:4px;margin-top:2px;flex-shrink:0;border:2px solid ${checked?T.green:T.border};background:${checked?T.green:"transparent"};display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;padding:0">${checked?'<span style="font-size:10px;color:#fff;font-weight:700">✓</span>':''}</button>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:500;color:${checked?T.sub:T.text};text-decoration:${checked?"line-through":"none"};line-height:1.4">${escH(task.title)}</span>
+          <span style="font-size:10px;color:${cc};background:${cc}18;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;font-weight:600;flex-shrink:0">${task.cat}</span>
+        </div>
+        ${!expanded?`<div style="font-size:11px;color:${T.muted};margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(task.detail||"")}</div>`:""}
+      </div>
+      <button data-${dataPrefix}-expand="${task.id}" style="background:transparent;border:none;color:${T.muted};font-size:11px;cursor:pointer;flex-shrink:0;padding:2px 4px">${expanded?"▲":"▼"}</button>
+    </div>
+    ${expanded?`<div style="padding:0 18px 16px 48px;display:flex;flex-direction:column;gap:12px" class="fade-in">
+      <p style="font-size:13px;color:${T.sub};line-height:1.65">${escH(task.detail||"")}</p>
+      ${task.script?`<div style="background:${T.panel};border:1px solid ${T.border};border-left:2px solid ${T.red};border-radius:8px;padding:12px 14px"><div style="font-size:9px;color:${T.red};letter-spacing:1.5px;font-weight:700;margin-bottom:8px">SCRIPT / COPY</div><p style="font-size:12px;color:${T.sub};line-height:1.7;font-family:'DM Mono';white-space:pre-wrap">${escH(task.script)}</p></div>`:""}
+      <div><div style="font-size:9px;color:${T.muted};letter-spacing:1.5px;margin-bottom:5px">YOUR NOTES</div><textarea data-${dataPrefix}-note="${task.id}" rows="2" placeholder="Add contacts, custom details, reminders..." style="width:100%;background:${T.panel};border:1px solid ${T.border};border-radius:6px;color:${T.sub};font-size:12px;padding:8px 10px;resize:vertical;outline:none">${escH(note||"")}</textarea></div>
+    </div>`:""}
+  </div>`;
+}
+
+// ─── CHECKLIST TAB ───────────────────────────────────────────────
+function renderChecklist(baseTasks){
+  const tasks=applyCustomTasks(baseTasks,cfg.customTasks,"weekly");
+  const allCats=["All",...new Set(tasks.map(t=>t.cat))];
+  const weeks=[...new Set(tasks.map(t=>t.week))].sort((a,b)=>a-b);
+  const allWeeks=[...new Set(baseTasks.map(t=>t.week))].sort((a,b)=>a-b);
+  const weekLabel=w=>w===99?"Post-Event":w<0?`ED ${w}`:"Event Day";
+  const catBtns=allCats.map(c=>`<button data-cat-filter="${c}" style="padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid ${checklistCat===c?T.red:T.border};background:${checklistCat===c?"rgba(224,32,32,0.1)":"transparent"};color:${checklistCat===c?T.red:T.sub};transition:all 0.15s;cursor:pointer">${c}</button>`).join('');
+  let weekBlocks='';
+  weeks.forEach(w=>{
+    const wt=tasks.filter(t=>t.week===w&&(checklistCat==="All"||t.cat===checklistCat)&&t.show!==false);
+    if(!wt.length)return;
+    const done=wt.filter(t=>checks[t.id]).length;
+    const ph=PHASE_META[String(w)]||{name:"",color:T.sub};
+    const open=openWeekMap[w];
+    let taskItems=open?wt.map(t=>renderTaskItem(t,checks[t.id],taskNotes[t.id],openTaskId===t.id,"cl")).join(''):'';
+    weekBlocks+=`<div style="background:${T.surface};border:1px solid ${open?T.borderHi:T.border};border-radius:10px;overflow:hidden;transition:border-color 0.15s">
+      <button data-week-toggle="${w}" style="width:100%;background:transparent;border:none;padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer">
+        <div style="width:8px;height:8px;border-radius:50%;background:${ph.color};flex-shrink:0"></div>
+        <div style="flex:1;display:flex;align-items:center;gap:10px;text-align:left;flex-wrap:wrap">
+          <span style="font-family:'Bebas Neue';font-size:17px;color:${T.text};letter-spacing:1px">${weekLabel(w)}</span>
+          ${ph.name?`<span style="font-size:10px;color:${ph.color};font-weight:600;letter-spacing:1.5px">${ph.name}</span>`:""}
+          ${ph.desc?`<span style="font-size:11px;color:${T.sub}">${ph.desc}</span>`:""}
+        </div>
+        <span style="font-size:11px;color:${done===wt.length?T.green:T.sub};font-family:'DM Mono';flex-shrink:0">${done}/${wt.length}</span>
+        ${progBar(pct(done,wt.length),56,ph.color)}
+        <span style="color:${T.muted};font-size:12px">${open?"▲":"▼"}</span>
+      </button>
+      ${open?`<div style="border-top:1px solid ${T.border}">${taskItems}</div>`:""}
+    </div>`;
+  });
+  const taskEditorHtml=weeklyEditing?renderTaskEditor(baseTasks,"weekly",["Marketing","Operations","Revenue","Sponsorship","Community","Logistics"],allWeeks):"";
+  return`<div class="fade-in">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">${catBtns}</div>
+      <button id="weekly-edit-btn" style="padding:6px 14px;border-radius:6px;border:1px solid ${weeklyEditing?T.gold:T.border};background:${weeklyEditing?"rgba(212,160,23,0.1)":"transparent"};color:${weeklyEditing?T.gold:T.sub};font-size:12px;font-weight:500;cursor:pointer">${weeklyEditing?"✓ Done Editing":"✏ Edit Tasks"}</button>
+    </div>
+    ${taskEditorHtml}
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:${weeklyEditing?16:0}px">${weekBlocks}</div>
+  </div>`;
+}
+
+// ─── DAILY MANAGER TAB ───────────────────────────────────────────
+function renderDailyMgr(baseDailyDays){
+  const baseTasks=baseDailyDays.flatMap(d=>d.tasks);
+  const appliedTasks=applyCustomTasks(baseTasks,cfg.customTasks,"daily");
+  const dailyDays=baseDailyDays.map(d=>({...d,tasks:appliedTasks.filter(t=>{const base=baseTasks.find(b=>b.id===t.id);return base?base.day===d.day:t.day===d.day;})}));
+  const dayLabel=d=>d===0?"RACE DAY":d===1?"Day After":d<0?`ED ${d}`:`ED +${d}`;
+  const daysFromNow=d=>{
+    if(!cfg.eventDate)return null;
+    const em=new Date(cfg.eventDate).getTime();
+    const td=new Date(em+d*86400000);
+    const now=new Date();now.setHours(0,0,0,0);
+    return Math.round((td-now)/86400000);
+  };
+  const taskEditorHtml=dailyEditing?renderTaskEditor(baseTasks,"daily",["Marketing","Operations","Logistics","Race Day","Community"],[]):"";
+  let dayBlocks='';
+  dailyDays.filter(d=>d.tasks.length>0).forEach(({day,tasks})=>{
+    const dfn=daysFromNow(day);
+    const isToday=dfn===0,isRace=day===0,isPast=dfn!==null&&dfn<0;
+    const done=tasks.filter(t=>checks[t.id]).length;
+    const open=openDayMap[day];
+    const borderCol=isRace?T.red:isToday?T.orange:open?T.borderHi:T.border;
+    let taskItems=open?tasks.map(t=>renderTaskItem(t,checks[t.id],taskNotes[t.id],openTaskId===t.id,"daily")).join(''):'';
+    dayBlocks+=`<div style="background:${isRace?"rgba(224,32,32,0.05)":T.surface};border:1px solid ${borderCol};border-radius:10px;overflow:hidden">
+      <button data-day-toggle="${day}" style="width:100%;background:transparent;border:none;padding:13px 18px;display:flex;align-items:center;gap:12px;cursor:pointer">
+        <div style="display:flex;gap:6px;align-items:center;flex:1">
+          ${isToday?badge("TODAY",T.orange):""}${isRace?badge("RACE DAY",T.red):""}
+          <span style="font-family:'Bebas Neue';font-size:16px;color:${isPast&&!isRace?T.sub:T.text};letter-spacing:1px">${dayLabel(day)}</span>
+        </div>
+        ${dfn!==null?`<span style="font-size:10px;color:${T.muted};font-family:'DM Mono'">${dfn>0?`in ${dfn}d`:dfn===0?"today":`${Math.abs(dfn)}d ago`}</span>`:""}
+        <span style="font-size:11px;color:${done===tasks.length?T.green:T.sub};font-family:'DM Mono'">${done}/${tasks.length}</span>
+        ${progBar(pct(done,tasks.length),48,isRace?T.red:T.blue)}
+        <span style="color:${T.muted};font-size:11px">${open?"▲":"▼"}</span>
+      </button>
+      ${open?`<div style="border-top:1px solid ${T.border}">${taskItems}</div>`:""}
+    </div>`;
+  });
+  return`<div class="fade-in">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <p style="font-size:13px;color:${T.sub};margin:0;flex:1;line-height:1.6">Your final 14-day daily execution checklist. Each day collapses into its tasks.</p>
+      <button id="daily-edit-btn" style="padding:6px 14px;border-radius:6px;border:1px solid ${dailyEditing?T.gold:T.border};background:${dailyEditing?"rgba(212,160,23,0.1)":"transparent"};color:${dailyEditing?T.gold:T.sub};font-size:12px;font-weight:500;cursor:pointer;flex-shrink:0">${dailyEditing?"✓ Done Editing":"✏ Edit Tasks"}</button>
+    </div>
+    ${taskEditorHtml}
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:${dailyEditing?16:0}px">${dayBlocks}</div>
+  </div>`;
+}
+
+// ─── TASK EDITOR ─────────────────────────────────────────────────
+function renderTaskEditor(baseTasks,listKey,catOptions,weekOptions){
+  const custom=cfg.customTasks||{edits:{},deleted:[],added:{pre:[],weekly:[],daily:[]},order:{}};
+  const baseWithAdded=[...baseTasks,...(custom.added[listKey]||[]).filter(t=>!baseTasks.find(b=>b.id===t.id))];
+  const savedOrder=custom.order[listKey];
+  const orderedTasks=savedOrder&&savedOrder.length?[...baseWithAdded].sort((a,b)=>{const ai=savedOrder.indexOf(a.id),bi=savedOrder.indexOf(b.id);if(ai<0&&bi<0)return 0;if(ai<0)return 1;if(bi<0)return-1;return ai-bi;}):baseWithAdded;
+  const showHidden=taskEditorShowHidden[listKey];
+  const draft=taskEditorDraft[listKey];
+  const visibleTasks=orderedTasks.filter(t=>!(custom.deleted||[]).includes(t.id));
+  const hiddenTasks=orderedTasks.filter(t=>(custom.deleted||[]).includes(t.id));
+  const displayList=showHidden?hiddenTasks:visibleTasks;
+
+  const isDeleted=id=>(custom.deleted||[]).includes(id);
+  const isEdited=id=>!!(custom.edits?.[id]);
+  const isAdded=id=>(custom.added[listKey]||[]).some(t=>t.id===id);
+
+  let addForm='';
+  if(draft&&draft.mode==="add"){
+    const catOpts=(catOptions||[]).map(c=>`<option value="${c}" ${draft.task.cat===c?"selected":""}>${c}</option>`).join('');
+    const wkOpts=weekOptions&&weekOptions.length?`<div><label style="${LS()}">Week</label><select data-te-field-add="${listKey}|week" style="${IS()}"><option value="">— select week —</option>${weekOptions.map(w=>`<option value="${w}" ${draft.task.week===w?"selected":""}>${w===99?"Post-Event":w<0?`${Math.abs(w)} weeks before event`:"Event Day"}</option>`).join('')}</select></div>`:"";
+    addForm=`<div style="padding:12px 18px 0">
+      <div style="background:${T.panel};border:1px solid ${T.green};border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700">➕ NEW TASK</div>
+        ${catOptions?`<div><label style="${LS()}">Category</label><select data-te-field-add="${listKey}|cat" style="${IS()}">${catOpts}</select></div>`:""}
+        ${wkOpts}
+        <div><label style="${LS()}">Task Title</label><input data-te-field-add="${listKey}|title" type="text" value="${escH(draft.task.title||"")}" placeholder="Brief, action-oriented task title..." style="${IS()}"></div>
+        <div><label style="${LS()}">Detail / Instructions</label><textarea data-te-field-add="${listKey}|detail" rows="4" placeholder="What needs to be done, how to do it, and why it matters..." style="${IS('resize:vertical;line-height:1.6;font-size:13px')}">${escH(draft.task.detail||"")}</textarea></div>
+        <div style="display:flex;gap:8px">
+          <button data-te-add-save="${listKey}" style="flex:1;padding:9px;border-radius:6px;border:none;background:${draft.task.title?.trim()?T.green:T.muted};color:${draft.task.title?.trim()?"#000":"#fff"};font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;cursor:pointer">SAVE</button>
+          <button data-te-add-cancel="${listKey}" style="padding:9px 16px;border-radius:6px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:13px;cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  let rows=displayList.map((task,idx,arr)=>{
+    const edited=isEdited(task.id);
+    const added=isAdded(task.id);
+    const display=edited?{...task,...custom.edits[task.id]}:task;
+    const isEditing=draft&&draft.mode==="edit"&&draft.task?.id===task.id;
+    let editForm='';
+    if(isEditing){
+      const catOpts=(catOptions||[]).map(c=>`<option value="${c}" ${display.cat===c?"selected":""}>${c}</option>`).join('');
+      editForm=`<div style="padding:0 18px 12px 48px">
+        <div style="background:${T.panel};border:1px solid ${T.gold};border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:10px;color:${T.gold};letter-spacing:1.5px;font-weight:700">✏ EDITING TASK</div>
+          ${catOptions?`<div><label style="${LS()}">Category</label><select data-te-field-edit="${listKey}|${task.id}|cat" style="${IS()}">${catOpts}</select></div>`:""}
+          <div><label style="${LS()}">Task Title</label><input data-te-field-edit="${listKey}|${task.id}|title" type="text" value="${escH(draft.task.title||display.title||"")}" style="${IS()}"></div>
+          <div><label style="${LS()}">Detail / Instructions</label><textarea data-te-field-edit="${listKey}|${task.id}|detail" rows="4" style="${IS('resize:vertical;line-height:1.6;font-size:13px')}">${escH(draft.task.detail!==undefined?draft.task.detail:display.detail||"")}</textarea></div>
+          <div style="display:flex;gap:8px">
+            <button data-te-edit-save="${listKey}|${task.id}" style="flex:1;padding:9px;border-radius:6px;border:none;background:${T.gold};color:#000;font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;cursor:pointer">SAVE</button>
+            <button data-te-edit-cancel="${listKey}" style="padding:9px 16px;border-radius:6px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:13px;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    return`<div style="border-bottom:1px solid ${T.border}">
+      <div style="display:flex;align-items:center;gap:8px;padding:11px 18px">
+        ${!showHidden?`<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+          <button data-te-move="${listKey}|${task.id}|-1" ${idx===0?"disabled":""} style="width:22px;height:18px;border-radius:3px;border:1px solid ${T.border};background:transparent;color:${idx===0?T.muted:T.sub};font-size:11px;line-height:1;cursor:${idx===0?"default":"pointer"};padding:0">↑</button>
+          <button data-te-move="${listKey}|${task.id}|1" ${idx===arr.length-1?"disabled":""} style="width:22px;height:18px;border-radius:3px;border:1px solid ${T.border};background:transparent;color:${idx===arr.length-1?T.muted:T.sub};font-size:11px;line-height:1;cursor:${idx===arr.length-1?"default":"pointer"};padding:0">↓</button>
+        </div>`:""}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
+            ${added?`<span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(29,185,84,0.15);color:${T.green};font-weight:700;letter-spacing:0.5px;flex-shrink:0">CUSTOM</span>`:""}
+            ${edited&&!added?`<span style="font-size:9px;padding:1px 6px;border-radius:10px;background:rgba(212,160,23,0.15);color:${T.gold};font-weight:700;letter-spacing:0.5px;flex-shrink:0">EDITED</span>`:""}
+            <span style="font-size:10px;color:${T.muted};flex-shrink:0">${display.cat||""}${display.week!=null?` · Wk ${display.week}`:""}</span>
+          </div>
+          <div style="font-size:13px;color:${T.text};font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(display.title||"")}</div>
+          ${!isEditing&&display.detail?`<div style="font-size:11px;color:${T.muted};margin-top:2px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(display.detail)}</div>`:""}
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          ${!showHidden?`<button data-te-toggle-edit="${listKey}|${task.id}" style="padding:4px 10px;border-radius:5px;border:1px solid ${isEditing?T.gold:T.border};background:${isEditing?"rgba(212,160,23,0.1)":"transparent"};color:${isEditing?T.gold:T.sub};font-size:11px;cursor:pointer">${isEditing?"Cancel":"Edit"}</button>`:""}
+          ${showHidden
+            ?`<button data-te-restore="${listKey}|${task.id}" style="padding:4px 10px;border-radius:5px;border:1px solid ${T.green};background:rgba(29,185,84,0.08);color:${T.green};font-size:11px;cursor:pointer">Restore</button>`
+            :`<button data-te-hide="${listKey}|${task.id}" title="Hide from list (restorable)" style="padding:4px 8px;border-radius:5px;border:1px solid ${T.border};background:transparent;color:${T.muted};font-size:11px;cursor:pointer">Hide</button>
+             ${added?`<button data-te-delete="${listKey}|${task.id}" title="Permanently delete custom task" style="padding:4px 8px;border-radius:5px;border:1px solid rgba(224,32,32,0.4);background:rgba(224,32,32,0.07);color:${T.red};font-size:11px;cursor:pointer">Delete</button>`:""}
+            `}
+        </div>
+      </div>
+      ${editForm}
+    </div>`;
+  }).join('');
+
+  return`<div style="background:${T.surface};border:1px solid ${T.borderHi};border-radius:10px;overflow:hidden;margin-top:16px">
+    <div style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid ${T.border};background:${T.panel};flex-wrap:wrap">
+      <span style="font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;color:${T.red}">✏ TASK EDITOR</span>
+      <div style="display:flex;gap:6px;margin-left:4px">
+        <button data-te-showhidden="${listKey}|false" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid ${!showHidden?T.red:T.border};background:${!showHidden?"rgba(224,32,32,0.1)":"transparent"};color:${!showHidden?T.red:T.sub};cursor:pointer">Active (${visibleTasks.length})</button>
+        <button data-te-showhidden="${listKey}|true" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid ${showHidden?T.orange:T.border};background:${showHidden?"rgba(224,120,32,0.1)":"transparent"};color:${showHidden?T.orange:T.sub};cursor:pointer">Hidden (${hiddenTasks.length})</button>
+      </div>
+      <div style="flex:1"></div>
+      ${!showHidden?`<button data-te-add-new="${listKey}" style="padding:5px 13px;border-radius:6px;border:1px solid ${T.green};background:rgba(29,185,84,0.1);color:${T.green};font-size:12px;font-weight:600;cursor:pointer">+ Add Task</button>`:""}
+      <button data-te-close="${listKey}" style="padding:5px 12px;border-radius:6px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:12px;cursor:pointer">Done ✓</button>
+    </div>
+    ${addForm}
+    ${!showHidden&&visibleTasks.length>1&&(!draft||draft.mode!=="add")?`<div style="padding:8px 18px;font-size:10px;color:${T.muted};border-bottom:1px solid ${T.border}">Use ↑ ↓ to reorder · Click <strong>Edit</strong> to change title or detail · <strong>Hide</strong> removes from list (restorable)</div>`:""}
+    <div style="max-height:520px;overflow-y:auto">${rows}${displayList.length===0?`<div style="padding:24px;text-align:center;color:${T.muted};font-size:12px">${showHidden?"No hidden tasks.":"No tasks yet. Use + Add Task to get started."}</div>`:""}</div>
+  </div>`;
+}
+// ─── REVENUE & BUDGET TAB ────────────────────────────────────────
+function renderRevCalc(totals){
+  if(!revInc){
+    revInc={
+      merchRevPPA:cfg.budget?.merchRevPPA??28,sponsorTotal:cfg.budget?.sponsorTotal??2500,
+      foodRevShare:cfg.budget?.foodRevShare??17,foodSpendPPA:cfg.budget?.foodSpendPPA??18,
+      rafflePPA:cfg.budget?.rafflePPA??8,prepSignups:cfg.budget?.prepSignups??Math.round(totals.totalAthletes*0.25),
+      prepPrice:cfg.budget?.prepPrice??120
+    };
+  }
+  if(!revExp){
+    revExp={
+      merchCost:cfg.budget?.merchCost??500,equipmentRent:cfg.budget?.equipmentRent??0,
+      staffPay:cfg.budget?.staffPay??200,marketingSpend:cfg.budget?.marketingSpend??150,
+      venueExtra:cfg.budget?.venueExtra??0,foodCost:cfg.budget?.foodCost??0,
+      giveaways:cfg.budget?.giveaways??100,miscExpenses:cfg.budget?.miscExpenses??100
+    };
+  }
+  const feats=cfg.features||{};
+  const athletes=totals.totalAthletes;
+  const incTickets=totals.hostRevTickets;
+  const incMerch=feats.merch?Math.round(athletes*revInc.merchRevPPA):0;
+  const incSponsor=feats.sponsor?revInc.sponsorTotal:0;
+  const incFood=feats.food?Math.round(athletes*revInc.foodSpendPPA*revInc.foodRevShare/100):0;
+  const incRaffle=feats.raffle?Math.round(athletes*revInc.rafflePPA):0;
+  const incPrep=Math.round(revInc.prepSignups*revInc.prepPrice);
+  const totalIncome=incTickets+incMerch+incSponsor+incFood+incRaffle+incPrep;
+  const totalExpenses=Object.values(revExp).reduce((s,v)=>s+v,0);
+  const netProfit=totalIncome-totalExpenses;
+  const netColor=netProfit>0?T.green:netProfit<0?T.red:T.sub;
+
+  function slideInc(label,k,min,max,step,unit,note){
+    return`<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:12px;color:${T.text};font-weight:500">${label}</span>
+        <span style="font-size:13px;color:${T.green};font-family:'DM Mono';font-weight:600">${unit||""}${revInc[k].toLocaleString()}</span>
+      </div>
+      ${note?`<div style="font-size:10px;color:${T.muted};margin-bottom:4px">${note}</div>`:""}
+      <input type="range" data-rev-inc="${k}" min="${min}" max="${max}" step="${step||1}" value="${revInc[k]}" style="width:100%;accent-color:${T.green}">
+    </div>`;
+  }
+  function slideExp(label,k,min,max,step,unit,note){
+    return`<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:12px;color:${T.text};font-weight:500">${label}</span>
+        <span style="font-size:13px;color:${T.orange};font-family:'DM Mono';font-weight:600">${unit||""}${revExp[k].toLocaleString()}</span>
+      </div>
+      ${note?`<div style="font-size:10px;color:${T.muted};margin-bottom:4px">${note}</div>`:""}
+      <input type="range" data-rev-exp="${k}" min="${min}" max="${max}" step="${step||1}" value="${revExp[k]}" style="width:100%;accent-color:${T.orange}">
+    </div>`;
+  }
+  function incRow(label,val,sub){return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid ${T.border}"><div><div style="font-size:12px;color:${T.sub}">${label}</div>${sub?`<div style="font-size:10px;color:${T.muted}">${sub}</div>`:""}</div><span style="font-family:'Bebas Neue';font-size:20px;color:${val>0?T.green:T.muted};letter-spacing:1px">$${val.toLocaleString()}</span></div>`;}
+  function expRow(label,val){return`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid ${T.border}"><div style="font-size:12px;color:${T.sub}">${label}</div><span style="font-family:'Bebas Neue';font-size:20px;color:${val>0?T.orange:T.muted};letter-spacing:1px">-$${val.toLocaleString()}</span></div>`;}
+
+  return`<div style="display:flex;flex-direction:column;gap:20px" class="fade-in">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      ${[{label:"Total Athletes",val:athletes,color:T.blue},{label:"Total Income (projected)",val:"$"+totalIncome.toLocaleString(),color:T.green},{label:"Total Expenses (budget)",val:"$"+totalExpenses.toLocaleString(),color:T.orange},{label:"Estimated Net Profit",val:(netProfit>=0?"":"-")+"$"+Math.abs(netProfit).toLocaleString(),color:netColor}].map(m=>`<div style="background:${T.surface};border:1px solid ${m.color}30;border-radius:9px;padding:14px 16px;text-align:center"><div style="font-family:'Bebas Neue';font-size:26px;color:${m.color};letter-spacing:1px;line-height:1">${m.val}</div><div style="font-size:10px;color:${T.sub};margin-top:4px;letter-spacing:0.5px">${m.label}</div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+          <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">PROJECTED INCOME — WHAT COMES IN</div>
+          <p style="font-size:11px;color:${T.muted};margin-bottom:14px;line-height:1.5">These sliders project how much income each stream could generate. <strong style="color:${T.sub}">These are projections, not guarantees.</strong></p>
+          <div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:10px;border-bottom:1px solid ${T.border};padding-bottom:6px">TICKET REVENUE (auto-calculated from your setup)</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:14px;padding:8px 12px;background:${T.panel};border-radius:7px"><span style="font-size:12px;color:${T.sub}">Your 60% of $${totals.grossRevenue.toLocaleString()} gross</span><span style="font-family:'Bebas Neue';font-size:20px;color:${T.green};letter-spacing:1px">$${incTickets.toLocaleString()}</span></div>
+          ${feats.merch!==false?`<div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:8px">MERCHANDISE SALES</div>${slideInc("Projected revenue per athlete","merchRevPPA",0,100,1,"$",`${athletes} athletes × $${revInc.merchRevPPA} = $${incMerch.toLocaleString()} projected merch income`)}`:``}
+          ${feats.sponsor!==false?`<div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:8px">SPONSORSHIPS</div>${slideInc("Total sponsorship income","sponsorTotal",0,10000,250,"$","100% yours. Goal: 1 Title ($1,500+), 2 Silver ($500), 2 Bronze ($250)")}`:``}
+          ${feats.food!==false?`<div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:8px">FOOD VENDOR REVENUE SHARE</div>${slideInc("Avg athlete food spend","foodSpendPPA",0,40,1,"$",`Estimated total athlete food spend: $${Math.round(athletes*revInc.foodSpendPPA).toLocaleString()}`)}${slideInc("Your revenue share %","foodRevShare",0,30,1,"",`Your cut: ${revInc.foodRevShare}% of $${Math.round(athletes*revInc.foodSpendPPA).toLocaleString()} = $${incFood.toLocaleString()}`)}`:``}
+          ${feats.raffle!==false?`<div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:8px">RAFFLE</div>${slideInc("Projected raffle revenue per athlete","rafflePPA",0,30,1,"$",`${athletes} athletes × $${revInc.rafflePPA} avg raffle spend = $${incRaffle.toLocaleString()}`)}`:``}
+          <div style="font-size:10px;color:${T.green};letter-spacing:1.5px;font-weight:700;margin-bottom:8px">DEKA PREP PROGRAM</div>
+          ${slideInc("Estimated program enrollments","prepSignups",0,Math.max(60,athletes),1,"",`Typically 20–30% of event athletes. ${revInc.prepSignups} × $${revInc.prepPrice} = $${incPrep.toLocaleString()}`)}
+          ${slideInc("Program price per person","prepPrice",60,300,10,"$","")}
+        </div>
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+          <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">INCOME SUMMARY</div>
+          ${incRow("Ticket Revenue (your 60%)",incTickets,"DEKA receives 40% of gross")}
+          ${feats.merch!==false?incRow(`Merchandise ($${revInc.merchRevPPA}/athlete)`,incMerch,"100% yours"):""}
+          ${feats.sponsor!==false?incRow("Sponsorships",incSponsor,"100% yours"):""}
+          ${feats.food!==false?incRow(`Food Vendor (${revInc.foodRevShare}% share)`,incFood):""}
+          ${feats.raffle!==false?incRow(`Raffle ($${revInc.rafflePPA}/athlete)`,incRaffle):""}
+          ${incRow(`DEKA Prep Program (${revInc.prepSignups} sign-ups)`,incPrep)}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0"><span style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.sub}">TOTAL PROJECTED INCOME</span><span style="font-family:'Bebas Neue';font-size:36px;color:${T.green};letter-spacing:1px">$${totalIncome.toLocaleString()}</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+          <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">EVENT BUDGET — WHAT GOES OUT</div>
+          <p style="font-size:11px;color:${T.muted};margin-bottom:14px;line-height:1.5">These are your estimated costs to run the event. Adjust each slider to see how spending decisions affect your bottom line.</p>
+          ${slideExp("Merch Inventory Cost","merchCost",0,3000,50,"$","Cost to produce or purchase your merch stock before the event")}
+          ${slideExp("Equipment Rental / Gaps","equipmentRent",0,2000,50,"$","Any gear you need to rent or borrow to meet DEKA standards")}
+          ${slideExp("Staff, Judges & Coaches","staffPay",0,1500,25,"$","Cash, gift cards, or comp memberships for your team")}
+          ${slideExp("Marketing & Signage","marketingSpend",0,1000,25,"$","Ads, printing, banners, flyers, social promotion")}
+          ${slideExp("Venue / Facility Extra","venueExtra",0,2000,50,"$","Any space cost beyond your own gym")}
+          ${slideExp("Food / Athlete Refreshments","foodCost",0,1000,25,"$","Only if YOU are supplying food. If using a vendor, leave at $0")}
+          ${slideExp("Awards & Giveaways","giveaways",0,1000,25,"$","Podium awards, raffle prizes, sponsor gifts — DEKA provides finisher medals")}
+          ${slideExp("Misc Day-Of Expenses","miscExpenses",0,500,25,"$","Tape, zip ties, cups, printing, last-minute supplies")}
+          <button id="rev-save-budget" style="margin-top:6px;width:100%;padding:9px;border-radius:6px;border:1px solid ${T.blue};background:rgba(43,127,224,0.1);color:${T.blue};font-size:12px;font-weight:600;cursor:pointer;letter-spacing:0.5px">💾 Save Budget to Event Config</button>
+        </div>
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+          <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">EXPENSE SUMMARY</div>
+          ${expRow("Merch Inventory Cost",revExp.merchCost)}
+          ${expRow("Equipment Rental / Gaps",revExp.equipmentRent)}
+          ${expRow("Staff, Judges & Coaches",revExp.staffPay)}
+          ${expRow("Marketing & Signage",revExp.marketingSpend)}
+          ${expRow("Venue / Facility Extra",revExp.venueExtra)}
+          ${expRow("Food / Refreshments",revExp.foodCost)}
+          ${expRow("Awards & Giveaways",revExp.giveaways)}
+          ${expRow("Misc Day-Of Expenses",revExp.miscExpenses)}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0"><span style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.sub}">TOTAL ESTIMATED EXPENSES</span><span style="font-family:'Bebas Neue';font-size:36px;color:${T.orange};letter-spacing:1px">$${totalExpenses.toLocaleString()}</span></div>
+        </div>
+        <div style="background:${T.surface};border:2px solid ${netColor};border-radius:10px;padding:20px 24px;text-align:center">
+          <div style="font-size:10px;color:${T.sub};letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Projected Net Profit</div>
+          <div style="font-family:'Bebas Neue';font-size:56px;color:${netColor};letter-spacing:2px;line-height:1">${netProfit>=0?"":"-"}$${Math.abs(netProfit).toLocaleString()}</div>
+          <div style="font-size:11px;color:${T.muted};margin-top:8px">$${totalIncome.toLocaleString()} income − $${totalExpenses.toLocaleString()} expenses</div>
+          ${netProfit<0?`<div style="margin-top:12px;font-size:12px;color:${T.red};line-height:1.5">⚠ Current budget projects a loss. Increase athlete targets, sponsorships, or trim expenses.</div>`:""}
+          ${netProfit>0&&netProfit<500?`<div style="margin-top:12px;font-size:12px;color:${T.orange};line-height:1.5">Thin margin. Consider increasing non-ticket revenue or reducing variable costs.</div>`:""}
+        </div>
+        <div style="background:rgba(224,32,32,0.07);border:1px solid rgba(224,32,32,0.18);border-radius:8px;padding:12px 14px"><div style="font-size:9px;color:${T.red};letter-spacing:1.5px;font-weight:700;margin-bottom:5px">NOTE ON TICKET SPLIT</div><p style="font-size:12px;color:${T.sub};line-height:1.6">DEKA takes 40% of gross ticket revenue. You keep 60% of tickets + 100% of all other income streams. Your highest-leverage moves are non-ticket income and keeping event expenses lean.</p></div>
+      </div>
+    </div>
+  </div>`;
+}
+// ─── SCORECARD TAB ───────────────────────────────────────────────
+function renderScorecard(){
+  const weeksOut=cfg.eventDate?clamp(Math.ceil(daysDiff(cfg.eventDate)/7),1,12):12;
+  const weeks=[];for(let w=-weeksOut;w<=2;w++)weeks.push(w);
+  if(scorecardSelW===null)scorecardSelW=weeks[0]||-12;
+  const key=`w${scorecardSelW}`;
+  const sc=scores[key]||{};
+  const phaseTarget={"-12":"Founder's Rate live · Prep Program open · Sponsor list built","-10":"Public launch done · 5+ gym owners called · 15% of target registered","-8":"30%+ registered · Equipment confirmed · Volunteer list started","-6":"50%+ registered · Team push active · Merch pre-orders open","-4":"70%+ registered · Price increase #1 done · Referral competition live","-3":"80%+ registered · Heat schedule posted · Food vendor confirmed","-2":"90%+ registered · Price increase #2 done · Equipment built","-1":"All athletes confirmed · Volunteers briefed · MC script done","0":"Event Day — execute the plan","1":"Recap posted · Reviews requested","2":"Conversion offer sent · Next event early bird open"};
+  const FIELDS=[{id:"regs",label:"New Registrations This Week",type:"num"},{id:"posts",label:"Social Posts Published",type:"num"},{id:"class",label:"Classes with DEKA Mentions",type:"num"},{id:"gym",label:"Gym Owner Calls Made",type:"num"},{id:"energy",label:"Team Energy Level (1-10)",type:"slider",min:1,max:10},{id:"win",label:"Biggest Win This Week",type:"text"},{id:"block",label:"Biggest Blocker",type:"text"},{id:"next",label:"#1 Priority Next Week",type:"text"}];
+  let pts=0,tot=0;
+  if(sc.regs){pts+=Math.min(sc.regs/4,3);tot+=3;}if(sc.posts){pts+=Math.min(sc.posts/5,2);tot+=2;}if(sc.class){pts+=Math.min(sc.class/7,2);tot+=2;}if(sc.gym){pts+=Math.min(sc.gym/2,2);tot+=2;}if(sc.energy){pts+=(sc.energy/10)*1;tot+=1;}
+  const score=tot>0?Math.round(pts/tot*100):0;
+  const scoreColor=score>=70?T.green:score>=40?T.orange:T.red;
+  const scoreMsg=score>=70?"On pace. Keep pressure on.":score>=40?"Good momentum. Close the gaps.":"Attention needed — review blockers.";
+  const weekBtns=weeks.map(w=>{
+    const has=Object.keys(scores[`w${w}`]||{}).length>0;
+    return`<button data-sc-week="${w}" style="padding:6px 13px;border-radius:7px;border:1px solid;border-color:${scorecardSelW===w?T.red:T.border};background:${scorecardSelW===w?"rgba(224,32,32,0.1)":"transparent"};color:${scorecardSelW===w?T.red:has?T.text:T.sub};font-family:'Bebas Neue';font-size:14px;letter-spacing:0.5px;position:relative;cursor:pointer">${w===0?"ED":w>0?`ED+${w}`:`ED${w}`}${has?`<span style="position:absolute;top:2px;right:2px;width:5px;height:5px;background:${T.green};border-radius:50%;display:block"></span>`:""}</button>`;
+  }).join('');
+  const fieldRows=FIELDS.map(f=>`<div style="margin-bottom:16px">
+    <label style="${LS()}">${f.label}</label>
+    ${f.type==="num"?`<input data-sc-field="${f.id}" type="number" min="0" value="${sc[f.id]||""}" placeholder="0" style="${IS()}">`:""}
+    ${f.type==="slider"?`<div style="display:flex;gap:12px;align-items:center"><input data-sc-slider="${f.id}" type="range" min="${f.min}" max="${f.max}" value="${sc[f.id]||5}" style="flex:1"><span style="font-family:'Bebas Neue';font-size:24px;color:${T.red};width:28px;text-align:right;letter-spacing:1px">${sc[f.id]||5}</span></div>`:""}
+    ${f.type==="text"?`<textarea data-sc-text="${f.id}" rows="2" placeholder="Write here..." style="${IS('resize:vertical')}">${escH(sc[f.id]||"")}</textarea>`:""}
+  </div>`).join('');
+  const allWeeksPanel=weeks.map(w=>{
+    const has=Object.keys(scores[`w${w}`]||{}).length>0;
+    return`<button data-sc-week="${w}" style="background:transparent;border:none;display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid ${T.border}20;cursor:pointer;width:100%"><span style="font-size:12px;color:${scorecardSelW===w?T.red:T.sub};font-weight:${scorecardSelW===w?600:400}">${w===0?"Race Day":w>0?`ED +${w}`:`ED ${w}`}</span><span style="font-size:10px;color:${has?T.green:T.muted}">${has?"✓ filled":"—"}</span></button>`;
+  }).join('');
+  return`<div class="fade-in">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">${weekBtns}</div>
+    <div style="display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start">
+      <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+        <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">WEEK SCORECARD — ${scorecardSelW===0?"RACE DAY":scorecardSelW>0?`ED+${scorecardSelW}`:`ED${scorecardSelW}`}</div>
+        ${phaseTarget[String(scorecardSelW)]?`<div style="background:rgba(224,32,32,0.07);border:1px solid rgba(224,32,32,0.18);border-radius:7px;padding:10px 13px;margin-bottom:16px"><div style="font-size:9px;color:${T.red};letter-spacing:1.5px;font-weight:700;margin-bottom:4px">THIS WEEK'S TARGETS</div><p style="font-size:12px;color:${T.sub};line-height:1.6">${phaseTarget[String(scorecardSelW)]}</p></div>`:""}
+        ${fieldRows}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:90px">
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+          <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">WEEK SCORE</div>
+          <div style="text-align:center;padding:12px 0">
+            <div style="font-family:'Bebas Neue';font-size:80px;color:${scoreColor};line-height:1;letter-spacing:2px">${score}</div>
+            <div style="font-size:10px;color:${T.sub};letter-spacing:2px;margin-bottom:12px">OUT OF 100</div>
+            <div style="height:4px;background:${T.border};border-radius:2px;overflow:hidden;margin-bottom:12px"><div style="height:100%;width:${score}%;background:${scoreColor};border-radius:2px"></div></div>
+            <p style="font-size:12px;color:${T.sub};line-height:1.6">${scoreMsg}</p>
+          </div>
+        </div>
+        <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+          <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">ALL WEEKS</div>
+          <div style="display:flex;flex-direction:column;gap:2px">${allWeeksPanel}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── ARCHIVES TAB ────────────────────────────────────────────────
+function renderArchives(){
+  const rows=archives.length===0?`<p style="color:${T.sub}">No events saved yet.</p>`:archives.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid ${T.border}"><div><strong style="color:${T.text}">${escH(a.name)}</strong><span style="color:${T.sub};font-size:11px;margin-left:8px">(${a.date})</span></div><div style="display:flex;gap:6px">
+    <button data-arch-json="${a.id}" style="padding:5px 10px;border-radius:5px;border:1px solid ${T.border};background:transparent;color:${T.sub};cursor:pointer">JSON</button>
+    <button data-arch-load="${a.id}" style="padding:5px 10px;border-radius:5px;border:1px solid ${T.border};background:transparent;color:${T.sub};cursor:pointer">Load</button>
+    <button data-arch-del="${a.id}" style="padding:5px 10px;border-radius:5px;border:1px solid ${T.border};background:transparent;color:${T.sub};cursor:pointer">Delete</button>
+  </div></div>`).join('');
+  return`<div class="fade-in">
+    <button id="arch-save-btn" style="padding:10px 16px;background:${T.red};color:#fff;border:none;border-radius:6px;font-size:14px;margin-bottom:20px;cursor:pointer">💾 Save Current Event</button>
+    <h2 style="font-size:16px;color:${T.text};margin-bottom:12px">Archived Events</h2>
+    ${rows}
+  </div>`;
+}
+
+// ─── SOCIAL CALENDAR TAB ─────────────────────────────────────────
+function renderSocial(){
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const pillars=[
+    {id:'education',label:'Education',color:'#3B82F6',icon:'📚'},
+    {id:'hype',label:'Hype & Countdown',color:'#EF4444',icon:'🔥'},
+    {id:'athlete',label:'Athlete Spotlight',color:'#8B5CF6',icon:'🏆'},
+    {id:'behindscenes',label:'Behind The Scenes',color:'#F59E0B',icon:'🎬'},
+    {id:'social',label:'Social Proof',color:'#10B981',icon:'⭐'},
+    {id:'cta',label:'Call To Action',color:'#EC4899',icon:'📣'}
+  ];
+  const weeks=8;
+  // build schedule grid
+  const schedule=socialSched||{};
+  const schedRows=[];
+  for(let w=1;w<=weeks;w++){
+    const cells=days.map(d=>{
+      const key=`w${w}_${d}`;
+      const cell=schedule[key]||{};
+      const pillar=pillars.find(p=>p.id===cell.pillar)||null;
+      const bg=pillar?pillar.color+'22':'transparent';
+      const border=pillar?pillar.color:'#333';
+      return`<td style="padding:4px;vertical-align:top">
+        <div data-social-cell="${key}" style="min-height:52px;border-radius:6px;border:1px solid ${border};background:${bg};padding:5px 6px;cursor:pointer;font-size:10px;color:${T.text}">
+          ${pillar?`<div style="font-size:9px;font-weight:700;color:${pillar.color}">${pillar.icon} ${pillar.label}</div>`:'<div style="color:#555;font-size:9px">+ Add</div>'}
+          ${cell.note?`<div style="margin-top:3px;color:${T.sub}">${escH(cell.note.slice(0,40))}</div>`:''}
+        </div>
+      </td>`;
+    }).join('');
+    schedRows.push(`<tr><td style="padding:6px 10px 6px 0;font-size:11px;color:${T.sub};white-space:nowrap;font-weight:600">Week ${w}</td>${cells}</tr>`);
+  }
+  const cadence=[
+    {ch:'Instagram',freq:'5x/wk',best:'6-8am, 7-9pm'},
+    {ch:'Facebook',freq:'3x/wk',best:'1-3pm'},
+    {ch:'Email',freq:'1x/wk',best:'Tue/Thu 9am'},
+    {ch:'SMS',freq:'2x total',best:'48hr & 24hr before'},
+    {ch:'TikTok',freq:'3x/wk',best:'7-9pm'}
+  ];
+  // Social cell edit modal
+  const selKey=socialEditCell||null;
+  const selCell=selKey?(schedule[selKey]||{}):{};
+  const modal=selKey?`<div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center" id="social-modal-overlay">
+    <div style="background:${T.bg};border:1px solid ${T.border};border-radius:12px;padding:28px;width:420px;max-width:95vw">
+      <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:${T.text};margin-bottom:18px">EDIT POST SLOT — ${selKey.replace('_',' ').toUpperCase()}</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:${T.sub};display:block;margin-bottom:4px">CONTENT PILLAR</label>
+        <select id="social-pillar-sel" style="width:100%;background:${T.surface};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+          <option value="">— None —</option>
+          ${pillars.map(p=>`<option value="${p.id}" ${selCell.pillar===p.id?'selected':''}>${p.icon} ${p.label}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;color:${T.sub};display:block;margin-bottom:4px">PLATFORM</label>
+        <select id="social-platform-sel" style="width:100%;background:${T.surface};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+          ${['','Instagram','Facebook','TikTok','Email','SMS'].map(p=>`<option value="${p}" ${selCell.platform===p?'selected':''}>${p||'— None —'}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:11px;color:${T.sub};display:block;margin-bottom:4px">NOTE / CAPTION IDEA</label>
+        <textarea id="social-note-inp" rows="3" style="width:100%;background:${T.surface};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px;resize:vertical;box-sizing:border-box">${escH(selCell.note||'')}</textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="social-cell-save" style="flex:1;padding:10px;background:${T.red};color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Save</button>
+        <button id="social-cell-clear" style="padding:10px 16px;background:transparent;border:1px solid ${T.border};border-radius:6px;color:${T.sub};font-size:14px;cursor:pointer">Clear</button>
+        <button id="social-modal-close" style="padding:10px 16px;background:transparent;border:1px solid ${T.border};border-radius:6px;color:${T.sub};font-size:14px;cursor:pointer">Cancel</button>
+      </div>
+    </div>
+  </div>`:'';
+
+  return`${modal}<div class="fade-in">
+    <h2 style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:${T.text};margin-bottom:6px">SOCIAL CALENDAR</h2>
+    <p style="color:${T.sub};font-size:13px;margin-bottom:20px">Plan your content pillars and posting schedule leading up to the event.</p>
+
+    <!-- Content Pillars -->
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px;margin-bottom:20px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">CONTENT PILLARS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+        ${pillars.map(p=>`<div style="border:1px solid ${p.color}44;border-radius:8px;padding:12px 14px;background:${p.color}11">
+          <div style="font-size:18px;margin-bottom:4px">${p.icon}</div>
+          <div style="font-weight:700;color:${p.color};font-size:13px">${p.label}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Weekly Grid -->
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px;margin-bottom:20px;overflow-x:auto">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">8-WEEK POSTING SCHEDULE</div>
+      <table style="width:100%;border-collapse:collapse;min-width:600px">
+        <thead>
+          <tr>
+            <th style="text-align:left;font-size:10px;color:${T.sub};padding:4px 10px 4px 0;width:60px"></th>
+            ${days.map(d=>`<th style="text-align:center;font-size:10px;color:${T.sub};padding:4px">${d}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>${schedRows.join('')}</tbody>
+      </table>
+      <p style="font-size:10px;color:${T.sub};margin-top:10px">Click any cell to assign a content pillar and note.</p>
+    </div>
+
+    <!-- Email/Channel Cadence -->
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">CHANNEL CADENCE GUIDE</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid ${T.border}">
+            ${['Channel','Frequency','Best Times'].map(h=>`<th style="text-align:left;font-size:11px;color:${T.sub};padding:6px 10px 6px 0">${h}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${cadence.map(r=>`<tr style="border-bottom:1px solid ${T.border}22">
+            <td style="padding:8px 10px 8px 0;font-size:13px;color:${T.text};font-weight:600">${r.ch}</td>
+            <td style="padding:8px 10px 8px 0;font-size:12px;color:${T.sub}">${r.freq}</td>
+            <td style="padding:8px 0;font-size:12px;color:${T.sub}">${r.best}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ─── PLAYBOOK TAB ────────────────────────────────────────────────
+function renderPlaybook(){
+  const sections=[
+    {id:'overview',label:'Overview'},
+    {id:'presetup',label:'Pre-Event Setup'},
+    {id:'weekly',label:'Weekly Timeline'},
+    {id:'daily',label:'Day-Of Execution'},
+    {id:'postevent',label:'Post-Event'},
+    {id:'revenue',label:'Revenue Strategy'},
+    {id:'risk',label:'Risk Planning'}
+  ];
+  const sel=playbookSection||'overview';
+  const navBtns=sections.map(s=>`<button data-pb-sec="${s.id}" style="padding:7px 14px;border-radius:6px;border:1px solid ${sel===s.id?T.red:T.border};background:${sel===s.id?T.red:'transparent'};color:${sel===s.id?'#fff':T.sub};font-size:12px;cursor:pointer;white-space:nowrap">${s.label}</button>`).join('');
+
+  let body='';
+  if(sel==='overview'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Event Playbook Overview</h3>
+    <p style="color:${T.sub};font-size:14px;line-height:1.7;margin-bottom:14px">This playbook is your master guide to executing a DEKA event from initial planning through post-event wrap-up. It covers every phase: pre-event setup and marketing, weekly task cadence, day-of logistics, athlete experience, and revenue optimization.</p>
+    <p style="color:${T.sub};font-size:14px;line-height:1.7;margin-bottom:14px">Use the Setup tab to configure your event details and capacity, then work through each checklist phase systematically. The Dashboard gives you a real-time health score based on completion.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px">
+      ${[
+        {icon:'📋',t:'Task Management',d:'Track every pre-event, weekly, and daily task with notes and scripts.'},
+        {icon:'💰',t:'Revenue Calculator',d:'Model income streams and expenses to forecast net profit.'},
+        {icon:'📊',t:'Capacity Planner',d:'Configure lanes, formats, and windows to maximize athlete throughput.'},
+        {icon:'📅',t:'Social Calendar',d:'Plan 8 weeks of content pillars and channel cadence.'},
+        {icon:'🔗',t:'Hub & Contacts',d:'Store links, vendor contacts, and important notes.'},
+        {icon:'📚',t:'Template Library',d:'Copy-ready email, SMS, and social templates for every phase.'}
+      ].map(c=>`<div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:16px">
+        <div style="font-size:22px;margin-bottom:8px">${c.icon}</div>
+        <div style="font-weight:700;color:${T.text};font-size:13px;margin-bottom:5px">${c.t}</div>
+        <div style="color:${T.sub};font-size:12px;line-height:1.5">${c.d}</div>
+      </div>`).join('')}
+    </div>`;
+  } else if(sel==='presetup'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Pre-Event Setup (8–12 Weeks Out)</h3>
+    ${[
+      {ph:'12+ Weeks',items:['Secure venue and confirm insurance requirements','Submit DEKA event application and receive approval','Lock in event date and begin registration site setup','Identify key staff: Event Director, Head Judge, Tech Lead']},
+      {ph:'8–10 Weeks',items:['Open athlete registration (early bird pricing)','Launch marketing: social media, email to existing list','Order DEKA equipment (OCR bands, timing mats, signage)','Recruit and confirm volunteers (target 1 per 10 athletes)']},
+      {ph:'4–6 Weeks',items:['Close early bird pricing, launch standard registration','Finalize heat schedule based on registration numbers','Confirm all vendor contracts (food, photography, merchandise)','Submit final insurance certificate to venue']},
+      {ph:'1–2 Weeks',items:['Send athlete check-in instructions and heat assignments','Brief all staff and volunteers with event-day runsheet','Complete equipment setup checklist and test timing system','Prepare athlete check-in materials (bibs, swag bags, waivers)']}
+    ].map(g=>`<div style="margin-bottom:18px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:1.5px;color:${T.red};margin-bottom:8px">${g.ph}</div>
+      <ul style="margin:0;padding-left:18px">
+        ${g.items.map(i=>`<li style="color:${T.sub};font-size:13px;line-height:1.8">${i}</li>`).join('')}
+      </ul>
+    </div>`).join('')}`;
+  } else if(sel==='weekly'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Weekly Task Timeline</h3>
+    <p style="color:${T.sub};font-size:13px;margin-bottom:18px">Each week has a primary marketing theme and operational focus. Use the Checklist tab to track completion in real time.</p>
+    ${[
+      {w:'Week 8',theme:'Launch Week',focus:'Open registration, announce event, blast email list and social media.'},
+      {w:'Week 7',theme:'Education',focus:'Post "What is DEKA?" content, FAQ videos, share athlete testimonials.'},
+      {w:'Week 6',theme:'Social Proof',focus:'Feature past athletes, gym leaders, and community shout-outs.'},
+      {w:'Week 5',theme:'Urgency #1',focus:'Mid-point registration push — last chance for early pricing.'},
+      {w:'Week 4',theme:'Athlete Spotlight',focus:'Highlight registered athletes, behind-the-scenes venue/setup content.'},
+      {w:'Week 3',theme:'Countdown',focus:'Heat assignment preview, event-day logistics posts, vendor reveals.'},
+      {w:'Week 2',theme:'Final Push',focus:'Last call for registration, athlete prep tips, staff spotlights.'},
+      {w:'Week 1',theme:'Game Week',focus:'Check-in info, heat times, what to bring, hype countdown posts.'}
+    ].map((r,i)=>`<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid ${T.border}22">
+      <div style="min-width:70px;font-family:'Bebas Neue';font-size:16px;color:${T.red}">${r.w}</div>
+      <div>
+        <div style="font-weight:700;color:${T.text};font-size:13px;margin-bottom:3px">${r.theme}</div>
+        <div style="color:${T.sub};font-size:12px;line-height:1.5">${r.focus}</div>
+      </div>
+    </div>`).join('')}`;
+  } else if(sel==='daily'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Day-Of Execution Guide</h3>
+    ${[
+      {t:'T-2 Hours: Setup',items:['Arrive at venue, complete walkthrough with venue contact','Set up check-in tables, signage, athlete flow path','Test timing system end-to-end with a practice run','Brief all staff and volunteers on roles and radios']},
+      {t:'T-1 Hour: Athletes Arrive',items:['Open check-in — scan bib QR codes or manual lookup','Direct athletes to warm-up zone, explain format flow','Ensure water stations and medical kit are stocked','Run a full heat schedule briefing for judges']},
+      {t:'Event Running',items:['Announce each heat 5 min before start','Judges score every zone — no athlete progresses without confirmation','Track timing splits and flag any tech issues immediately','Maintain energy: music, MC, crowd engagement']},
+      {t:'Post-Event (Same Day)',items:['Post final results within 1 hour of last heat','Award ceremony and photos — tag athletes on social','Collect equipment, complete venue cleaning checklist','Debrief with staff: what worked, what to fix']}
+    ].map(g=>`<div style="margin-bottom:18px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:1.5px;color:${T.red};margin-bottom:8px">${g.t}</div>
+      <ul style="margin:0;padding-left:18px">
+        ${g.items.map(i=>`<li style="color:${T.sub};font-size:13px;line-height:1.8">${i}</li>`).join('')}
+      </ul>
+    </div>`).join('')}`;
+  } else if(sel==='postevent'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Post-Event Wrap-Up</h3>
+    ${[
+      {t:'24 Hours After',items:['Email all athletes: thank you + results link + social call-to-action','Post highlight reel on Instagram and Facebook','Submit timing data to DEKA HQ if required','Pay all vendor invoices']},
+      {t:'48–72 Hours After',items:['Send athlete survey (Google Form or Typeform)','Post photo gallery — tag as many athletes as possible','Reconcile all revenue and expenses in the budget tracker','Archive event config in this tool for future reference']},
+      {t:'1 Week After',items:['Review survey results — identify top 3 improvements','Hold staff debrief meeting','Early announcement of next event date (if applicable)','Update sponsor recaps and send to partners']}
+    ].map(g=>`<div style="margin-bottom:18px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:1.5px;color:${T.red};margin-bottom:8px">${g.t}</div>
+      <ul style="margin:0;padding-left:18px">
+        ${g.items.map(i=>`<li style="color:${T.sub};font-size:13px;line-height:1.8">${i}</li>`).join('')}
+      </ul>
+    </div>`).join('')}`;
+  } else if(sel==='revenue'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Revenue Strategy</h3>
+    <p style="color:${T.sub};font-size:13px;line-height:1.6;margin-bottom:16px">Maximize revenue across multiple streams. Registration is your anchor — everything else layers on top.</p>
+    ${[
+      {icon:'🎟️',t:'Registration Tiers',d:'Offer Early Bird (8+ weeks out), Standard, and Late registration. Price gap of $15–25 between tiers creates urgency.'},
+      {icon:'🛍️',t:'Merchandise',d:'Branded apparel bundles sold at registration or on-site. Target $30–50 per athlete. Offer event-exclusive items.'},
+      {icon:'🤝',t:'Sponsorships',d:'Title sponsor ($500–2000+), category sponsors (nutrition, apparel, recovery), and in-kind trade sponsors (food, photography).'},
+      {icon:'🍕',t:'Food & Beverage',d:'Partner with local food trucks or vendors. Negotiate 10–20% revenue share. Athletes and spectators drive $20–40 per head.'},
+      {icon:'🎫',t:'Spectator Tickets',d:'$10–20 general admission. Families of athletes are your primary audience. Free for children under 12.'},
+      {icon:'🎰',t:'Raffle / Side Events',d:'50/50 raffle, silent auction, or side challenges (box jump contest, etc.) add $200–500 in additional revenue.'}
+    ].map(r=>`<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid ${T.border}22">
+      <div style="font-size:22px">${r.icon}</div>
+      <div>
+        <div style="font-weight:700;color:${T.text};font-size:13px;margin-bottom:3px">${r.t}</div>
+        <div style="color:${T.sub};font-size:12px;line-height:1.5">${r.d}</div>
+      </div>
+    </div>`).join('')}`;
+  } else if(sel==='risk'){
+    body=`<h3 style="color:${T.text};margin-bottom:12px">Risk Planning & Contingencies</h3>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid ${T.border}">
+          ${['Risk','Probability','Mitigation'].map(h=>`<th style="text-align:left;font-size:11px;color:${T.sub};padding:6px 10px 8px 0">${h}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${[
+          {r:'Low registration numbers',p:'Medium',m:'Early bird deadline urgency, partner gym incentive, email re-engagement sequence 3 weeks out.'},
+          {r:'Equipment failure (timing mats)',p:'Low',m:'Backup manual timing sheet per zone. Test system 2 days before.'},
+          {r:'Key staff no-show',p:'Low',m:'Cross-train 2 volunteers per critical role. Have phone tree for day-of emergencies.'},
+          {r:'Venue cancellation',p:'Very Low',m:'Signed contract with force majeure clause. Backup venue identified.'},
+          {r:'Weather (outdoor events)',p:'Variable',m:'Rain plan: covered areas for check-in and finals. Athlete communication 48hr before.'},
+          {r:'Medical emergency',p:'Low',m:'Certified first aid on site, AED accessible, local EMS briefed on event location.'},
+          {r:'Technology failure (results)',p:'Low',m:'Manual scoresheet backup every heat. Results verified before posting.'}
+        ].map(row=>`<tr style="border-bottom:1px solid ${T.border}22">
+          <td style="padding:9px 10px 9px 0;font-size:12px;color:${T.text};font-weight:600;vertical-align:top">${row.r}</td>
+          <td style="padding:9px 10px 9px 0;font-size:12px;color:${T.sub};vertical-align:top;white-space:nowrap">${row.p}</td>
+          <td style="padding:9px 0;font-size:12px;color:${T.sub};line-height:1.5;vertical-align:top">${row.m}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  return`<div class="fade-in">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+      <h2 style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:${T.text}">EVENT PLAYBOOK</h2>
+      <button id="pb-pdf-btn" style="padding:8px 16px;background:${T.red};color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">⬇ Download PDF</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      ${navBtns}
+    </div>
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:22px 24px">
+      ${body}
+    </div>
+  </div>`;
+}
+
+// ─── HUB TAB ────────────────────────────────────────────────────
+function renderHub(){
+  const links=hubLinks||[];
+  const contacts=hubContacts||[];
+  const notes=hubNotes||[];
+
+  const quickLinks=[
+    {label:'DEKA HQ Portal',url:'https://deka.fit'},
+    {label:'Race Roster (Registration)',url:'https://raceroster.com'},
+    {label:'RunSignUp',url:'https://runsignup.com'},
+    {label:'Canva (Marketing Design)',url:'https://canva.com'},
+    {label:'Mailchimp',url:'https://mailchimp.com'}
+  ];
+
+  const noteColors=['#F59E0B','#EF4444','#3B82F6','#10B981','#8B5CF6','#EC4899'];
+
+  return`<div class="fade-in">
+    <h2 style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:${T.text};margin-bottom:20px">LINKS & NOTES HUB</h2>
+
+    <!-- Important Links -->
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px;margin-bottom:16px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">IMPORTANT LINKS</div>
+      <!-- Quick add suggestions -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        ${quickLinks.map(q=>`<button data-hub-quick-link='${JSON.stringify(q)}' style="padding:4px 10px;border-radius:20px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:11px;cursor:pointer">+ ${q.label}</button>`).join('')}
+      </div>
+      <!-- Add link form -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <input id="hub-link-label" placeholder="Link label" value="${escH(hubNewLink.label||'')}" style="flex:1;min-width:130px;background:${T.bg};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+        <input id="hub-link-url" placeholder="https://" value="${escH(hubNewLink.url||'')}" style="flex:2;min-width:180px;background:${T.bg};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+        <button id="hub-link-add" style="padding:8px 14px;background:${T.red};color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">Add</button>
+      </div>
+      ${links.length===0?`<p style="color:${T.sub};font-size:13px">No links saved yet.</p>`:links.map((lk,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid ${T.border}22">
+        <a href="${escH(lk.url)}" target="_blank" style="color:${T.red};font-size:13px;text-decoration:none;flex:1;margin-right:10px;word-break:break-all">${escH(lk.label||lk.url)}</a>
+        <button data-hub-del-link="${i}" style="padding:3px 8px;border-radius:5px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:11px;cursor:pointer">×</button>
+      </div>`).join('')}
+    </div>
+
+    <!-- Notes & Reminders -->
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px;margin-bottom:16px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">NOTES & REMINDERS</div>
+      <!-- Add note form -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <textarea id="hub-note-text" placeholder="Add a note or reminder..." rows="2" style="flex:1;min-width:200px;background:${T.bg};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px;resize:vertical">${escH(hubNewNote||'')}</textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:${T.sub}">Color:</span>
+          ${noteColors.map(c=>`<button data-hub-note-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:${hubNoteColor===c?'2px solid #fff':'2px solid transparent'};cursor:pointer"></button>`).join('')}
+          <button id="hub-note-add" style="padding:6px 14px;background:${T.red};color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">Add Note</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+        ${notes.length===0?`<p style="color:${T.sub};font-size:13px">No notes yet.</p>`:notes.map((n,i)=>`<div style="border-left:3px solid ${n.color||T.red};background:${(n.color||T.red)}11;border-radius:8px;padding:12px 14px;position:relative">
+          <p style="margin:0;color:${T.text};font-size:13px;line-height:1.5;white-space:pre-wrap">${escH(n.text)}</p>
+          <button data-hub-del-note="${i}" style="position:absolute;top:6px;right:8px;background:transparent;border:none;color:${T.sub};font-size:14px;cursor:pointer">×</button>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Vendor/Sponsor Contacts -->
+    <div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;padding:18px 20px">
+      <div style="font-family:'Bebas Neue';font-size:13px;letter-spacing:2px;color:${T.red};margin-bottom:14px">VENDOR & SPONSOR CONTACTS</div>
+      <!-- Add contact form -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+        <input id="hub-con-name" placeholder="Name / Company" value="${escH(hubNewContact.name||'')}" style="background:${T.bg};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+        <input id="hub-con-role" placeholder="Role (e.g. Caterer)" value="${escH(hubNewContact.role||'')}" style="background:${T.bg};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+        <input id="hub-con-phone" placeholder="Phone / Email" value="${escH(hubNewContact.phone||'')}" style="background:${T.bg};border:1px solid ${T.border};border-radius:6px;padding:8px 10px;color:${T.text};font-size:13px">
+      </div>
+      <button id="hub-con-add" style="padding:8px 14px;background:${T.red};color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-bottom:14px">Add Contact</button>
+      ${contacts.length===0?`<p style="color:${T.sub};font-size:13px">No contacts saved yet.</p>`:contacts.map((c,i)=>{
+        const exp=hubContactOpen===i;
+        return`<div style="border:1px solid ${T.border};border-radius:8px;margin-bottom:8px;overflow:hidden">
+          <div data-hub-contact-toggle="${i}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer">
+            <div>
+              <strong style="color:${T.text};font-size:13px">${escH(c.name)}</strong>
+              ${c.role?`<span style="color:${T.sub};font-size:11px;margin-left:8px">${escH(c.role)}</span>`:''}
+            </div>
+            <span style="color:${T.sub}">${exp?'▲':'▼'}</span>
+          </div>
+          ${exp?`<div style="padding:10px 14px;border-top:1px solid ${T.border};background:${T.bg}22">
+            <p style="margin:0;color:${T.sub};font-size:13px">${escH(c.phone||'No contact info')}</p>
+            <button data-hub-del-contact="${i}" style="margin-top:8px;padding:4px 10px;border-radius:5px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:11px;cursor:pointer">Remove</button>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ─── TEMPLATE LIBRARY TAB ────────────────────────────────────────
+function renderTemplates(){
+  const types=['email','sms','social','script'];
+  const selType=tmplType||'';
+  const selQ=tmplSearch||'';
+  const gym=escH(cfg.gymName||'[GYM NAME]');
+  const date=cfg.eventDate?fmtDate(cfg.eventDate):'[EVENT DATE]';
+
+  const templates=[
+    {id:'email-launch',type:'email',title:'Launch Announcement',subject:`🚨 DEKA is coming to ${gym}!`,body:`Hey [First Name],\n\nBig news — we're hosting a DEKA event at ${gym} on ${date}!\n\nDEKA is the world's toughest fitness challenge — 10 zones, 10 movements, timed and scored. Whether you're a first-timer or a seasoned competitor, this is your chance to prove what you're made of.\n\n👉 Register now: [REGISTRATION LINK]\n\nEarly bird pricing ends [DATE] — don't miss out.\n\nLet's go,\n${gym} Team`},
+    {id:'email-urgency',type:'email',title:'Urgency — Last Spots',subject:`⏰ Last chance — DEKA at ${gym} is almost full`,body:`Hey [First Name],\n\nJust a heads up — spots are filling fast for DEKA at ${gym} on ${date}.\n\nDon't get left out. Secure your spot now before we sell out:\n👉 [REGISTRATION LINK]\n\nQuestions? Reply to this email or DM us on Instagram.\n\n${gym} Team`},
+    {id:'email-reminder',type:'email',title:'Week-Before Reminder',subject:`📅 DEKA is THIS WEEK — here's what you need to know`,body:`Hey [First Name],\n\nYour DEKA event at ${gym} is just days away! Here's everything you need:\n\n• 📍 Location: [VENUE ADDRESS]\n• 🕐 Your heat time: Check your registration confirmation\n• 🅿️ Parking: [PARKING INFO]\n• 👕 What to wear: Athletic clothing, no lifting shoes required\n• 💧 Hydration: Bring a water bottle\n\nAny questions? We're here.\n\nSee you on the floor,\n${gym} Team`},
+    {id:'email-postevent',type:'email',title:'Post-Event Thank You',subject:`🏆 Thank you, DEKA athlete!`,body:`Hey [First Name],\n\nWOW. What an incredible day at ${gym}'s DEKA event!\n\nYou showed up, pushed hard, and left it all on the floor. We couldn't be prouder of every athlete who competed.\n\n📊 Your results: [RESULTS LINK]\n📸 Photos: [PHOTOS LINK]\n\nWe'd love your feedback — takes 2 minutes:\n👉 [SURVEY LINK]\n\nStay tuned — we'll be announcing our next event soon!\n\n${gym} Team`},
+    {id:'sms-launch',type:'sms',title:'Launch SMS',body:`🚨 DEKA is coming to ${gym} on ${date}! 10 zones, 10 movements, all heart. Register: [LINK] — Early bird ends soon!`},
+    {id:'sms-urgency',type:'sms',title:'Urgency SMS',body:`⏰ Last call! DEKA @ ${gym} is almost full. Grab your spot before it's gone → [LINK]`},
+    {id:'sms-dayof',type:'sms',title:'Day-Of SMS',body:`🏁 TODAY IS THE DAY! DEKA @ ${gym} starts at [TIME]. Doors open [TIME-30min]. See you on the floor! 💪`},
+    {id:'social-launch',type:'social',title:'Launch Post',body:`🚨 IT'S OFFICIAL — DEKA is coming to ${gym}!\n\n10 zones. 10 movements. One unforgettable challenge.\n\n📅 Date: ${date}\n📍 Location: ${gym}\n\nEarly bird registration is NOW OPEN — link in bio!\n\nTag a training partner who needs to do this with you 👇\n\n#DEKA #DEKAFit #${(cfg.gymName||'gym').replace(/\s+/g,'')} #FitnessChallenge #OCR`},
+    {id:'social-countdown',type:'social',title:'Countdown Post',body:`⏳ [X] DAYS UNTIL DEKA @ ${gym}!\n\nAre you ready? Here's your checklist:\n✅ Registered\n✅ Training\n✅ Hyped\n\nSpots are going fast — don't sleep on this. Link in bio.\n\n#DEKAFit #Countdown #FitnessChallenge`},
+    {id:'social-hype',type:'social',title:'Hype Reel Caption',body:`You've been training. Now it's time to PROVE IT. 🔥\n\nDEKA is coming to ${gym} on ${date} and we want YOU on the floor.\n\n10 zones. No excuses. Pure grit.\n\nRegister → link in bio\n\n#DEKA #DEKAFit #ProvingGrounds`},
+    {id:'script-mc',type:'script',title:'MC Opening Script',body:`"GOOD MORNING ATHLETES AND WELCOME TO DEKA AT ${gym.toUpperCase()}!\n\nToday you will face 10 zones, 10 movements — and you will finish knowing exactly what you're made of.\n\nA few quick rules before we begin:\n• Complete ALL reps at each zone before moving on\n• Judges have final say — respect their call\n• If you fail to complete a zone, you will be assessed a time penalty\n\nThis is your moment. Your gym. Your community.\n\nLET'S GET IT STARTED — HEAT ONE, YOU'RE UP!"`},
+    {id:'script-announcer',type:'script',title:'Heat Announcer Script',body:`"Athletes in Heat [NUMBER] — please make your way to the start line.\n\nYou have [TIME] to complete all 10 zones. The clock starts when the horn sounds.\n\nRemember: complete all reps at each zone. Your judge is your guide.\n\nOn your marks... 3... 2... 1... GO!"`}
+  ];
+
+  const filtered=templates.filter(t=>{
+    const matchType=!selType||t.type===selType;
+    const q=selQ.toLowerCase();
+    const matchQ=!q||t.title.toLowerCase().includes(q)||t.body.toLowerCase().includes(q);
+    return matchType&&matchQ;
+  });
+
+  const copied=tmplCopied||'';
+
+  return`<div class="fade-in">
+    <h2 style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:${T.text};margin-bottom:6px">TEMPLATE LIBRARY</h2>
+    <p style="color:${T.sub};font-size:13px;margin-bottom:18px">Copy-ready templates auto-filled with your event details. Click Copy to grab any template.</p>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+      <input id="tmpl-search" placeholder="Search templates..." value="${escH(selQ)}" style="flex:1;min-width:160px;background:${T.surface};border:1px solid ${T.border};border-radius:6px;padding:8px 12px;color:${T.text};font-size:13px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button data-tmpl-type="" style="padding:6px 14px;border-radius:20px;border:1px solid ${!selType?T.red:T.border};background:${!selType?T.red:'transparent'};color:${!selType?'#fff':T.sub};font-size:12px;cursor:pointer">All</button>
+        ${types.map(tp=>`<button data-tmpl-type="${tp}" style="padding:6px 14px;border-radius:20px;border:1px solid ${selType===tp?T.red:T.border};background:${selType===tp?T.red:'transparent'};color:${selType===tp?'#fff':T.sub};font-size:12px;cursor:pointer">${tp.charAt(0).toUpperCase()+tp.slice(1)}</button>`).join('')}
+      </div>
+    </div>
+
+    <!-- Template Cards -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${filtered.length===0?`<p style="color:${T.sub}">No templates match your search.</p>`:filtered.map(t=>{
+        const typeColors={email:'#3B82F6',sms:'#10B981',social:'#8B5CF6',script:'#F59E0B'};
+        const tc=typeColors[t.type]||T.red;
+        const isCopied=copied===t.id;
+        const preview=t.body.replace(/\n/g,' ').slice(0,120)+'...';
+        const isOpen=tmplOpen===t.id;
+        const subjectRow=t.subject?`<div style="font-size:11px;color:${T.sub};margin-bottom:8px"><strong>Subject:</strong> ${escH(t.subject)}</div>`:'';
+        return`<div style="background:${T.surface};border:1px solid ${T.border};border-radius:10px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <span style="padding:3px 10px;border-radius:20px;background:${tc}22;color:${tc};font-size:11px;font-weight:700;white-space:nowrap">${t.type.toUpperCase()}</span>
+              <div>
+                <div style="font-weight:700;color:${T.text};font-size:14px">${t.title}</div>
+                <div style="color:${T.sub};font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px">${preview}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <button data-tmpl-toggle="${t.id}" style="padding:6px 12px;border-radius:6px;border:1px solid ${T.border};background:transparent;color:${T.sub};font-size:12px;cursor:pointer">${isOpen?'▲ Hide':'▼ Show'}</button>
+              <button data-tmpl-copy="${t.id}" data-tmpl-body="${escH(t.body)}" style="padding:6px 14px;border-radius:6px;border:none;background:${isCopied?'#10B981':T.red};color:#fff;font-size:12px;cursor:pointer;min-width:64px">${isCopied?'✓ Copied':'Copy'}</button>
+            </div>
+          </div>
+          ${isOpen?`<div style="padding:14px 18px;border-top:1px solid ${T.border};background:${T.bg}">
+            ${subjectRow}
+            <pre style="margin:0;color:${T.text};font-size:12px;line-height:1.7;white-space:pre-wrap;font-family:'DM Mono',monospace">${escH(t.body)}</pre>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ─── BIND APP ────────────────────────────────────────────────────
+function bindApp(){
+  // Tab navigation
+  document.querySelectorAll('[data-tab]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      activeTab=btn.dataset.tab;
+      render();
+    });
+  });
+
+  // TopBar buttons
+  const expBtn=document.getElementById('export-btn');
+  if(expBtn) expBtn.addEventListener('click',exportJSON);
+  const impBtn=document.getElementById('import-btn');
+  if(impBtn) impBtn.addEventListener('click',importJSON);
+  const pdfBtn=document.getElementById('pdf-btn');
+  if(pdfBtn) pdfBtn.addEventListener('click',exportPDF);
+
+  // Checklist category filter
+  document.querySelectorAll('[data-cat]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      checklistCat=btn.dataset.cat;
+      render();
+    });
+  });
+
+  // Checklist week accordion
+  document.querySelectorAll('[data-week-toggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const w=btn.dataset.weekToggle;
+      openWeekMap[w]=!openWeekMap[w];
+      render();
+    });
+  });
+
+  // Checklist task checkbox
+  document.querySelectorAll('[data-check-task]').forEach(el=>{
+    el.addEventListener('change',e=>{
+      const id=el.dataset.checkTask;
+      checks[id]=e.target.checked;
+      saveState();
+      render();
+    });
+  });
+
+  // Checklist task expand
+  document.querySelectorAll('[data-expand-task]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.expandTask;
+      openTaskId=openTaskId===id?null:id;
+      render();
+    });
+  });
+
+  // Checklist task note
+  document.querySelectorAll('[data-note-task]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      taskNotes[inp.dataset.noteTask]=e.target.value;
+      saveState();
+    });
+  });
+
+  // Daily Mgr day accordion
+  document.querySelectorAll('[data-day-toggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const d=btn.dataset.dayToggle;
+      openDayMap[d]=!openDayMap[d];
+      render();
+    });
+  });
+
+  // Daily task checkbox
+  document.querySelectorAll('[data-daily-check]').forEach(el=>{
+    el.addEventListener('change',e=>{
+      const id=el.dataset.dailyCheck;
+      checks[id]=e.target.checked;
+      saveState();
+      render();
+    });
+  });
+
+  // Daily task expand
+  document.querySelectorAll('[data-daily-expand]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.dailyExpand;
+      openTaskId=openTaskId===id?null:id;
+      render();
+    });
+  });
+
+  // Daily task note
+  document.querySelectorAll('[data-daily-note]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      taskNotes[inp.dataset.dailyNote]=e.target.value;
+      saveState();
+    });
+  });
+
+  // Pre-event task checkbox
+  document.querySelectorAll('[data-pre-check]').forEach(el=>{
+    el.addEventListener('change',e=>{
+      const id=el.dataset.preCheck;
+      preChecks[id]=e.target.checked;
+      saveState();
+      render();
+    });
+  });
+
+  // Pre-event task expand
+  document.querySelectorAll('[data-pre-expand]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.preExpand;
+      openTaskId=openTaskId===id?null:id;
+      render();
+    });
+  });
+
+  // Pre-event task note
+  document.querySelectorAll('[data-pre-note]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      taskNotes[inp.dataset.preNote]=e.target.value;
+      saveState();
+    });
+  });
+
+  // Task Editor tab switching
+  document.querySelectorAll('[data-te-tab]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      teTab=btn.dataset.teTab;
+      render();
+    });
+  });
+
+  // Task Editor: add new task
+  const teAddBtn=document.getElementById('te-add-btn');
+  if(teAddBtn) teAddBtn.addEventListener('click',()=>{
+    const titleEl=document.getElementById('te-new-title');
+    const catEl=document.getElementById('te-new-cat');
+    const weekEl=document.getElementById('te-new-week');
+    const scriptEl=document.getElementById('te-new-script');
+    if(!titleEl||!titleEl.value.trim()) return;
+    const newTask={
+      id:iid(),
+      title:titleEl.value.trim(),
+      cat:catEl?catEl.value:'general',
+      week:weekEl?parseInt(weekEl.value)||1:1,
+      script:scriptEl?scriptEl.value.trim():'',
+      custom:true
+    };
+    cfg.customTasks=cfg.customTasks||[];
+    cfg.customTasks.push(newTask);
+    saveState();
+    render();
+  });
+
+  // Task Editor: edit existing (inline)
+  document.querySelectorAll('[data-te-edit]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      teEditId=btn.dataset.teEdit;
+      render();
+    });
+  });
+
+  // Task Editor: save inline edit
+  document.querySelectorAll('[data-te-save]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.teSave;
+      const titleEl=document.getElementById(`te-edit-title-${id}`);
+      const scriptEl=document.getElementById(`te-edit-script-${id}`);
+      if(titleEl){
+        cfg.customEdits=cfg.customEdits||{};
+        cfg.customEdits[id]={title:titleEl.value.trim(),script:scriptEl?scriptEl.value.trim():''};
+        teEditId=null;
+        saveState();
+        render();
+      }
+    });
+  });
+
+  // Task Editor: cancel inline edit
+  document.querySelectorAll('[data-te-cancel]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ teEditId=null; render(); });
+  });
+
+  // Task Editor: hide/restore task
+  document.querySelectorAll('[data-te-hide]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.teHide;
+      cfg.hiddenTasks=cfg.hiddenTasks||[];
+      if(!cfg.hiddenTasks.includes(id)) cfg.hiddenTasks.push(id);
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll('[data-te-restore]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.teRestore;
+      cfg.hiddenTasks=(cfg.hiddenTasks||[]).filter(h=>h!==id);
+      saveState(); render();
+    });
+  });
+
+  // Task Editor: delete custom task
+  document.querySelectorAll('[data-te-del]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.teDel;
+      cfg.customTasks=(cfg.customTasks||[]).filter(t=>t.id!==id);
+      saveState(); render();
+    });
+  });
+
+  // Revenue sliders / inputs
+  document.querySelectorAll('[data-rev-slider]').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const key=el.dataset.revSlider;
+      revInc[key]=parseFloat(e.target.value)||0;
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll('[data-exp-slider]').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const key=el.dataset.expSlider;
+      revExp[key]=parseFloat(e.target.value)||0;
+      saveState(); render();
+    });
+  });
+
+  // Scorecard week selector
+  document.querySelectorAll('[data-sc-week]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      scorecardSelW=parseInt(btn.dataset.scWeek);
+      render();
+    });
+  });
+
+  // Scorecard inputs
+  document.querySelectorAll('[data-sc-field]').forEach(el=>{
+    el.addEventListener('input',e=>{
+      const key=el.dataset.scField;
+      const w=scorecardSelW||1;
+      scores[w]=scores[w]||{};
+      scores[w][key]=el.type==='range'||el.type==='number'?parseFloat(e.target.value)||0:e.target.value;
+      saveState(); render();
+    });
+  });
+
+  // Archive: save current
+  const archSaveBtn=document.getElementById('arch-save-btn');
+  if(archSaveBtn) archSaveBtn.addEventListener('click',saveArchive);
+
+  // Archive: load/delete/json
+  document.querySelectorAll('[data-arch-load]').forEach(btn=>{
+    btn.addEventListener('click',()=>loadArchive(btn.dataset.archLoad));
+  });
+  document.querySelectorAll('[data-arch-del]').forEach(btn=>{
+    btn.addEventListener('click',()=>deleteArchive(btn.dataset.archDel));
+  });
+  document.querySelectorAll('[data-arch-json]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const a=archives.find(x=>x.id===btn.dataset.archJson);
+      if(a){
+        const blob=new Blob([JSON.stringify(a,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement('a');
+        link.href=url; link.download=`${(a.name||'event').replace(/\s+/g,'_')}.json`;
+        link.click(); URL.revokeObjectURL(url);
+      }
+    });
+  });
+
+  // Social grid cells
+  document.querySelectorAll('[data-social-cell]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      socialEditCell=btn.dataset.socialCell;
+      render();
+    });
+  });
+
+  // Social modal
+  const socialSave=document.getElementById('social-cell-save');
+  if(socialSave) socialSave.addEventListener('click',()=>{
+    const pillarEl=document.getElementById('social-pillar-sel');
+    const platformEl=document.getElementById('social-platform-sel');
+    const noteEl=document.getElementById('social-note-inp');
+    socialSched=socialSched||{};
+    socialSched[socialEditCell]={
+      pillar:pillarEl?pillarEl.value:'',
+      platform:platformEl?platformEl.value:'',
+      note:noteEl?noteEl.value:''
+    };
+    socialEditCell=null;
+    saveState(); render();
+  });
+  const socialClear=document.getElementById('social-cell-clear');
+  if(socialClear) socialClear.addEventListener('click',()=>{
+    if(socialSched&&socialEditCell) delete socialSched[socialEditCell];
+    socialEditCell=null;
+    saveState(); render();
+  });
+  const socialClose=document.getElementById('social-modal-close');
+  if(socialClose) socialClose.addEventListener('click',()=>{ socialEditCell=null; render(); });
+  const socialOverlay=document.getElementById('social-modal-overlay');
+  if(socialOverlay) socialOverlay.addEventListener('click',e=>{ if(e.target===socialOverlay){ socialEditCell=null; render(); }});
+
+  // Playbook section nav
+  document.querySelectorAll('[data-pb-sec]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ playbookSection=btn.dataset.pbSec; render(); });
+  });
+
+  // Playbook PDF
+  const pbPdf=document.getElementById('pb-pdf-btn');
+  if(pbPdf) pbPdf.addEventListener('click',exportPDF);
+
+  // Hub: links
+  const hubLinkAdd=document.getElementById('hub-link-add');
+  if(hubLinkAdd) hubLinkAdd.addEventListener('click',()=>{
+    const labelEl=document.getElementById('hub-link-label');
+    const urlEl=document.getElementById('hub-link-url');
+    const url=(urlEl?urlEl.value.trim():'');
+    if(!url) return;
+    hubLinks=hubLinks||[];
+    hubLinks.push({label:labelEl?labelEl.value.trim():'',url});
+    hubNewLink={};
+    saveState(); render();
+  });
+  document.querySelectorAll('[data-hub-del-link]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=parseInt(btn.dataset.hubDelLink);
+      hubLinks.splice(i,1);
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll('[data-hub-quick-link]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const q=JSON.parse(btn.dataset.hubQuickLink);
+      hubLinks=hubLinks||[];
+      if(!hubLinks.find(l=>l.url===q.url)) hubLinks.push(q);
+      saveState(); render();
+    });
+  });
+
+  // Hub: notes
+  const hubNoteAdd=document.getElementById('hub-note-add');
+  if(hubNoteAdd) hubNoteAdd.addEventListener('click',()=>{
+    const textEl=document.getElementById('hub-note-text');
+    const text=(textEl?textEl.value.trim():'');
+    if(!text) return;
+    hubNotes=hubNotes||[];
+    hubNotes.push({text,color:hubNoteColor||T.red});
+    hubNewNote='';
+    saveState(); render();
+  });
+  document.querySelectorAll('[data-hub-del-note]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=parseInt(btn.dataset.hubDelNote);
+      hubNotes.splice(i,1);
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll('[data-hub-note-color]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      hubNoteColor=btn.dataset.hubNoteColor;
+      render();
+    });
+  });
+
+  // Hub: contacts
+  const hubConAdd=document.getElementById('hub-con-add');
+  if(hubConAdd) hubConAdd.addEventListener('click',()=>{
+    const nameEl=document.getElementById('hub-con-name');
+    const roleEl=document.getElementById('hub-con-role');
+    const phoneEl=document.getElementById('hub-con-phone');
+    const name=(nameEl?nameEl.value.trim():'');
+    if(!name) return;
+    hubContacts=hubContacts||[];
+    hubContacts.push({name,role:roleEl?roleEl.value.trim():'',phone:phoneEl?phoneEl.value.trim():''});
+    hubNewContact={};
+    saveState(); render();
+  });
+  document.querySelectorAll('[data-hub-del-contact]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=parseInt(btn.dataset.hubDelContact);
+      hubContacts.splice(i,1);
+      saveState(); render();
+    });
+  });
+  document.querySelectorAll('[data-hub-contact-toggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const i=parseInt(btn.dataset.hubContactToggle);
+      hubContactOpen=hubContactOpen===i?null:i;
+      render();
+    });
+  });
+
+  // Templates: search
+  const tmplSearchEl=document.getElementById('tmpl-search');
+  if(tmplSearchEl) tmplSearchEl.addEventListener('input',e=>{ tmplSearch=e.target.value; render(); });
+
+  // Templates: type filter
+  document.querySelectorAll('[data-tmpl-type]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ tmplType=btn.dataset.tmplType; render(); });
+  });
+
+  // Templates: toggle expand
+  document.querySelectorAll('[data-tmpl-toggle]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.tmplToggle;
+      tmplOpen=tmplOpen===id?null:id;
+      render();
+    });
+  });
+
+  // Templates: copy
+  document.querySelectorAll('[data-tmpl-copy]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const body=btn.dataset.tmplBody;
+      navigator.clipboard.writeText(body).then(()=>{
+        tmplCopied=btn.dataset.tmplCopy;
+        render();
+        setTimeout(()=>{ tmplCopied=''; render(); },2000);
+      }).catch(()=>{
+        // fallback
+        const ta=document.createElement('textarea');
+        ta.value=body; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        tmplCopied=btn.dataset.tmplCopy;
+        render();
+        setTimeout(()=>{ tmplCopied=''; render(); },2000);
+      });
+    });
+  });
+}
+
+// ─── MISSING STATE VARIABLES (added after initial declarations) ───
+// These supplement the declarations block above
+let hubLinks=[];
+let hubContacts=[];
+let hubNotes=[];
+let hubNoteColor='#EF4444';
+let hubContactOpen=null;
+let tmplType='';
+let tmplOpen=null;
+let teTab='weekly';
+let teEditId=null;
+let playbookSection='overview';
+
+// Patch loadState to also restore hub/social/template state
+(function patchLoadState(){
+  const orig=loadState;
+  loadState=function(){
+    orig();
+    try{
+      const s=localStorage.getItem('deka_event_host');
+      if(s){
+        const d=JSON.parse(s);
+        if(d.hubLinks) hubLinks=d.hubLinks;
+        if(d.hubContacts) hubContacts=d.hubContacts;
+        if(d.hubNotes) hubNotes=d.hubNotes;
+        if(d.socialSched) socialSched=d.socialSched;
+        if(d.revInc) revInc=d.revInc;
+        if(d.revExp) revExp=d.revExp;
+        if(d.scores) scores=d.scores;
+        if(d.archives) archives=d.archives;
+      }
+    }catch(e){}
+  };
+})();
+
+// Patch saveState to also persist hub/social/template state
+(function patchSaveState(){
+  const orig=saveState;
+  saveState=function(){
+    orig();
+    try{
+      const s=localStorage.getItem('deka_event_host');
+      const d=s?JSON.parse(s):{};
+      d.hubLinks=hubLinks;
+      d.hubContacts=hubContacts;
+      d.hubNotes=hubNotes;
+      d.socialSched=socialSched;
+      d.revInc=revInc;
+      d.revExp=revExp;
+      d.scores=scores;
+      d.archives=archives;
+      localStorage.setItem('deka_event_host',JSON.stringify(d));
+    }catch(e){}
+  };
+})();
+
+// ─── INIT ────────────────────────────────────────────────────────
+loadState();
+render();
+
+</script>
+</body>
+</html>

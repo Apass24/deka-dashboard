@@ -60,9 +60,6 @@ a{color:inherit;text-decoration:none}
 .col-header{padding:10px 12px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
 .col-body{min-height:80px;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:8px;background:rgba(255,255,255,0.01)}
 .col-body.drag-over{background:rgba(96,165,250,0.07);border-color:var(--blue)}
-details summary{list-style:none}
-details summary::-webkit-details-marker{display:none}
-details[open] .aq-arrow{transform:rotate(90deg)}
 
 /* Stage colors */
 .col-lead .col-header{background:rgba(75,85,99,0.3);color:#9ca3af}
@@ -199,6 +196,8 @@ details[open] .aq-arrow{transform:rotate(90deg)}
   .p-card-name{color:black!important}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 </head>
 <body>
 
@@ -223,12 +222,12 @@ details[open] .aq-arrow{transform:rotate(90deg)}
   <div class="header-actions">
     <a href="index.html" class="btn btn-ghost">&#8592; Portfolio Dashboard</a>
     <button class="btn btn-primary" onclick="openAddModal()">+ Add Prospect</button>
+    <button class="btn btn-ghost" onclick="syncFromSheet()" title="Import from Pipeline Tier 1-3 tab">&#8635; Sync from Sheet</button>
     <button class="btn btn-ghost" onclick="window.print()">&#128438; Print</button>
   </div>
 </div>
 
 <div class="nav-tabs">
-  <button class="nav-tab" onclick="showView('research',this)">&#129504; Research</button>
   <button class="nav-tab active" onclick="showView('board',this)">&#9632; Pipeline Board</button>
   <button class="nav-tab" onclick="showView('list',this)">&#9776; Prospect List</button>
   <button class="nav-tab" onclick="showView('analytics',this)">&#128202; Analytics</button>
@@ -292,7 +291,6 @@ details[open] .aq-arrow{transform:rotate(90deg)}
   <div class="tbl-wrap">
     <table class="p-table">
       <thead><tr>
-        <th style="width:28px;cursor:pointer" onclick="_plToggleAllVisible()" title="Select all visible"><input type="checkbox" id="pl-select-all" onclick="event.stopPropagation();_plToggleAllVisible()"></th>
         <th onclick="sortList('priority')">Priority</th>
         <th onclick="sortList('gymName')">Gym</th>
         <th onclick="sortList('state')">State</th>
@@ -310,130 +308,6 @@ details[open] .aq-arrow{transform:rotate(90deg)}
 
 <div class="main" id="view-analytics" style="display:none">
   <div id="analytics-content"></div>
-</div>
-
-<!-- ── RESEARCH VIEW (agent-discovered prospects, awaiting accept/reject) ── -->
-<div class="main" id="view-research" style="display:none">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
-    <div>
-      <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">&#129504; Agent Research Inbox</h2>
-      <p style="font-size:12px;color:var(--text-dim)">Prospects discovered by the agentic workflow. Accept to add to your pipeline, or reject with a reason so the agents can learn.</p>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span id="research-status" style="font-size:11px;color:var(--text-dim)">Loading...</span>
-      <button class="btn btn-ghost" onclick="_researchCacheTs=0;loadResearchInbox()">&#8635; Refresh</button>
-      <button class="btn btn-ghost" onclick="triggerCuratorRun()" id="curator-run-btn" title="Regenerate ideal customer profile using Claude">&#129504; Refresh ICP</button>
-      <button class="btn btn-primary" onclick="triggerAgentRun()" id="research-run-btn">&#9654; Run Agents</button>
-    </div>
-  </div>
-
-  <!-- ── Run filters (scope the next "Run Agents" click; reset on every page load) ── -->
-  <details id="research-filters" style="margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:10px">
-    <summary style="cursor:pointer;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;list-style:none">
-      <span style="font-size:14px">&#9881;</span> Run Filters
-      <span id="research-filter-summary" style="font-size:11px;color:var(--text-dim);font-weight:400;margin-left:8px"></span>
-      <span style="margin-left:auto;font-size:11px;color:var(--text-dim);font-weight:400">click to expand</span>
-    </summary>
-    <div style="padding:14px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
-      <div>
-        <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:4px">State</label>
-        <select id="rf-state" onchange="_updateFilterSummary()" style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-          <option value="">All states</option>
-          <option>MA</option><option>NY</option><option>NJ</option><option>PA</option>
-          <option>CT</option><option>RI</option><option>NH</option><option>ME</option><option>VT</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:4px">City (optional)</label>
-        <input id="rf-city" type="text" placeholder="e.g. Boston" oninput="_updateFilterSummary()" style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-      </div>
-      <div>
-        <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:4px">Max Results <span style="color:var(--text-dim);text-transform:none;letter-spacing:0">(1-25)</span></label>
-        <input id="rf-max" type="number" min="1" max="25" placeholder="default 10" oninput="_updateFilterSummary()" style="width:100%;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px">
-      </div>
-      <div style="grid-column:1/-1">
-        <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px">Style (multi-select; leave all off for default sweep)</label>
-        <div id="rf-styles" style="display:flex;flex-wrap:wrap;gap:6px">
-          <!-- Curated 4 from GYM_SEARCH_PATTERNS -->
-          <button type="button" class="rf-chip" data-style="CrossFit" onclick="_toggleStyleChip(this)" style="padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:14px;color:var(--text-dim);font-size:11px;font-weight:500;cursor:pointer">CrossFit</button>
-          <button type="button" class="rf-chip" data-style="functional" onclick="_toggleStyleChip(this)" style="padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:14px;color:var(--text-dim);font-size:11px;font-weight:500;cursor:pointer">Functional</button>
-          <button type="button" class="rf-chip" data-style="strength and conditioning" onclick="_toggleStyleChip(this)" style="padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:14px;color:var(--text-dim);font-size:11px;font-weight:500;cursor:pointer">Strength &amp; Conditioning</button>
-          <button type="button" class="rf-chip" data-style="HYROX" onclick="_toggleStyleChip(this)" style="padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:14px;color:var(--text-dim);font-size:11px;font-weight:500;cursor:pointer">HYROX</button>
-        </div>
-      </div>
-      <div style="grid-column:1/-1;display:flex;justify-content:flex-end">
-        <button class="btn btn-ghost btn-sm" onclick="_clearFilters()">Clear filters</button>
-      </div>
-    </div>
-  </details>
-
-  <div id="research-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px"></div>
-
-  <!-- Sub-tab toggle: Inbox / Maybe / Rejected -->
-  <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border)">
-    <button id="research-subtab-inbox" class="research-subtab" onclick="setResearchSubtab('inbox')"
-      style="padding:8px 14px;background:transparent;border:none;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent)">Inbox</button>
-    <button id="research-subtab-maybe" class="research-subtab" onclick="setResearchSubtab('maybe')"
-      style="padding:8px 14px;background:transparent;border:none;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent">Maybe / Needs Research</button>
-    <button id="research-subtab-rejected" class="research-subtab" onclick="setResearchSubtab('rejected')"
-      style="padding:8px 14px;background:transparent;border:none;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent">Rejected Archive</button>
-    <button id="research-subtab-icp" class="research-subtab" onclick="setResearchSubtab('icp')"
-      style="padding:8px 14px;background:transparent;border:none;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent">&#129504; ICP Profile</button>
-  </div>
-
-  <div id="research-list" style="display:flex;flex-direction:column;gap:10px"></div>
-</div>
-
-<!-- ── REJECT REASON MODAL ── -->
-<div class="modal-overlay" id="reject-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px;width:90%;max-width:480px">
-    <h3 style="font-size:15px;font-weight:600;margin-bottom:6px">Reject Prospect</h3>
-    <p id="reject-modal-name" style="font-size:12px;color:var(--text-dim);margin-bottom:14px"></p>
-    <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px">Reason (helps agents learn)</label>
-    <select id="reject-reason-preset" onchange="document.getElementById('reject-reason-text').value = this.value === 'Other' ? '' : this.value" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;margin-bottom:8px">
-      <option value="">— Pick a common reason —</option>
-      <option>Wrong gym type / not a fit</option>
-      <option>Franchise / corporate restricted</option>
-      <option>Already an affiliate</option>
-      <option>Already in pipeline</option>
-      <option>Too small / low community presence</option>
-      <option>Bad website data / can't verify</option>
-      <option>Out of target geography</option>
-      <option>Other</option>
-    </select>
-    <textarea id="reject-reason-text" placeholder="Add detail so agents can learn the pattern..."
-      style="width:100%;height:90px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text);font-size:12px;resize:vertical;outline:none;margin-bottom:14px"></textarea>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeRejectModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="confirmRejectProspect()">Reject &amp; Save Reason</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── MAYBE NOTE MODAL ── -->
-<div class="modal-overlay" id="maybe-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:10px;padding:22px;width:90%;max-width:480px">
-    <h3 style="font-size:15px;font-weight:600;margin-bottom:6px;color:var(--yellow)">? Mark as Maybe</h3>
-    <p id="maybe-modal-name" style="font-size:12px;color:var(--text-dim);margin-bottom:14px"></p>
-    <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:6px">What needs more research? (optional)</label>
-    <select id="maybe-reason-preset" onchange="document.getElementById('maybe-reason-text').value = this.value === 'Other' ? '' : this.value" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;margin-bottom:8px">
-      <option value="">— Pick a common reason —</option>
-      <option>Need to verify community/event activity</option>
-      <option>Need to check social media presence</option>
-      <option>Need to confirm independent vs franchise</option>
-      <option>Need to find owner contact</option>
-      <option>Website unclear — investigate offerings</option>
-      <option>Looks promising but small footprint</option>
-      <option>Worth a phone call to gauge interest</option>
-      <option>Other</option>
-    </select>
-    <textarea id="maybe-reason-text" placeholder="Note what to investigate so future-you (and the agents) know what to dig into..."
-      style="width:100%;height:90px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text);font-size:12px;resize:vertical;outline:none;margin-bottom:14px"></textarea>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeMaybeModal()">Cancel</button>
-      <button class="btn btn-primary" style="background:var(--yellow);color:#000" onclick="confirmMaybeProspect()">Save to Maybe</button>
-    </div>
-  </div>
 </div>
 
 <div class="main" id="view-import" style="display:none">
@@ -455,35 +329,100 @@ details[open] .aq-arrow{transform:rotate(90deg)}
     </div>
   </div>
 
-  <!-- Paste from Google Sheets -->
+  <!-- File Upload -->
   <div class="import-card">
-    <h4>&#128203; Paste from Google Sheets</h4>
-    <p>Open your Google Sheet → select all data → copy (<strong>Ctrl+C</strong> or <strong>⌘+C</strong>) → click below and paste (<strong>⌘+V</strong>). The dashboard auto-detects your columns and maps them to prospect fields.</p>
-    <textarea id="paste-area" placeholder="Paste your Google Sheet data here (tab-separated)..."
-      style="width:100%;height:180px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:12px;font-family:'Space Mono',monospace;resize:vertical;outline:none"
-      onpaste="setTimeout(()=>handlePasteImport(),50)"></textarea>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="handlePasteImport()">&#10148; Parse Pasted Data</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('paste-area').value='';document.getElementById('paste-preview').style.display='none'">Clear</button>
-      <span id="paste-status" style="font-size:12px;color:var(--text-dim)">Paste your spreadsheet data above, then click Parse.</span>
+    <h4>&#128196; Upload Excel or CSV File</h4>
+    <p>Drop any Excel (.xlsx) or CSV file — exported from Google Sheets, your own tracking sheet, or a trade show lead list. The dashboard will auto-detect your column headers and map them to prospect fields.</p>
+    <div class="drop-zone" id="drop-zone"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleFileDrop(event)">
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(this)">
+      <div class="drop-zone-icon">&#128196;</div>
+      <div class="drop-zone-label">Drop file here or click to browse</div>
+      <div class="drop-zone-sub">Supports .xlsx, .xls, .csv &mdash; exports from Google Sheets or Excel both work</div>
     </div>
-    <div id="paste-preview" style="display:none;margin-top:16px">
-      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Detected Columns — Confirm Mapping</div>
-      <div id="paste-col-map-rows"></div>
+    <div id="file-status" style="font-size:12px;color:var(--text-dim);margin-top:10px"></div>
+
+    <!-- Column mapping preview -->
+    <div id="file-preview" style="display:none;margin-top:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Detected Columns &mdash; Confirm Mapping</div>
+      <div id="col-map-rows"></div>
       <div style="overflow-x:auto;max-height:220px;overflow-y:auto;margin-top:10px">
-        <table class="preview-table" id="paste-preview-table-el"></table>
+        <table class="preview-table" id="preview-table-el"></table>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
+        <button class="btn btn-primary" onclick="confirmFileImport()">&#10003; Import These Prospects</button>
+        <button class="btn btn-ghost" onclick="cancelFileImport()">Cancel</button>
+        <span id="file-import-status" style="font-size:12px;color:var(--text-dim)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browse Any Sheet Tab -->
+  <div class="import-card">
+    <h4>&#128279; Sync from Any Tab in Your Google Sheet</h4>
+    <p>Connects to any Google Sheet where you've deployed the Apps Script. Browse all available tabs, pick one, and import its rows. Duplicates are skipped automatically &mdash; matched by gym name and email.</p>
+
+    <!-- Sheet Sources Config -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px">Configured Sheet Sources</div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:4px"><strong style="color:var(--text)">Sheet 1 — DEKA NAM Affiliates</strong> (configured in Portfolio Dashboard)</div>
+      <div id="sheet1-status" style="font-size:11px;color:var(--text-dim);margin-bottom:12px">Loading...</div>
+      <div style="font-size:12px;color:var(--text-mid);margin-bottom:6px"><strong style="color:var(--text)">Sheet 2 — DEKA Affiliate CRM</strong> (paste Apps Script URL below)</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="gs2-url-input" type="text" placeholder="https://script.google.com/macros/s/..." style="flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 10px;font-size:12px;outline:none" oninput="saveSheet2Url(true)">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="saveSheet2Url(false)">Save</button>
+        <button class="btn btn-ghost" style="font-size:12px;border-color:var(--blue);color:var(--blue)" onclick="testSheet2()">Test</button>
+      </div>
+      <div id="sheet2-save-status" style="font-size:11px;margin-top:6px;color:var(--text-dim)"></div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Need to set this up? Open the CRM sheet → <strong style="color:var(--text)">Extensions → Apps Script</strong> → paste the script → <strong style="color:var(--text)">Deploy as Web App</strong> → copy the URL here.</div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-ghost" onclick="loadSheetTabs()">&#128196; Browse All Configured Sheet Tabs</button>
+      <span id="tab-list-status" style="font-size:12px;color:var(--text-dim)"></span>
+    </div>
+    <div id="tab-picker" style="display:none;margin-bottom:12px">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;display:block;margin-bottom:6px">Select a Tab</label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="tab-select" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;min-width:220px"></select>
+        <button class="btn btn-primary" onclick="fetchSelectedTab()">&#8595; Load This Tab</button>
+      </div>
+    </div>
+    <!-- Tab data preview (reuses same col-map / preview UI as file upload) -->
+    <div id="tab-preview" style="display:none;margin-top:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Detected Columns &mdash; Confirm Mapping</div>
+      <div id="tab-col-map-rows"></div>
+      <div style="overflow-x:auto;max-height:220px;overflow-y:auto;margin-top:10px">
+        <table class="preview-table" id="tab-preview-table-el"></table>
       </div>
       <div style="margin-top:10px;padding:8px 12px;background:var(--card2);border-radius:6px;font-size:12px;color:var(--text-dim)">
         <strong style="color:var(--text)">Dedup rules:</strong> rows matching an existing prospect by gym name <em>or</em> email will update (not duplicate). Rows with no gym name are skipped.
       </div>
       <div style="display:flex;gap:10px;margin-top:14px;align-items:center">
-        <button class="btn btn-primary" onclick="confirmPasteImport()">&#10003; Import These Prospects</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('paste-preview').style.display='none'">Cancel</button>
-        <span id="paste-import-status" style="font-size:12px;color:var(--text-dim)"></span>
+        <button class="btn btn-primary" onclick="confirmTabImport()">&#10003; Import These Prospects</button>
+        <button class="btn btn-ghost" onclick="cancelTabImport()">Cancel</button>
+        <span id="tab-import-status" style="font-size:12px;color:var(--text-dim)"></span>
       </div>
     </div>
   </div>
 
+  <!-- Pipeline Tier 1-3 Quick Sync -->
+  <div class="import-card">
+    <h4>&#8635; Quick Sync — "Pipeline Tier 1-3" Tab</h4>
+    <p>One-click pull from the <strong>Pipeline Tier 1-3</strong> tab, filtered to your rows (Sales Manager = your name). Stage auto-detected from CALL ARRANGED? column. Preserves any enrichments you've added here.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="syncFromSheet()">&#8635; Sync Now</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('manual-import-wrap').style.display='block'">&#8679; Paste CSV / JSON Instead</button>
+      <span id="sync-status" style="font-size:12px;color:var(--text-dim)"></span>
+    </div>
+    <div id="manual-import-wrap" style="display:none;margin-top:16px">
+      <label style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);font-weight:600;display:block;margin-bottom:6px">Paste sheet data (CSV or JSON array)</label>
+      <textarea id="manual-import-text" style="width:100%;height:120px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:10px;font-family:monospace;outline:none" placeholder="Paste CSV rows or JSON array here..."></textarea>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="parseManualImport()">Parse & Import</button>
+    </div>
+  </div>
   <div class="import-card">
     <h4>&#128190; Export Pipeline Data</h4>
     <p>Download your full prospect pipeline as JSON (for backup) or CSV (for sharing / re-import into Google Sheets).</p>
@@ -695,38 +634,10 @@ function loadPipeline() {
   if (raw) { try { pipelineData = JSON.parse(raw); } catch(e) {} }
   if (!pipelineData.prospects) pipelineData.prospects = [];
   if (!pipelineData.goals) pipelineData.goals = {newAffiliates2026:8, targetStates:[]};
-  prunePortfolioMembers();
 }
 
 function savePipeline() {
   localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipelineData));
-  // Schedule a profile sync so agents always have the latest pipeline state.
-  // Debounced at 3s so rapid edits don't spam the API.
-  if (typeof _scheduleProfileSync === 'function') _scheduleProfileSync();
-}
-
-// Remove any pipeline prospects whose gym name matches an entry in the portfolio roster.
-// Triggered on load, on view switch, after mark-as-signed, and after sync.
-function prunePortfolioMembers() {
-  if (!pipelineData || !Array.isArray(pipelineData.prospects)) return 0;
-  let roster;
-  try { roster = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]'); } catch(e) { return 0; }
-  if (!roster.length) return 0;
-  const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const rosterNames = new Set(roster.map(r => norm(r.name)));
-  const before = pipelineData.prospects.length;
-  pipelineData.prospects = pipelineData.prospects.filter(p => {
-    if (!rosterNames.has(norm(p.gymName))) return true;
-    // Keep signed prospects that still have incomplete onboarding tasks (needed by portfolio onboarding UI)
-    if (p.stage === 'signed' && Array.isArray(p.onboardingTasks) && p.onboardingTasks.some(t => !t.done)) return true;
-    return false;
-  });
-  const removed = before - pipelineData.prospects.length;
-  if (removed > 0) {
-    if (typeof _aqSelectedIds !== 'undefined') _aqSelectedIds.clear();
-    savePipeline();
-  }
-  return removed;
 }
 
 function genId() {
@@ -734,12 +645,12 @@ function genId() {
 }
 
 // ── INIT ──
-function init() {
-  // Access gate check
-  if (!_checkAccess()) {
-    document.body.classList.add('locked');
-    document.getElementById('access-gate').style.display='flex';
-    return;
+async function init() {
+  // Supabase Auth check (TEMP BYPASS for local testing)
+  if (false && typeof dekaAuthCheck === 'function') {
+    const authResult = await dekaAuthCheck();
+    if (authResult === false) return;
+    if (authResult === 'needs_setup') return;
   }
   loadPipeline();
   populateStateFilter();
@@ -783,14 +694,7 @@ function populateStateFilter() {
 // ── VIEWS ──
 let currentView = 'board';
 function showView(id, btn) {
-  prunePortfolioMembers();
-  // Stop the run-status poller if leaving the Research tab — it'll restart
-  // automatically the next time the user clicks Run Agents.
-  if (id !== 'research' && _researchPollTimer) {
-    clearInterval(_researchPollTimer);
-    _researchPollTimer = null;
-  }
-  ['board','list','analytics','research','import'].forEach(v => {
+  ['board','list','analytics','import'].forEach(v => {
     document.getElementById('view-'+v).style.display = v===id ? 'block' : 'none';
   });
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -800,7 +704,6 @@ function showView(id, btn) {
   if (id==='board') renderBoard();
   else if (id==='list') renderList();
   else if (id==='analytics') renderAnalytics();
-  else if (id==='research') loadResearchInbox();
   else if (id==='import') initSheet2Config();
 }
 
@@ -815,10 +718,7 @@ function toggleSelect(id) {
 }
 
 function toggleSelectAll(stage, cb) {
-  // Only select prospects that match the current search/filter state.
-  // Prevents the "hidden prospects get emailed too" bug where clicking All
-  // with a search active BCCs every matching gym in the data, not just the visible ones.
-  const stageProspects = getFiltered(true).filter(p => p.stage === stage);
+  const stageProspects = pipelineData.prospects.filter(p => p.stage === stage);
   stageProspects.forEach(p => {
     if (cb.checked) selectedIds.add(p.id);
     else selectedIds.delete(p.id);
@@ -833,7 +733,7 @@ function _syncColCheckbox(id) {
   if (!p) return;
   const cb = document.getElementById('colcheck-' + p.stage);
   if (!cb) return;
-  const stageProspects = getFiltered(true).filter(x => x.stage === p.stage);
+  const stageProspects = pipelineData.prospects.filter(x => x.stage === p.stage);
   cb.checked = stageProspects.length > 0 && stageProspects.every(x => selectedIds.has(x.id));
   cb.indeterminate = !cb.checked && stageProspects.some(x => selectedIds.has(x.id));
 }
@@ -935,13 +835,7 @@ function getFiltered(includeAll) {
   const pri = document.getElementById('flt-priority').value;
   const src = document.getElementById('flt-source').value;
   const st = document.getElementById('flt-state').value;
-  // Defensive: skip any prospect already in the portfolio roster
-  let _portfolioNames;
-  try { _portfolioNames = new Set(JSON.parse(localStorage.getItem('deka_affiliate_roster')||'[]').map(r => (r.name||'').toLowerCase().replace(/[^a-z0-9]/g,''))); }
-  catch(e) { _portfolioNames = new Set(); }
-  const _norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   return pipelineData.prospects.filter(p => {
-    if (_portfolioNames.has(_norm(p.gymName))) return false;
     if (!includeAll && (p.stage === 'lost' || p.stage === 'signed' || p.stage === 'nurture')) return false;
     if (pri && p.priority !== pri) return false;
     if (src && p.source !== src) return false;
@@ -1094,7 +988,7 @@ function renderActionQueue() {
   const todayStr = today.toISOString().slice(0,10);
 
   const prospects = pipelineData.prospects.filter(p =>
-    p.stage !== 'lost' && p.stage !== 'signed' && p.stage !== 'closed_lost' && (p.nextAction || p.nextActionDate)
+    p.stage !== 'lost' && (p.nextAction || p.nextActionDate)
   );
 
   const overdue = [], dueToday = [], thisWeek = [], upcoming = [];
@@ -1170,25 +1064,6 @@ function renderActionQueue() {
   const rowHTML = (p, color, label) => {
     const dateStr = p.nextActionDate || '';
     const checked = _aqSelectedIds.has(p.id) ? 'checked' : '';
-    const isCheckReply = (p.nextAction || '').toLowerCase().includes('check for reply');
-    const isEmailDue   = (p.nextAction || '').toLowerCase().includes('send day');
-
-    // Outcome buttons for "Check for reply" state — replace the standard "Open →" link
-    let trailingHtml;
-    if (isCheckReply) {
-      trailingHtml = `<button onclick="event.stopPropagation();handleNoReply('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--yellow);color:var(--yellow);white-space:nowrap" title="No reply → Follow Up Later (90d)">😶 No Reply</button>
-         <button onclick="event.stopPropagation();handleReplied('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--green);color:var(--green);white-space:nowrap" title="Replied → Discovery Call">💬 Replied</button>
-         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
-    } else if (isEmailDue && p.email) {
-      trailingHtml = `<button onclick="event.stopPropagation();draftEmail('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--blue);color:var(--blue);white-space:nowrap">✉ Draft</button>
-         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
-    } else if (isEmailDue && !p.email) {
-      trailingHtml = `<button onclick="event.stopPropagation();openDetail('${p.id}')" class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;border-color:var(--yellow);color:var(--yellow);white-space:nowrap" title="No email on file — click to add one and then draft">⚠ Add Email</button>
-         <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
-    } else {
-      trailingHtml = `<span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>`;
-    }
-
     return `<div id="aqrow-${p.id}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''">
       <input type="checkbox" ${checked} onclick="event.stopPropagation();_aqToggle('${p.id}')" style="flex-shrink:0;accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
       <span style="font-size:11px;flex-shrink:0">${priIcon[p.priority]||'•'}</span>
@@ -1197,54 +1072,20 @@ function renderActionQueue() {
       <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;min-width:90px;cursor:pointer">${stageLabel(p.stage)}</span>
       <span onclick="openDetail('${p.id}')" style="font-size:11px;color:var(--text-mid);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer">${esc(p.nextAction||'—')}</span>
       <span onclick="openDetail('${p.id}')" style="font-size:11px;font-weight:600;color:${color};flex-shrink:0;min-width:80px;text-align:right;cursor:pointer">${dateStr ? label + ' ' + dateStr : 'No date'}</span>
-      ${trailingHtml}
+      <span onclick="openDetail('${p.id}')" style="font-size:10px;color:var(--text-dim);flex-shrink:0;cursor:pointer">Open →</span>
     </div>`;
   };
 
-  // Split upcoming into this month vs later
-  const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
-  const thisMonth = upcoming.filter(p => {
-    if (!p.nextActionDate) return false;
-    return new Date(p.nextActionDate + 'T12:00:00') <= in30;
-  });
-  const later = upcoming.filter(p => {
-    if (!p.nextActionDate) return true;
-    return new Date(p.nextActionDate + 'T12:00:00') > in30;
-  });
-
-  // Track IDs per section so "Select All" knows what to toggle
-  window._aqSectionIds = {};
-
-  // Collapsible section — each group is a <details> dropdown
-  if (!window._aqSectionState) window._aqSectionState = {overdue:false,today:false,week:false,month:false,later:false};
-  const section = (key, label, color, count, items, dateLabel) => {
-    if (!items.length) return '';
-    const isOpen = window._aqSectionState[key];
-    const ids = items.map(p => p.id);
-    window._aqSectionIds[key] = ids;
-    const allSelected = ids.length > 0 && ids.every(id => _aqSelectedIds.has(id));
-    const someSelected = !allSelected && ids.some(id => _aqSelectedIds.has(id));
-    return `<details ${isOpen?'open':''} ontoggle="window._aqSectionState['${key}']=this.open">
-      <summary style="padding:8px 14px;background:${color}18;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;list-style:none">
-        <span class="aq-arrow" style="font-size:10px;color:${color};transition:transform 0.15s;display:inline-block">▶</span>
-        <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color};flex:1">${label} (${count})</span>
-        <label onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;margin-right:4px" title="Select all in ${label}">
-          <input type="checkbox" ${allSelected?'checked':''} ${someSelected?'indeterminate':''}
-            onclick="event.stopPropagation();_aqToggleSection('${key}',this.checked)"
-            style="cursor:pointer;accent-color:${color};width:13px;height:13px">
-          <span style="font-size:9px;color:${color};font-weight:600;text-transform:uppercase;letter-spacing:0.5px">All</span>
-        </label>
-      </summary>
-      <div>${items.map(p => rowHTML(p, color, dateLabel||'')).join('')}</div>
-    </details>`;
-  };
+  const sectionHeader = (label, color, count) =>
+    `<div style="padding:5px 14px;background:${color}18;border-bottom:1px solid var(--border)">
+      <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${color}">${label} (${count})</span>
+    </div>`;
 
   let html = '';
-  html += section('overdue', 'Overdue', 'var(--accent)', overdue.length, overdue, '');
-  html += section('today', 'Due Today', 'var(--yellow)', dueToday.length, dueToday, 'Today');
-  html += section('week', 'This Week', 'var(--blue)', thisWeek.length, thisWeek, '');
-  html += section('month', 'This Month', 'var(--green)', thisMonth.length, thisMonth, '');
-  html += section('later', 'Follow Up Later', 'var(--text-dim)', later.length, later, '');
+  if (overdue.length)   { html += sectionHeader('Overdue', 'var(--accent)', overdue.length);   overdue.forEach(p =>   html += rowHTML(p, 'var(--accent)', '')); }
+  if (dueToday.length)  { html += sectionHeader('Due Today', 'var(--yellow)', dueToday.length); dueToday.forEach(p =>  html += rowHTML(p, 'var(--yellow)', 'Today')); }
+  if (thisWeek.length)  { html += sectionHeader('This Week', 'var(--blue)', thisWeek.length);   thisWeek.forEach(p =>  html += rowHTML(p, 'var(--blue)', '')); }
+  if (upcoming.length)  { html += sectionHeader('Upcoming', 'var(--text-dim)', upcoming.length); upcoming.forEach(p => html += rowHTML(p, 'var(--text-dim)', '')); }
 
   const filteredTotal = overdue.length + dueToday.length + thisWeek.length + upcoming.length;
   const filterNote = _aqFilterState ? `<div style="padding:6px 14px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">Showing ${filteredTotal} of ${allProspects.length} prospects in ${_aqFilterState}</div>` : '';
@@ -1255,84 +1096,21 @@ function renderActionQueue() {
         <button class="btn btn-blue btn-sm" onclick="aqBatchEmail()" style="font-size:11px">&#9993; Send Batch Email</button>
         <button class="btn btn-ghost btn-sm" onclick="aqBatchFollowUp()" style="font-size:11px;border-color:var(--yellow);color:var(--yellow)">📅 Follow-up 1 Week</button>
         <button class="btn btn-ghost btn-sm" onclick="aqBatchAdvanceStage()" style="font-size:11px;border-color:var(--green);color:var(--green)">➡ Advance Stage</button>
-        <button class="btn btn-ghost btn-sm" onclick="aqShowBatchLog()" style="font-size:11px;border-color:var(--purple,#a78bfa);color:var(--purple,#a78bfa)">📝 Log Activity</button>
         <button class="btn btn-ghost btn-sm" onclick="_aqClear()" style="font-size:11px">&#10005; Clear</button>
       </div>`
     : '';
-
-  // Batch log form (hidden until button clicked)
-  const batchLogForm = window._aqShowLog ? `<div onclick="event.stopPropagation()" style="padding:12px 14px;background:var(--card);border-bottom:1px solid var(--border)">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--purple,#a78bfa);margin-bottom:8px">📝 Batch Log — ${_aqSelectedIds.size} prospect${_aqSelectedIds.size!==1?'s':''}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <select id="aq-log-type" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-        <option value="call">📞 Phone Call</option>
-        <option value="email">✉ Email</option>
-        <option value="text">💬 Text / SMS</option>
-        <option value="meeting">🤝 Meeting</option>
-        <option value="note">📝 Note</option>
-      </select>
-      <select id="aq-log-followup" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-        <option value="7">Follow up in 1 week</option>
-        <option value="14">Follow up in 2 weeks</option>
-        <option value="30">Follow up in 1 month</option>
-        <option value="90">Follow up in 3 months</option>
-        <option value="180">Follow up in 6 months</option>
-        <option value="0">No follow-up</option>
-      </select>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <select id="aq-log-stage" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-        <option value="">— Keep current stage —</option>
-        <option value="lead">Move to: Lead</option>
-        <option value="contacted">Move to: Contacted</option>
-        <option value="nurture">Move to: Follow Up Later</option>
-        <option value="discovery">Move to: Discovery Call</option>
-        <option value="proposal">Move to: Proposal</option>
-        <option value="negotiating">Move to: Negotiating</option>
-        <option value="signed">Move to: Signed</option>
-        <option value="lost">Move to: Closed Lost</option>
-      </select>
-      <select id="aq-log-priority" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-        <option value="">— Keep current priority —</option>
-        <option value="hot">🔥 Set priority: Hot</option>
-        <option value="warm">😊 Set priority: Warm</option>
-        <option value="cold">❄ Set priority: Cold</option>
-      </select>
-    </div>
-    <input id="aq-log-action" type="text" placeholder="Next action (e.g. Follow up, Send proposal, Schedule call...)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px">
-    <textarea id="aq-log-notes" rows="2" placeholder="Log details (e.g. Called, left voicemail. Owner interested but busy until April...)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px;box-sizing:border-box;resize:vertical;margin-bottom:8px"></textarea>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary btn-sm" onclick="aqSubmitBatchLog()" style="font-size:11px">✓ Log for ${_aqSelectedIds.size} Prospect${_aqSelectedIds.size!==1?'s':''}</button>
-      <button class="btn btn-ghost btn-sm" onclick="window._aqShowLog=false;_plRefreshSelectionUI()" style="font-size:11px">Cancel</button>
-    </div>
-  </div>` : '';
-
-  body.innerHTML = filterBar + aqActionBar + batchLogForm + filterNote + rowsHtml;
+  body.innerHTML = filterBar + aqActionBar + filterNote + rowsHtml;
   body.style.display = '';
 }
 
-function _aqToggleSection(sectionKey, checked) {
-  const ids = window._aqSectionIds?.[sectionKey] || [];
-  ids.forEach(id => {
-    if (checked) _aqSelectedIds.add(id);
-    else _aqSelectedIds.delete(id);
-  });
-  _plRefreshSelectionUI();
-}
 function _aqToggle(id) {
   if (_aqSelectedIds.has(id)) _aqSelectedIds.delete(id);
   else _aqSelectedIds.add(id);
-  _plRefreshSelectionUI();
+  renderActionQueue();
 }
 function _aqClear() {
   _aqSelectedIds.clear();
-  window._aqShowLog = false;
-  _plRefreshSelectionUI();
-}
-function _plRefreshSelectionUI() {
-  // Re-render whichever surfaces show the selection
-  if (typeof renderActionQueue === 'function') renderActionQueue();
-  if (currentView === 'list' && typeof renderList === 'function') renderList();
+  renderActionQueue();
 }
 function _aqSetSort(key) {
   _aqSort = key;
@@ -1341,77 +1119,6 @@ function _aqSetSort(key) {
 function _aqSetFilter(state) {
   _aqFilterState = state;
   renderActionQueue();
-}
-
-function aqShowBatchLog() {
-  window._aqShowLog = true;
-  _plRefreshSelectionUI();
-  setTimeout(() => { const el = document.getElementById('aq-log-notes'); if (el) el.focus(); }, 100);
-}
-
-// Pick the value from whichever copy of a form field is currently visible.
-// Two copies exist when both the Action Queue and the Prospect List render the form.
-function _aqVisibleVal(id) {
-  const els = document.querySelectorAll('#' + id);
-  for (const el of els) {
-    if (el.offsetParent !== null) return el.value;
-  }
-  return els[0] ? els[0].value : '';
-}
-
-function aqSubmitBatchLog() {
-  if (_aqSelectedIds.size === 0) return;
-  const logType = _aqVisibleVal('aq-log-type') || 'note';
-  const followDays = parseInt(_aqVisibleVal('aq-log-followup'), 10);
-  const nextAction = (_aqVisibleVal('aq-log-action') || '').trim() || 'Follow up';
-  const notes = (_aqVisibleVal('aq-log-notes') || '').trim();
-  const newStage = _aqVisibleVal('aq-log-stage');
-  const newPriority = _aqVisibleVal('aq-log-priority');
-  const typeLabels = {call:'Phone call',email:'Email sent',text:'Text/SMS sent',meeting:'Meeting',note:'Note'};
-
-  const today = new Date().toISOString().slice(0,10);
-  // followDays: NaN means no selection / parse fail → default to 0 (no change)
-  const hasFollowUp = !isNaN(followDays) && followDays > 0;
-  const fu = hasFollowUp ? new Date(Date.now() + followDays * 86400000).toISOString().slice(0,10) : '';
-  let count = 0;
-
-  const ids = [..._aqSelectedIds];
-  console.log(`[deka] Batch log: ${ids.length} prospects, type=${logType}, followDays=${followDays}, fu=${fu}, stage=${newStage}, priority=${newPriority}`);
-
-  ids.forEach(id => {
-    const p = pipelineData.prospects.find(x => x.id === id);
-    if (!p) return;
-    if (!p.activities) p.activities = [];
-    p.activities.unshift({
-      date: today,
-      type: logType,
-      notes: `${typeLabels[logType]||logType}${notes ? ' — ' + notes : ''}`
-    });
-    p.lastActivity = today;
-    if (hasFollowUp) {
-      p.nextActionDate = fu;
-      p.nextAction = nextAction;
-    }
-    if (newStage && newStage !== p.stage) {
-      p.activities.unshift({date:today, type:'stage', notes:`Moved to ${STAGE_LABELS[newStage]||newStage} (batch log)`});
-      p.stage = newStage;
-    }
-    if (newPriority && newPriority !== p.priority) {
-      p.activities.unshift({date:today, type:'note', notes:`Priority changed to ${newPriority} (batch log)`});
-      p.priority = newPriority;
-    }
-    count++;
-  });
-
-  savePipeline();
-  window._aqShowLog = false;
-  _aqClear();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
-  updateHeaderSub();
-  const fuMsg = hasFollowUp ? ` · follow-up set for ${fu}` : '';
-  const stageMsg = newStage ? ` · moved to ${STAGE_LABELS[newStage]||newStage}` : '';
-  showToast(`📝 Logged ${typeLabels[logType]||logType} for ${count} prospect${count!==1?'s':''}${fuMsg}${stageMsg}`);
 }
 
 function aqBatchFollowUp() {
@@ -1431,8 +1138,7 @@ function aqBatchFollowUp() {
   });
   savePipeline();
   _aqClear();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
+  renderBoard();
   updateHeaderSub();
   showToast(`📅 ${count} prospect${count!==1?'s':''} — follow-up set for ${fuStr}`);
 }
@@ -1456,8 +1162,7 @@ function aqBatchAdvanceStage() {
   });
   savePipeline();
   _aqClear();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
+  renderBoard();
   updateHeaderSub();
   showToast(`➡ ${moved} prospect${moved!==1?'s':''} advanced to next stage`);
 }
@@ -1492,23 +1197,18 @@ function aqBatchEmail() {
   });
   savePipeline();
   _aqClear();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
+  renderBoard();
   updateHeaderSub();
   showToast(`\u2709 Gmail opened \u2014 ${withEmail.length} Action Queue recipient${withEmail.length !== 1 ? 's' : ''}`);
 }
 
 function _renderSecondarySection(stage, cards, bgColor, textColor, alertBadge) {
-  const checkboxHtml = cards.length > 0
-    ? `<label class="col-check-wrap" onclick="event.stopPropagation()" title="Select all visible in this stage" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;cursor:pointer"><input type="checkbox" class="col-check-all" id="colcheck-${stage}" onchange="event.stopPropagation();toggleSelectAll('${stage}',this)" style="cursor:pointer"><span style="font-size:10px;color:${textColor};opacity:0.8">All</span></label>`
-    : '';
   return `
     <details class="secondary-section" ondragover="onDragOver(event,'${stage}')" ondrop="onDrop(event,'${stage}')" ondragleave="onDragLeave(event)">
       <summary style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${bgColor};border-radius:8px;cursor:pointer;border:1px solid ${textColor}30;user-select:none;list-style:none" onclick="event.stopPropagation()">
         <span style="font-size:13px">${STAGE_ICONS[stage]}</span>
         <span style="font-size:12px;font-weight:700;color:${textColor};letter-spacing:0.5px;text-transform:uppercase">${STAGE_LABELS[stage]}</span>
         <span style="font-size:11px;color:${textColor};opacity:0.7">${cards.length}</span>
-        ${checkboxHtml}
         ${alertBadge}
         ${cards.length > 0 ? `<button onclick="event.stopPropagation();clearSecondaryStage('${stage}')" title="Remove all from this list" style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid ${textColor}40;background:transparent;color:${textColor};cursor:pointer;font-family:'DM Sans',sans-serif;opacity:0.6">\u2715 Clear All</button>` : ''}
         <span style="${cards.length > 0 ? '' : 'margin-left:auto;'}font-size:10px;color:var(--text-dim)">\u25BC</span>
@@ -1667,9 +1367,7 @@ function renderList() {
     const isOverdue = p.nextActionDate && new Date(p.nextActionDate+'T12:00:00') < today;
     const daysSince = p.lastActivity ? Math.floor((Date.now()-new Date(p.lastActivity+'T12:00:00'))/86400000) : null;
     const score = prospectScore(p);
-    const checked = _aqSelectedIds.has(p.id) ? 'checked' : '';
     return `<tr onclick="openDetail('${p.id}')" style="${dim?'opacity:0.5':''}">
-      <td onclick="event.stopPropagation();_aqToggle('${p.id}')" style="cursor:pointer;text-align:center"><input type="checkbox" ${checked} onclick="event.stopPropagation();_aqToggle('${p.id}')"></td>
       <td><span class="priority-badge ${priClass}" style="font-size:10px">${{hot:'🔥',warm:'😊',cold:'❄'}[p.priority]||''} ${p.priority||'—'}</span></td>
       <td><strong>${esc(p.gymName)}</strong>${p.gymType?'<br><span style="font-size:10px;color:var(--text-dim)">'+esc(p.gymType)+'</span>':''}</td>
       <td style="color:var(--text-dim)">${p.state||'—'}</td>
@@ -1689,7 +1387,7 @@ function renderList() {
 
   const lostRows = lost.length ? `
     <tr onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'" style="cursor:pointer;background:var(--card2)">
-      <td colspan="10" style="padding:10px 14px;font-size:12px;color:var(--text-dim);font-weight:600">
+      <td colspan="9" style="padding:10px 14px;font-size:12px;color:var(--text-dim);font-weight:600">
         🚫 Closed Lost (${lost.length}) — click to expand
       </td>
     </tr>
@@ -1698,7 +1396,7 @@ function renderList() {
   // Simpler lost section
   const lostSection = lost.length ? `
     <tr style="background:var(--card2)">
-      <td colspan="10" style="padding:0">
+      <td colspan="9" style="padding:0">
         <details style="padding:0">
           <summary style="padding:10px 14px;font-size:12px;color:var(--text-dim);font-weight:600;cursor:pointer;list-style:none">
             🚫 Closed Lost (${lost.length}) &nbsp;▸ click to show
@@ -1710,91 +1408,9 @@ function renderList() {
       </td>
     </tr>` : '';
 
-  // Selection action bar + optional batch-log form (renders above list when items are selected)
-  let selectionRows = '';
-  if (_aqSelectedIds.size > 0) {
-    const aqBar = `<tr style="background:var(--card2);position:sticky;top:0;z-index:2"><td colspan="10" style="padding:0">
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;flex-wrap:wrap">
-        <span style="font-size:11px;font-weight:600;color:var(--text)">${_aqSelectedIds.size} selected</span>
-        <button class="btn btn-blue btn-sm" onclick="aqBatchEmail()" style="font-size:11px">&#9993; Send Batch Email</button>
-        <button class="btn btn-ghost btn-sm" onclick="aqBatchFollowUp()" style="font-size:11px;border-color:var(--yellow);color:var(--yellow)">📅 Follow-up 1 Week</button>
-        <button class="btn btn-ghost btn-sm" onclick="aqBatchAdvanceStage()" style="font-size:11px;border-color:var(--green);color:var(--green)">➡ Advance Stage</button>
-        <button class="btn btn-ghost btn-sm" onclick="aqShowBatchLog()" style="font-size:11px;border-color:var(--purple,#a78bfa);color:var(--purple,#a78bfa)">📝 Log Activity</button>
-        <button class="btn btn-ghost btn-sm" onclick="_aqClear()" style="font-size:11px">&#10005; Clear</button>
-      </div>
-    </td></tr>`;
-    const logForm = window._aqShowLog ? `<tr style="background:var(--card)"><td colspan="10" style="padding:0">
-      <div onclick="event.stopPropagation()" style="padding:12px 14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--purple,#a78bfa);margin-bottom:8px">📝 Batch Log — ${_aqSelectedIds.size} prospect${_aqSelectedIds.size!==1?'s':''}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <select id="aq-log-type" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-            <option value="call">📞 Phone Call</option>
-            <option value="email">✉ Email</option>
-            <option value="text">💬 Text / SMS</option>
-            <option value="meeting">🤝 Meeting</option>
-            <option value="note">📝 Note</option>
-          </select>
-          <select id="aq-log-followup" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-            <option value="7">Follow up in 1 week</option>
-            <option value="14">Follow up in 2 weeks</option>
-            <option value="30">Follow up in 1 month</option>
-            <option value="90">Follow up in 3 months</option>
-            <option value="180">Follow up in 6 months</option>
-            <option value="0">No follow-up</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <select id="aq-log-stage" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-            <option value="">— Keep current stage —</option>
-            <option value="lead">Move to: Lead</option>
-            <option value="contacted">Move to: Contacted</option>
-            <option value="nurture">Move to: Follow Up Later</option>
-            <option value="discovery">Move to: Discovery Call</option>
-            <option value="proposal">Move to: Proposal</option>
-            <option value="negotiating">Move to: Negotiating</option>
-            <option value="signed">Move to: Signed</option>
-            <option value="lost">Move to: Closed Lost</option>
-          </select>
-          <select id="aq-log-priority" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-            <option value="">— Keep current priority —</option>
-            <option value="hot">🔥 Set priority: Hot</option>
-            <option value="warm">😊 Set priority: Warm</option>
-            <option value="cold">❄ Set priority: Cold</option>
-          </select>
-        </div>
-        <input id="aq-log-action" type="text" placeholder="Next action (e.g. Follow up, Send proposal, Schedule call...)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px">
-        <textarea id="aq-log-notes" rows="2" placeholder="Log details (e.g. Called, left voicemail. Owner interested but busy until April...)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px;box-sizing:border-box;resize:vertical;margin-bottom:8px"></textarea>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="aqSubmitBatchLog()" style="font-size:11px">✓ Log for ${_aqSelectedIds.size} Prospect${_aqSelectedIds.size!==1?'s':''}</button>
-          <button class="btn btn-ghost btn-sm" onclick="window._aqShowLog=false;_plRefreshSelectionUI()" style="font-size:11px">Cancel</button>
-        </div>
-      </div>
-    </td></tr>` : '';
-    selectionRows = aqBar + logForm;
-  }
-
   document.getElementById('list-body').innerHTML =
-    selectionRows +
-    (sorted.length ? sorted.map(p => rowHTML(p, false)).join('') : '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-dim)">No active prospects match your filters.</td></tr>') +
+    (sorted.length ? sorted.map(p => rowHTML(p, false)).join('') : '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-dim)">No active prospects match your filters.</td></tr>') +
     lostSection;
-
-  // Sync the "select all" header checkbox
-  const selAll = document.getElementById('pl-select-all');
-  if (selAll) {
-    const visibleIds = sorted.map(p => p.id);
-    const allSelected = visibleIds.length > 0 && visibleIds.every(id => _aqSelectedIds.has(id));
-    selAll.checked = allSelected;
-  }
-}
-
-function _plToggleAllVisible() {
-  const filtered = getFiltered(true).filter(p => p.stage !== 'lost');
-  const sorted = getSorted(filtered);
-  const ids = sorted.map(p => p.id);
-  const allSelected = ids.length > 0 && ids.every(id => _aqSelectedIds.has(id));
-  if (allSelected) ids.forEach(id => _aqSelectedIds.delete(id));
-  else ids.forEach(id => _aqSelectedIds.add(id));
-  _plRefreshSelectionUI();
 }
 
 function sortList(col) {
@@ -1918,15 +1534,7 @@ function openDetail(id) {
   document.getElementById('dp-priority-badge').className = `priority-badge ${priClass}`;
   document.getElementById('dp-priority-badge').textContent = priLabel;
   document.getElementById('dp-name').textContent = p.gymName;
-  // Sub-line: city · state · gymType, plus a clickable website link if present
-  const subEl = document.getElementById('dp-sub');
-  const subParts = [p.city, p.state, p.gymType].filter(Boolean).map(esc).join(' · ');
-  if (p.website) {
-    const cleanUrl = p.website.replace(/^https?:\/\//,'').replace(/\/$/,'');
-    subEl.innerHTML = `${subParts}${subParts ? ' · ' : ''}<a href="${esc(p.website)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none" title="Open website in new tab">🌐 ${esc(cleanUrl)} ↗</a>`;
-  } else {
-    subEl.textContent = [p.city, p.state, p.gymType].filter(Boolean).join(' · ');
-  }
+  document.getElementById('dp-sub').textContent = [p.city, p.state, p.gymType].filter(Boolean).join(' · ');
 
   const activities = (p.activities||[]).slice(0,8);
   const actIcons = {call:'📞',email:'✉',note:'📝',stage:'→',meeting:'🤝'};
@@ -1967,14 +1575,6 @@ function openDetail(id) {
         </div>
         <div class="d-field"><label>City</label><input id="dp-city" value="${esc(p.city||'')}" oninput="dpSave()"></div>
         <div class="d-field"><label>State</label><input id="dp-state" value="${esc(p.state||'')}" oninput="dpSave()" maxlength="2" style="text-transform:uppercase"></div>
-        <div class="d-field" style="grid-column:1/-1">
-          <label>Website</label>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input id="dp-website" value="${esc(p.website||'')}" oninput="dpSave();dpUpdateWebsiteLink()" placeholder="https://gymname.com" style="flex:1">
-            <a id="dp-website-link" href="${esc(p.website||'#')}" target="_blank" rel="noopener" title="Open in new tab"
-               style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:${p.website?'var(--blue)':'var(--text-dim)'};text-decoration:none;font-size:14px;${p.website?'':'pointer-events:none;opacity:0.5'}">↗</a>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -2060,27 +1660,9 @@ function openDetail(id) {
       </div>
     </div>`;
 
-  // Email draft button — show if prospect has an email and is in an active email stage
-  const _emailTmpl = _getEmailTemplate(p);
-  const _emailStep = _getEmailStep(p);
-  const _showDraftBtn = p.email && _emailTmpl && typeof _emailStep === 'number';
-  const _awaitingReply = _emailStep === 'awaiting_reply';
-  const _emailDone = _emailStep === 'done';
-  let _emailBtnHtml = '';
-  if (_showDraftBtn) {
-    _emailBtnHtml = `<button class="btn btn-blue btn-sm" onclick="draftEmail('${p.id}')">✉ Draft ${_emailTmpl.label}</button>`;
-  } else if (_awaitingReply) {
-    _emailBtnHtml = `<span style="font-size:11px;color:var(--yellow);font-weight:600">⏳ Awaiting reply (3 emails sent)</span>`;
-  } else if (_emailDone) {
-    _emailBtnHtml = `<span style="font-size:11px;color:var(--text-dim)">✓ Email sequence complete</span>`;
-  } else if (!p.email) {
-    _emailBtnHtml = `<span style="font-size:11px;color:var(--text-dim)">No email — add one to enable outreach</span>`;
-  }
-
   document.getElementById('dp-footer').innerHTML = `
     <button class="btn btn-ghost btn-sm" style="color:var(--accent)" onclick="archiveProspect('${p.id}')">🚫 Close Lost</button>
     <button class="btn btn-ghost btn-sm" onclick="deleteProspect('${p.id}')">🗑 Delete</button>
-    ${_emailBtnHtml}
     <div style="flex:1"></div>
     ${p.stage !== 'signed'
       ? `<button class="btn btn-primary signed-btn" onclick="markSigned('${p.id}')">✅ Mark as Signed → Add to Portfolio</button>`
@@ -2109,41 +1691,6 @@ function setFollowUpDate(days) {
   dpSave();
 }
 
-// Live-update the website link button + sub-line as the user edits the URL
-function dpUpdateWebsiteLink() {
-  const input = document.getElementById('dp-website');
-  const link  = document.getElementById('dp-website-link');
-  const subEl = document.getElementById('dp-sub');
-  if (!input || !link) return;
-  let url = input.value.trim();
-  // Auto-prefix https:// if user types just "domain.com"
-  const hasProto = /^https?:\/\//i.test(url);
-  const hrefUrl = url ? (hasProto ? url : 'https://' + url) : '#';
-  link.href = hrefUrl;
-  if (url) {
-    link.style.color = 'var(--blue)';
-    link.style.pointerEvents = 'auto';
-    link.style.opacity = '1';
-  } else {
-    link.style.color = 'var(--text-dim)';
-    link.style.pointerEvents = 'none';
-    link.style.opacity = '0.5';
-  }
-  // Refresh the header sub-line live
-  if (subEl && currentDetailId) {
-    const p = pipelineData.prospects.find(x => x.id === currentDetailId);
-    if (p) {
-      const subParts = [p.city, p.state, p.gymType].filter(Boolean).map(esc).join(' · ');
-      if (url) {
-        const cleanUrl = url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-        subEl.innerHTML = `${subParts}${subParts ? ' · ' : ''}<a href="${esc(hrefUrl)}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none">🌐 ${esc(cleanUrl)} ↗</a>`;
-      } else {
-        subEl.textContent = subParts;
-      }
-    }
-  }
-}
-
 function dpSave() {
   if (!currentDetailId) return;
   const p = pipelineData.prospects.find(x => x.id === currentDetailId);
@@ -2158,7 +1705,6 @@ function dpSave() {
     stage: newStage||p.stage, priority: get('dp-priority')||p.priority,
     ownerName: get('dp-ownerName'), email: get('dp-email'), phone: get('dp-phone'),
     gymType: get('dp-gymType'), city: get('dp-city'), state: get('dp-state').toUpperCase(),
-    website: get('dp-website').trim(),
     source: get('dp-source'), estimatedRevenue: get('dp-revenue')||p.estimatedRevenue,
     nextAction: get('dp-nextAction'), nextActionDate: get('dp-nextActionDate'),
     notes: get('dp-notes'),
@@ -2646,8 +2192,7 @@ function getCurrentFileMapping() {
 }
 
 function confirmFileImport() {
-  if (!_pendingFileRows) { showToast('No data to import — upload a file first'); return; }
-  try {
+  if (!_pendingFileRows) return;
   const rows = _pendingFileRows;
   const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim()));
   const mapping = getCurrentFileMapping();
@@ -2682,7 +2227,13 @@ function confirmFileImport() {
     else if (rawPri.includes('cold')) newFields.priority = 'cold';
     else if (rawPri.includes('warm')) newFields.priority = 'warm';
 
-    const existIdx = findExistingProspect(gymName, newFields.email);
+    const normName = gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+    const normEmail = newFields.email.toLowerCase();
+    const existIdx = pipelineData.prospects.findIndex(p => {
+      const pName = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+      const pEmail = (p.email||'').toLowerCase();
+      return pName === normName || (normEmail && pEmail && pEmail === normEmail);
+    });
 
     if (existIdx >= 0) {
       Object.assign(pipelineData.prospects[existIdx], newFields);
@@ -2700,182 +2251,16 @@ function confirmFileImport() {
   });
 
   savePipeline(); populateStateFilter(); updateHeaderSub();
-  statusEl.textContent = `✓ Done — ${added} added, ${updated} updated, ${skipped} skipped (duplicates)`;
-  statusEl.style.color = 'var(--green)';
-  showToast(`Imported ${added} new + ${updated} updated prospects`);
+  statusEl.textContent = `✓ Done — ${added} added, ${updated} updated, ${skipped} skipped`;
   _pendingFileRows = null;
   if (currentView === 'board') renderBoard();
   else if (currentView === 'list') renderList();
-  } catch(err) { showToast('Import error: ' + err.message); console.error('File import error:', err); }
 }
 
 function cancelFileImport() {
   _pendingFileRows = null;
   document.getElementById('file-preview').style.display = 'none';
   document.getElementById('file-status').textContent = '';
-}
-
-// ── Fuzzy Dedup Helper ──
-function _normGymName(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
-function _fuzzyMatch(a, b) {
-  const na = _normGymName(a), nb = _normGymName(b);
-  if (!na || !nb) return false;
-  if (na === nb) return true;
-  if (na.includes(nb) || nb.includes(na)) return true;
-  // Levenshtein for short strings
-  const len = Math.max(na.length, nb.length);
-  if (len < 4) return false;
-  let dp = Array.from({length:na.length+1},()=>Array(nb.length+1).fill(0));
-  for (let i=0;i<=na.length;i++) dp[i][0]=i;
-  for (let j=0;j<=nb.length;j++) dp[0][j]=j;
-  for (let i=1;i<=na.length;i++) for (let j=1;j<=nb.length;j++)
-    dp[i][j]=na[i-1]===nb[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  return (1 - dp[na.length][nb.length]/len) >= 0.8;
-}
-
-function findExistingProspect(gymName, email) {
-  const normEmail = (email||'').toLowerCase();
-  return pipelineData.prospects.findIndex(p => {
-    // Exact email match
-    if (normEmail && (p.email||'').toLowerCase() === normEmail) return true;
-    // Fuzzy name match
-    return _fuzzyMatch(gymName, p.gymName);
-  });
-}
-
-// ── PASTE FROM GOOGLE SHEETS ──
-let _pendingPasteRows = null;
-let _pasteImportedNames = null;
-
-function handlePasteImport() {
-  const area = document.getElementById('paste-area');
-  const raw = area.value.trim();
-  const statusEl = document.getElementById('paste-status');
-  const previewEl = document.getElementById('paste-preview');
-
-  if (!raw) { statusEl.textContent = 'Paste your spreadsheet data above, then click Parse.'; previewEl.style.display='none'; return; }
-
-  // Parse tab-separated values
-  const lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-  const rows = lines.map(line => line.split('\t'));
-
-  if (rows.length < 2) { statusEl.textContent = '✗ Need at least a header row and one data row.'; return; }
-
-  _pendingPasteRows = rows;
-  const header = rows[0];
-  const dataRows = rows.slice(1).filter(r => r.some(c => (c||'').trim()));
-
-  const mapping = autoMapColumns(header);
-
-  // Build column mapping UI
-  const mapWrap = document.getElementById('paste-col-map-rows');
-  mapWrap.innerHTML = FILE_FIELD_DEFS.map(def => {
-    const colIdx = mapping[def.key] !== undefined ? mapping[def.key] : -1;
-    const opts = ['<option value="-1">-- skip --</option>',
-      ...header.map((h,i) => `<option value="${i}" ${i===colIdx?'selected':''}>${h||'(col '+(i+1)+')'}</option>`)
-    ].join('');
-    return `<div class="col-map-row">
-      <span style="min-width:150px;color:var(--text-mid)">${def.label}</span>
-      <select id="pmap-${def.key}" onchange="refreshPastePreviewTable()">${opts}</select>
-    </div>`;
-  }).join('');
-
-  refreshPastePreviewTable();
-  statusEl.textContent = `✓ Parsed — ${dataRows.length} data rows, ${header.length} columns`;
-  previewEl.style.display = 'block';
-}
-
-function refreshPastePreviewTable() {
-  if (!_pendingPasteRows) return;
-  const rows = _pendingPasteRows;
-  const dataRows = rows.slice(1).filter(r => r.some(c => (c||'').trim())).slice(0,5);
-  const mapping = getCurrentPasteMapping();
-
-  const mappedKeys = Object.keys(mapping).filter(k => mapping[k] >= 0);
-  const tableEl = document.getElementById('paste-preview-table-el');
-  tableEl.innerHTML = `<thead><tr>${mappedKeys.map(k => `<th>${FILE_FIELD_DEFS.find(d=>d.key===k)?.label||k}</th>`).join('')}</tr></thead>
-    <tbody>${dataRows.map(row => `<tr>${mappedKeys.map(k => `<td>${String(row[mapping[k]]||'').substring(0,40)}</td>`).join('')}</tr>`).join('')}</tbody>`;
-}
-
-function getCurrentPasteMapping() {
-  const m = {};
-  FILE_FIELD_DEFS.forEach(def => {
-    const sel = document.getElementById('pmap-'+def.key);
-    if (sel) m[def.key] = parseInt(sel.value);
-  });
-  return m;
-}
-
-function confirmPasteImport() {
-  if (!_pendingPasteRows) { showToast('No data to import — paste your sheet data first'); return; }
-  try {
-  const rows = _pendingPasteRows;
-  const dataRows = rows.slice(1).filter(r => r.some(c => (c||'').trim()));
-  const mapping = getCurrentPasteMapping();
-  const statusEl = document.getElementById('paste-import-status');
-
-  const get = (row, key) => {
-    const idx = mapping[key];
-    return idx >= 0 && idx < row.length ? String(row[idx]||'').trim() : '';
-  };
-
-  let added = 0, updated = 0, skipped = 0;
-  dataRows.forEach(row => {
-    const gymName = get(row,'gymName');
-    if (!gymName) { skipped++; return; }
-
-    const newFields = {
-      gymName, ownerName: get(row,'ownerName'), email: get(row,'email'),
-      phone: get(row,'phone'), city: get(row,'city'),
-      state: get(row,'state').toUpperCase().substring(0,2),
-      gymType: get(row,'gymType'), source: get(row,'source')||'sheet-paste',
-      notes: get(row,'notes'),
-    };
-
-    // Stage mapping
-    const rawStage = get(row,'stage').toLowerCase();
-    const stageMap = {lead:'lead',contacted:'contacted',discovery:'discovery',proposal:'proposal',negotiating:'negotiating',signed:'signed',lost:'lost'};
-    if (rawStage && stageMap[rawStage]) newFields.stage = stageMap[rawStage];
-
-    // Priority mapping
-    const rawPri = get(row,'priority').toLowerCase();
-    if (rawPri.includes('hot')) newFields.priority = 'hot';
-    else if (rawPri.includes('cold')) newFields.priority = 'cold';
-    else if (rawPri.includes('warm')) newFields.priority = 'warm';
-
-    const existIdx = findExistingProspect(gymName, newFields.email);
-
-    if (existIdx >= 0) {
-      // Update existing — only overwrite non-empty fields
-      Object.keys(newFields).forEach(k => { if (newFields[k]) pipelineData.prospects[existIdx][k] = newFields[k]; });
-      updated++;
-    } else {
-      // Also check within this import batch for duplicates
-      const batchDup = _pasteImportedNames && _pasteImportedNames.some(n => _fuzzyMatch(n, gymName));
-      if (batchDup) { skipped++; return; }
-      if (!_pasteImportedNames) _pasteImportedNames = [];
-      _pasteImportedNames.push(gymName);
-
-      pipelineData.prospects.push(Object.assign({}, newFields, {
-        id: genId(), stage: newFields.stage||'lead', priority: newFields.priority||'warm',
-        lastActivity: new Date().toISOString().slice(0,10),
-        activities: [{date:new Date().toISOString().slice(0,10),type:'note',notes:'Imported from Google Sheets paste.'}],
-        createdAt: new Date().toISOString().slice(0,10),
-        estimatedRevenue:'', nextAction:'Follow up', nextActionDate:'',
-      }));
-      added++;
-    }
-  });
-  _pasteImportedNames = null;
-
-  savePipeline(); populateStateFilter(); updateHeaderSub();
-  statusEl.textContent = `✓ Done — ${added} added, ${updated} updated, ${skipped} skipped (duplicates)`;
-  statusEl.style.color = 'var(--green)';
-  _pendingPasteRows = null;
-  showToast(`Imported ${added} new + ${updated} updated prospects`);
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
-  } catch(err) { showToast('Import error: ' + err.message); console.error('Paste import error:', err); }
 }
 
 // ── BROWSE ANY SHEET TAB ──
@@ -3363,29 +2748,6 @@ function markSigned(id) {
   if (!p) return;
   moveStage(id, 'signed');
 
-  // ── Stamp conversion traits for learning ────────────────────────────────
-  // Captures what this gym looked like at signing time so the system can
-  // learn which traits predict conversion. Stored in localStorage, synced
-  // to the curator via the ICP Profile view's "Conversion Insights" section.
-  const conversionData = JSON.parse(localStorage.getItem('deka_conversion_data') || '[]');
-  conversionData.push({
-    gym_name:     p.gymName || '',
-    city:         p.city || '',
-    state:        p.state || '',
-    gym_type:     p.gymType || '',
-    source:       p.source || '',
-    priority:     p.priority || '',
-    fit_score:    p.fitScore || '',
-    website:      p.website || '',
-    had_email:    !!p.email,
-    had_phone:    !!p.phone,
-    email_step:   p.emailStep || '',
-    signed_at:    new Date().toISOString().slice(0, 10),
-    days_in_pipeline: p.createdAt ? Math.round((Date.now() - new Date(p.createdAt).getTime()) / 86400000) : null,
-    notes_snippet: (p.notes || '').slice(0, 200),
-  });
-  localStorage.setItem('deka_conversion_data', JSON.stringify(conversionData));
-
   // Pre-fill CRM entry in main dashboard
   const crmData = JSON.parse(localStorage.getItem('deka_crm')||'{}');
   const crmId = p.gymName.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,20);
@@ -3394,7 +2756,6 @@ function markSigned(id) {
     city: p.city||'', gymType: p.gymType||'',
     notes: `[Signed via pipeline ${new Date().toISOString().slice(0,10)}]\n${p.notes||''}`,
     joinDate: new Date().toISOString().slice(0,10),
-    source: 'pipeline',
   });
   localStorage.setItem('deka_crm', JSON.stringify(crmData));
 
@@ -3459,7 +2820,7 @@ function openOnboardingModal(id) {
         ${alreadyTransferred
           ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                <span style="color:var(--green);font-size:13px;font-weight:600">\u2713 Added to Portfolio Dashboard</span>
-               <button onclick="window.open('deka-northeast-portfolio-analysis.html')" class="btn btn-ghost" style="font-size:12px;border-color:var(--green);color:var(--green)">Open Dashboard \u2192</button>
+               <button onclick="window.open('index.html')" class="btn btn-ghost" style="font-size:12px;border-color:var(--green);color:var(--green)">Open Dashboard \u2192</button>
                <button onclick="openEventPlannerFromPipeline('${esc(p.gymName)}')" class="btn btn-ghost" style="font-size:12px;border-color:#4ade80;color:#4ade80">\uD83C\uDFC3 Plan First Event</button>
              </div>`
           : `<p style="font-size:12px;color:var(--text-mid);margin:0 0 12px">One click adds ${esc(p.gymName)} to your Portfolio Dashboard. Their contact info is already saved and waiting.</p>
@@ -3562,20 +2923,11 @@ function transferToPortfolio(id) {
     upcomingEvents: [],
     city: p.city || '',
     gymType: p.gymType || '',
-    source: 'pipeline',
   };
   const existIdx = added.findIndex(a => a.id === crmId);
   if (existIdx >= 0) added[existIdx] = newAffiliate;
   else added.push(newAffiliate);
   localStorage.setItem('deka_affiliates_added', JSON.stringify(added));
-  // Push into the cross-dashboard roster so the pipeline can dedupe immediately
-  try {
-    const rosterArr = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]');
-    if (!rosterArr.some(r => normName(r.name) === normName(p.gymName))) {
-      rosterArr.push({id: crmId, name: p.gymName, state: p.state || '??', tier: 'b'});
-      localStorage.setItem('deka_affiliate_roster', JSON.stringify(rosterArr));
-    }
-  } catch(e) {}
   // Refresh modal to show the ✓ transferred state
   openOnboardingModal(id);
   // Open portfolio dashboard in new tab
@@ -3772,1490 +3124,15 @@ function esc(v) {
   return String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// ── RESEARCH INBOX (agent-discovered prospects from Google Sheets) ──────────
-// ════════════════════════════════════════════════════════════════════════════
-// Single source of truth for all research-tab config. Future tabs (Affiliates
-// from sheet, etc.) should follow the same pattern: one CONFIG block, no
-// scattered constants.
-const DEKA_RESEARCH = {
-  sheetId:        '1GFL7VIFrtfBcpxhAdu2eIQ133gUVZ13HNLCIqE-ZSgc',
-  sheetTab:       'Prospect Pipeline',
-  feedbackTab:    'Feedback',
-  apiBase:        'http://localhost:8765',  // FastAPI server (Step 3)
-  storage: {
-    reviewed: 'deka_research_reviewed',           // {rowKey: {decision, reason, at, gymName}}
-    pending:  'deka_research_pending_feedback',   // queue flushed by API when it comes online
-  },
-};
-
-// Module state
-let _researchRows = [];
-let _researchPendingReject = null;   // {key, gymName, row}
-let _researchPendingMaybe  = null;   // {key, gymName, row}
-let _researchLoading = false;        // concurrency guard for loadResearchInbox()
-let _researchSubtab = 'inbox';       // 'inbox' | 'maybe' | 'rejected'
-let _researchPollTimer = null;       // setInterval handle for run-status polling
-let _researchCacheTs = 0;           // timestamp of last CSV fetch (30s cache)
-
-// ── Storage helpers ─────────────────────────────────────────────────────────
-function _lsGet(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
-  catch (e) { return fallback; }
-}
-function _lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-
-const _loadReviewed       = () => _lsGet(DEKA_RESEARCH.storage.reviewed, {});
-const _saveReviewed       = (o) => _lsSet(DEKA_RESEARCH.storage.reviewed, o);
-const _loadPendingFeedback = () => _lsGet(DEKA_RESEARCH.storage.pending, []);
-const _savePendingFeedback = (a) => _lsSet(DEKA_RESEARCH.storage.pending, a);
-
-// Stable row key from gym name + website (sheet has no explicit ID column).
-// Lowercased + trimmed so casing/whitespace don't create duplicate-looking entries.
-function _researchRowKey(row) {
-  const name = (row['Gym Name'] || '').trim().toLowerCase();
-  const site = (row['Website']  || '').trim().toLowerCase();
-  return name + '|' + site;
-}
-
-// ── CSV parsing (RFC-4180-ish, handles quoted fields with commas/newlines) ──
-function _parseCSV(text) {
-  // Strip UTF-8 BOM if present (gviz occasionally emits one)
-  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  const rows = [];
-  let cur = [], field = '', inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQ) {
-      if (c === '"') {
-        if (text[i+1] === '"') { field += '"'; i++; }
-        else inQ = false;
-      } else field += c;
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',')  { cur.push(field); field = ''; }
-      else if (c === '\n') { cur.push(field); rows.push(cur); cur = []; field = ''; }
-      else if (c === '\r') { /* skip */ }
-      else field += c;
-    }
-  }
-  if (field || cur.length) { cur.push(field); rows.push(cur); }
-  return rows;
-}
-
-function _csvToObjects(text) {
-  const rows = _parseCSV(text).filter(r => r.some(c => c && c.trim()));
-  if (rows.length < 2) return [];
-  const headers = rows[0].map(h => h.trim());
-  return rows.slice(1).map(r => {
-    const o = {};
-    headers.forEach((h, i) => { o[h] = (r[i] || '').trim(); });
-    return o;
-  });
-}
-
-// ── Status helpers ──────────────────────────────────────────────────────────
-function _setResearchStatus(msg, kind = 'dim') {
-  const el = document.getElementById('research-status');
-  if (!el) return;
-  const color = kind === 'error' ? 'var(--accent)'
-              : kind === 'ok'    ? 'var(--green)'
-              : 'var(--text-dim)';
-  el.innerHTML = `<span style="color:${color}">${msg}</span>`;
-}
-
-// Best-effort: POST any queued accept/maybe/reject decisions to the API.
-// Silently no-ops if the API is offline (the queue stays in localStorage and
-// will be retried on the next load). Called from loadResearchInbox().
-async function _flushPendingFeedback() {
-  const queue = _loadPendingFeedback();
-  if (queue.length === 0) return;
-  try {
-    const res = await fetch(`${DEKA_RESEARCH.apiBase}/feedback`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({items: queue}),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    if (data.ok) {
-      _savePendingFeedback([]);
-      console.log(`[deka] Flushed ${queue.length} feedback items to API`, data);
-    }
-  } catch (e) {
-    // API offline — leave queue intact for next attempt. No user-visible error.
-    console.debug('[deka] Feedback flush skipped (API offline):', e.message);
-  }
-}
-
-async function loadResearchInbox() {
-  if (_researchLoading) return;            // concurrency guard
-  _researchLoading = true;
-
-  // Flush queued feedback BEFORE fetching CSV so the sheet reflects our decisions
-  await _flushPendingFeedback();
-
-  const listEl = document.getElementById('research-list');
-  const kpiEl  = document.getElementById('research-kpis');
-  if (!listEl) { _researchLoading = false; return; }
-
-  _setResearchStatus('Loading from Google Sheets...');
-  listEl.innerHTML = '';
-
-  // 30s cache: skip re-fetch if data is fresh (user can click Refresh to force)
-  const now = Date.now();
-  const CACHE_MS = 30000;
-  if (_researchRows.length && _researchCacheTs && (now - _researchCacheTs < CACHE_MS)) {
-    // Use cached data
-  } else {
-    const url = `https://docs.google.com/spreadsheets/d/${DEKA_RESEARCH.sheetId}/gviz/tq`
-              + `?tqx=out:csv&sheet=${encodeURIComponent(DEKA_RESEARCH.sheetTab)}`
-              + `&_=${now}`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      _researchRows = _csvToObjects(await res.text());
-      _researchCacheTs = now;
-    } catch (e) {
-      _setResearchStatus(
-        `Failed to load sheet: ${esc(e.message)}. ` +
-        `<span style="color:var(--text-dim)">Make sure the sheet is shared "Anyone with link → Viewer".</span>`,
-        'error'
-      );
-      _researchLoading = false;
-      return;
-    }
-  }
-
-  const reviewed = _loadReviewed();
-  // Show only Status=New rows that haven't been locally accepted/rejected yet
-  const inbox = _researchRows.filter(r => {
-    const status = (r['Status']||'').trim();
-    if (status && status !== 'New') return false;
-    const key = _researchRowKey(r);
-    if (reviewed[key]) return false;
-    if (!r['Gym Name']) return false;
-    return true;
-  });
-
-  // KPIs
-  const totalRows = _researchRows.length;
-  const reviewedCount = Object.keys(reviewed).length;
-  const acceptedCount = Object.values(reviewed).filter(r => r.decision === 'accepted').length;
-  const maybeCount    = Object.values(reviewed).filter(r => r.decision === 'maybe').length;
-  const rejectedCount = Object.values(reviewed).filter(r => r.decision === 'rejected').length;
-  kpiEl.innerHTML = `
-    ${_kpiBox('Inbox', inbox.length, 'var(--blue)')}
-    ${_kpiBox('Accepted', acceptedCount, 'var(--green)')}
-    ${_kpiBox('Maybe', maybeCount, 'var(--yellow)')}
-    ${_kpiBox('Rejected', rejectedCount, 'var(--accent)')}
-    ${_kpiBox('Total in Sheet', totalRows, 'var(--text)')}
-  `;
-
-  _setResearchStatus(`${inbox.length} new prospect${inbox.length===1?'':'s'} awaiting review · ${reviewedCount} reviewed locally`);
-
-  _renderResearchSubtab(inbox, reviewed);
-  _researchLoading = false;
-}
-
-// Render whichever subtab is active (called on load + on subtab switch)
-function _renderResearchSubtab(inbox, reviewed) {
-  const listEl = document.getElementById('research-list');
-  if (!listEl) return;
-  reviewed = reviewed || _loadReviewed();
-  // If inbox not passed (e.g. tab switch without re-fetch), recompute it
-  if (!inbox) {
-    inbox = _researchRows.filter(r => {
-      const status = (r['Status']||'').trim();
-      if (status && status !== 'New') return false;
-      if (reviewed[_researchRowKey(r)]) return false;
-      return !!r['Gym Name'];
-    });
-  }
-
-  listEl.innerHTML = '';
-
-  // ── ICP Profile view ──
-  if (_researchSubtab === 'icp') {
-    if (!_icpData) {
-      _loadIcp().then(() => _renderIcpProfile());
-    } else {
-      _renderIcpProfile();
-    }
-    return;
-  }
-
-  if (_researchSubtab === 'inbox') {
-    if (inbox.length === 0) {
-      listEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim);background:var(--card);border:1px dashed var(--border);border-radius:10px">
-        No new prospects in the inbox. Click <strong>Run Agents</strong> to discover more, or refresh after the next scheduled run.
-      </div>`;
-      return;
-    }
-    const frag = document.createDocumentFragment();
-    inbox.forEach(row => frag.appendChild(_renderResearchCard(row)));
-    listEl.appendChild(frag);
-    return;
-  }
-
-  // ── Maybe / Needs Research ──
-  if (_researchSubtab === 'maybe') {
-    const maybeEntries = Object.entries(reviewed)
-      .filter(([_, e]) => e.decision === 'maybe')
-      .sort((a, b) => (b[1].at || '').localeCompare(a[1].at || ''));
-
-    if (maybeEntries.length === 0) {
-      listEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim);background:var(--card);border:1px dashed var(--border);border-radius:10px">
-        No "Maybe" prospects yet. When you mark a gym as Maybe from the Inbox, it'll land here so you can dig deeper before deciding.
-      </div>`;
-      return;
-    }
-
-    const frag = document.createDocumentFragment();
-    maybeEntries.forEach(([key, entry]) => {
-      const sheetRow = _researchRows.find(r => _researchRowKey(r) === key);
-      frag.appendChild(_renderMaybeCard(key, entry, sheetRow));
-    });
-    listEl.appendChild(frag);
-    return;
-  }
-
-  // ── Rejected archive ──
-  const rejectedEntries = Object.entries(reviewed)
-    .filter(([_, e]) => e.decision === 'rejected')
-    .sort((a, b) => (b[1].at || '').localeCompare(a[1].at || ''));
-
-  if (rejectedEntries.length === 0) {
-    listEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim);background:var(--card);border:1px dashed var(--border);border-radius:10px">
-      No rejected prospects yet. When you reject a gym from the Inbox, it'll be archived here with the reason.
-    </div>`;
-    return;
-  }
-
-  const frag = document.createDocumentFragment();
-  rejectedEntries.forEach(([key, entry]) => {
-    const sheetRow = _researchRows.find(r => _researchRowKey(r) === key);
-    frag.appendChild(_renderRejectedCard(key, entry, sheetRow));
-  });
-  listEl.appendChild(frag);
-}
-
-function _renderMaybeCard(key, entry, sheetRow) {
-  const card = document.createElement('div');
-  card.style.cssText = 'background:var(--card);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px';
-
-  const reviewedDate = entry.at ? new Date(entry.at).toLocaleDateString() : '';
-  const city    = sheetRow?.['City'] || '';
-  const state   = sheetRow?.['State'] || '';
-  const website = sheetRow?.['Website'] || '';
-  const phone   = sheetRow?.['Phone'] || '';
-  const email   = sheetRow?.['Email'] || '';
-  const fbk     = sheetRow?.['Facebook'] || '';
-  const desc    = sheetRow?.['Description'] || '';
-  const fitScore = sheetRow?.['Fit Score'] || '';
-  const fitBadge = fitScore ? `<span style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:var(--blue);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">FIT ${esc(fitScore)}</span>` : '';
-
-  card.innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-          <strong style="font-size:14px;color:var(--text)">${esc(entry.gymName || sheetRow?.['Gym Name'] || '(unknown)')}</strong>
-          <span style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:var(--yellow);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">MAYBE</span>
-          ${fitBadge}
-        </div>
-        <div style="font-size:12px;color:var(--text-mid)">
-          ${esc(city)}${city&&state?', ':''}${esc(state)}
-          ${website ? ` · <a href="${esc(website)}" target="_blank" style="color:var(--blue)">${esc(website.replace(/^https?:\/\//,'').replace(/\/$/,''))}</a>` : ''}
-          ${reviewedDate ? ` · <span style="color:var(--text-dim)">marked ${esc(reviewedDate)}</span>` : ''}
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-green btn-sm" onclick='promoteMaybeToAccept(${JSON.stringify(key)})' title="I've researched it — add to pipeline">&#10003; Accept</button>
-        <button class="btn btn-sm" style="background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.3);color:var(--accent)" onclick='demoteMaybeToReject(${JSON.stringify(key)})' title="I've researched it — not a fit">&#10005; Reject</button>
-      </div>
-    </div>
-    ${desc ? `<div style="font-size:12px;color:var(--text-dim);line-height:1.4">${esc(desc)}</div>` : ''}
-    <div style="font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;line-height:1.4">
-      <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-right:6px">To investigate:</span>
-      ${esc(entry.reason || '(no notes)')}
-    </div>
-    ${(phone || email || fbk) ? `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--text-dim);padding-top:4px;border-top:1px solid var(--border)">
-      ${phone ? `<span>&#9742; ${esc(phone)}</span>` : ''}
-      ${email ? `<span>&#9993; ${esc(email)}</span>` : ''}
-      ${fbk   ? `<span><a href="${esc(fbk)}" target="_blank" style="color:var(--blue)">Facebook</a></span>` : ''}
-    </div>` : ''}
-  `;
-  return card;
-}
-
-function _renderRejectedCard(key, entry, sheetRow) {
-  const card = document.createElement('div');
-  card.style.cssText = 'background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px';
-
-  const reviewedDate = entry.at ? new Date(entry.at).toLocaleDateString() : '';
-  const city  = sheetRow?.['City'] || '';
-  const state = sheetRow?.['State'] || '';
-  const website = sheetRow?.['Website'] || '';
-  const phone   = sheetRow?.['Phone'] || '';
-  const email   = sheetRow?.['Email'] || '';
-
-  card.innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-          <strong style="font-size:14px;color:var(--text)">${esc(entry.gymName || sheetRow?.['Gym Name'] || '(unknown)')}</strong>
-          <span style="background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.3);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">REJECTED</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-mid)">
-          ${esc(city)}${city&&state?', ':''}${esc(state)}
-          ${website ? ` · <a href="${esc(website)}" target="_blank" style="color:var(--blue)">${esc(website.replace(/^https?:\/\//,'').replace(/\/$/,''))}</a>` : ''}
-          ${reviewedDate ? ` · <span style="color:var(--text-dim)">rejected ${esc(reviewedDate)}</span>` : ''}
-        </div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick='restoreRejectedProspect(${JSON.stringify(key)})' title="Move back to Inbox so you can reconsider">&#8634; Restore</button>
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;line-height:1.4">
-      <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-right:6px">Reason:</span>
-      ${esc(entry.reason || '(no reason recorded)')}
-    </div>
-    ${(phone || email) ? `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--text-dim);padding-top:4px;border-top:1px solid var(--border)">
-      ${phone ? `<span>&#9742; ${esc(phone)}</span>` : ''}
-      ${email ? `<span>&#9993; ${esc(email)}</span>` : ''}
-    </div>` : ''}
-  `;
-  return card;
-}
-
-function setResearchSubtab(name) {
-  _researchSubtab = name;
-  const tabs = {
-    inbox:    {id: 'research-subtab-inbox',    color: 'var(--accent)'},
-    maybe:    {id: 'research-subtab-maybe',    color: 'var(--yellow)'},
-    rejected: {id: 'research-subtab-rejected', color: 'var(--accent)'},
-    icp:      {id: 'research-subtab-icp',      color: 'var(--blue)'},
-  };
-  Object.entries(tabs).forEach(([key, t]) => {
-    const btn = document.getElementById(t.id);
-    if (!btn) return;
-    const isActive = name === key;
-    btn.style.cssText = `padding:8px 14px;background:transparent;border:none;font-size:12px;font-weight:600;cursor:pointer;`
-      + (isActive
-          ? `color:var(--text);border-bottom:2px solid ${t.color}`
-          : `color:var(--text-dim);border-bottom:2px solid transparent`);
-  });
-  _renderResearchSubtab();
-}
-
-function restoreRejectedProspect(key) {
-  if (!confirm('Move this prospect back to the Inbox? The rejection reason will be discarded.')) return;
-  const reviewed = _loadReviewed();
-  delete reviewed[key];
-  _saveReviewed(reviewed);
-  setResearchSubtab('inbox');
-  loadResearchInbox();
-}
-
-// ── Maybe modal handlers ─────────────────────────────────────────────────────
-function openMaybeModal(key) {
-  const row = _findResearchRowByKey(key);
-  if (!row) return;
-  _researchPendingMaybe = {key, gymName: row['Gym Name'], row};
-  document.getElementById('maybe-modal-name').textContent = `${row['Gym Name']} — ${row['City']||''}, ${row['State']||''}`;
-  document.getElementById('maybe-reason-preset').value = '';
-  document.getElementById('maybe-reason-text').value = '';
-  document.getElementById('maybe-modal').style.display = 'flex';
-}
-
-function closeMaybeModal() {
-  _researchPendingMaybe = null;
-  document.getElementById('maybe-modal').style.display = 'none';
-}
-
-function confirmMaybeProspect() {
-  if (!_researchPendingMaybe) return;
-  const reason = document.getElementById('maybe-reason-text').value.trim();
-  const {key, row} = _researchPendingMaybe;
-  _recordResearchDecision(key, row, 'maybe', reason);
-  closeMaybeModal();
-  loadResearchInbox();
-}
-
-// From the Maybe archive: promote to accepted (creates real pipeline prospect)
-function promoteMaybeToAccept(key) {
-  const row = _findResearchRowByKey(key);
-  if (!row) {
-    // Sheet row may not be loaded yet (e.g. if the sheet was modified). Re-fetch then retry.
-    alert('Could not find this gym in the current sheet snapshot. Click Refresh and try again.');
-    return;
-  }
-  // Clear the maybe entry so acceptResearchProspect doesn't bail on the dedupe check
-  const reviewed = _loadReviewed();
-  delete reviewed[key];
-  _saveReviewed(reviewed);
-  acceptResearchProspect(key);
-}
-
-// From the Maybe archive: demote to rejected (opens reject modal)
-function demoteMaybeToReject(key) {
-  const row = _findResearchRowByKey(key);
-  if (!row) {
-    alert('Could not find this gym in the current sheet snapshot. Click Refresh and try again.');
-    return;
-  }
-  // Clear the maybe entry so the reject path can re-record cleanly
-  const reviewed = _loadReviewed();
-  delete reviewed[key];
-  _saveReviewed(reviewed);
-  openRejectModal(key);
-}
-
-function _kpiBox(label, value, color) {
-  return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px">${esc(label)}</div>
-    <div style="font-size:20px;font-weight:700;color:${color}">${esc(value)}</div>
-  </div>`;
-}
-
-function _renderResearchCard(row) {
-  const key = _researchRowKey(row);
-  const card = document.createElement('div');
-  card.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px';
-  card.id = 'research-card-' + btoa(key).replace(/[^a-zA-Z0-9]/g,'').slice(0,16);
-
-  const fitScore = row['Fit Score'] || '';
-  const fitBadge = fitScore ? `<span style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:var(--blue);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">FIT ${esc(fitScore)}</span>` : '';
-
-  card.innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-          <strong style="font-size:14px;color:var(--text)">${esc(row['Gym Name'])}</strong>
-          ${fitBadge}
-          ${row['Source'] ? `<span style="font-size:10px;color:var(--text-dim)">via ${esc(row['Source'])}</span>` : ''}
-        </div>
-        <div style="font-size:12px;color:var(--text-mid)">
-          ${esc(row['City']||'')}${row['City']&&row['State']?', ':''}${esc(row['State']||'')}
-          ${row['Website'] ? ` · <a href="${esc(row['Website'])}" target="_blank" style="color:var(--blue)">${esc(row['Website'].replace(/^https?:\/\//,'').replace(/\/$/,''))}</a>` : ''}
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-green btn-sm" onclick='acceptResearchProspect(${JSON.stringify(key)})'>&#10003; Accept</button>
-        <button class="btn btn-sm" style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:var(--yellow)" onclick='openMaybeModal(${JSON.stringify(key)})'>? Maybe</button>
-        <button class="btn btn-sm" style="background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.3);color:var(--accent)" onclick='openRejectModal(${JSON.stringify(key)})'>&#10005; Reject</button>
-      </div>
-    </div>
-    ${row['Description'] ? `<div style="font-size:12px;color:var(--text-dim);line-height:1.4">${esc(row['Description'])}</div>` : ''}
-    <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--text-dim);padding-top:6px;border-top:1px solid var(--border)">
-      ${row['Phone']    ? `<span>&#9742; ${esc(row['Phone'])}</span>` : ''}
-      ${row['Email']    ? `<span>&#9993; ${esc(row['Email'])}</span>` : ''}
-      ${row['Owner Name'] ? `<span>&#128100; ${esc(row['Owner Name'])}</span>` : ''}
-      ${row['Facebook'] ? `<span><a href="${esc(row['Facebook'])}" target="_blank" style="color:var(--blue)">Facebook</a></span>` : ''}
-      ${row['Date Added'] ? `<span style="margin-left:auto">Found ${esc(row['Date Added'])}</span>` : ''}
-    </div>
-  `;
-  return card;
-}
-
-function _findResearchRowByKey(key) {
-  return _researchRows.find(r => _researchRowKey(r) === key);
-}
-
-// Mark reviewed + queue an entry for the API to flush to the Feedback tab.
-// Used by accept / reject / maybe so the queue shape stays consistent.
-// decision: 'accept' | 'reject' | 'maybe'
-function _recordResearchDecision(key, row, decision, reason) {
-  const at = new Date().toISOString();
-  const stateMap = {accept: 'accepted', reject: 'rejected', maybe: 'maybe'};
-  const reviewed = _loadReviewed();
-  reviewed[key] = {
-    decision: stateMap[decision] || decision,
-    reason, at,
-    gymName: row['Gym Name'] || '',
-  };
-  _saveReviewed(reviewed);
-
-  const queue = _loadPendingFeedback();
-  queue.push({
-    decision, reason, reviewed_at: at,
-    gym_name: row['Gym Name'] || '',
-    city:     row['City']     || '',
-    state:    row['State']    || '',
-    fit_score: row['Fit Score'] || '',
-  });
-  _savePendingFeedback(queue);
-}
-
-// Auto-prefix https:// if a URL was supplied without a scheme. Returns ''
-// for empty/whitespace input so the field stays cleanly empty.
-function _normalizeUrl(url) {
-  const trimmed = (url || '').trim();
-  if (!trimmed) return '';
-  return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
-}
-
-// Detect if a gym is already in the live pipeline so Accept doesn't create dupes.
-function _isAlreadyInPipeline(row) {
-  const name = (row['Gym Name'] || '').trim().toLowerCase();
-  const site = (row['Website']  || '').trim().toLowerCase();
-  if (!name) return false;
-  return pipelineData.prospects.some(p => {
-    const pn = (p.gymName || '').trim().toLowerCase();
-    const ps = (p.website || '').trim().toLowerCase();
-    return pn === name || (site && ps === site);
-  });
-}
-
-function acceptResearchProspect(key) {
-  const row = _findResearchRowByKey(key);
-  if (!row) return;
-
-  if (_isAlreadyInPipeline(row)) {
-    if (!confirm(`"${row['Gym Name']}" already exists in your pipeline. Mark as accepted anyway (won't create a duplicate)?`)) return;
-    _recordResearchDecision(key, row, 'accept', 'Already in pipeline (no dupe created)');
-    loadResearchInbox();
-    return;
-  }
-
-  const today = new Date().toISOString().slice(0,10);
-  const p = {
-    id: genId(),
-    gymName: row['Gym Name'] || '',
-    ownerName: row['Owner Name'] || '',
-    email: row['Email'] || '',
-    phone: row['Phone'] || '',
-    city: row['City'] || '',
-    state: (row['State'] || '').toUpperCase(),
-    gymType: '',
-    stage: 'lead',
-    priority: 'warm',
-    source: 'Agent Research',
-    estimatedRevenue: '',
-    nextAction: 'Send Day 1 cold email',
-    nextActionDate: today,
-    notes: row['Description'] ? `Agent description: ${row['Description']}` : '',
-    facebook: row['Facebook'] || '',
-    website: _normalizeUrl(row['Website'] || ''),
-    fitScore: row['Fit Score'] || '',
-    lastActivity: today,
-    activities: [{date: today, type: 'note', notes: 'Accepted from agent research inbox.'}],
-    createdAt: today,
-  };
-  pipelineData.prospects.push(p);
-  savePipeline();
-  populateStateFilter();
-  updateHeaderSub();
-
-  _recordResearchDecision(key, row, 'accept', '');
-  loadResearchInbox();
-}
-
-function openRejectModal(key) {
-  const row = _findResearchRowByKey(key);
-  if (!row) return;
-  _researchPendingReject = {key, gymName: row['Gym Name'], row};
-  document.getElementById('reject-modal-name').textContent = `${row['Gym Name']} — ${row['City']||''}, ${row['State']||''}`;
-  document.getElementById('reject-reason-preset').value = '';
-  document.getElementById('reject-reason-text').value = '';
-  document.getElementById('reject-modal').style.display = 'flex';
-}
-
-function closeRejectModal() {
-  _researchPendingReject = null;
-  document.getElementById('reject-modal').style.display = 'none';
-}
-
-function confirmRejectProspect() {
-  if (!_researchPendingReject) return;
-  const reason = document.getElementById('reject-reason-text').value.trim();
-  if (!reason) { alert('Please provide a reason so the agents can learn.'); return; }
-
-  const {key, row} = _researchPendingReject;
-  _recordResearchDecision(key, row, 'reject', reason);
-
-  closeRejectModal();
-  loadResearchInbox();
-}
-
-// ── Run filter helpers (always reset on page load — not persisted) ──────────
-function _toggleStyleChip(btn) {
-  const active = btn.dataset.active === '1';
-  if (active) {
-    btn.dataset.active = '0';
-    btn.style.background = 'transparent';
-    btn.style.color = 'var(--text-dim)';
-    btn.style.borderColor = 'var(--border)';
-  } else {
-    btn.dataset.active = '1';
-    btn.style.background = 'rgba(96,165,250,0.15)';
-    btn.style.color = 'var(--blue)';
-    btn.style.borderColor = 'rgba(96,165,250,0.4)';
-  }
-  _updateFilterSummary();
-}
-
-function _readRunFilters() {
-  const state = document.getElementById('rf-state')?.value.trim() || '';
-  const city  = document.getElementById('rf-city')?.value.trim() || '';
-  const maxRaw = document.getElementById('rf-max')?.value.trim() || '';
-  const styles = Array.from(document.querySelectorAll('#rf-styles .rf-chip[data-active="1"]'))
-    .map(b => b.dataset.style);
-
-  const out = {};
-  if (state)  out.state_filter = state;
-  if (city)   out.city_filter  = city;
-  if (styles.length) out.pattern_filter = styles;
-  if (maxRaw) {
-    const n = parseInt(maxRaw, 10);
-    if (!isNaN(n) && n > 0) out.max_results = Math.min(n, 25);  // hard cap mirrors backend
-  }
-  return out;
-}
-
-function _updateFilterSummary() {
-  const f = _readRunFilters();
-  const el = document.getElementById('research-filter-summary');
-  if (!el) return;
-  const parts = [];
-  if (f.state_filter)   parts.push(f.state_filter);
-  if (f.city_filter)    parts.push(f.city_filter);
-  if (f.pattern_filter) parts.push(f.pattern_filter.join('+'));
-  if (f.max_results)    parts.push('max ' + f.max_results);
-  el.textContent = parts.length ? '· Next run: ' + parts.join(' · ') : '';
-}
-
-function _clearFilters() {
-  document.getElementById('rf-state').value = '';
-  document.getElementById('rf-city').value  = '';
-  document.getElementById('rf-max').value   = '';
-  document.querySelectorAll('#rf-styles .rf-chip').forEach(b => {
-    b.dataset.active = '0';
-    b.style.background = 'transparent';
-    b.style.color = 'var(--text-dim)';
-    b.style.borderColor = 'var(--border)';
-  });
-  _updateFilterSummary();
-}
-
-// Polls /agents/status every 5s. When the run flips from running → idle,
-// refreshes the inbox (which now shows the new prospects). Stops itself
-// after either success, an error, or 10 minutes (safety cap).
-function _startRunPolling() {
-  if (_researchPollTimer) clearInterval(_researchPollTimer);
-  const startedAt = Date.now();
-  const MAX_MS = 10 * 60 * 1000;  // hard cap
-  let elapsedTicks = 0;
-
-  _researchPollTimer = setInterval(async () => {
-    elapsedTicks++;
-    if (Date.now() - startedAt > MAX_MS) {
-      clearInterval(_researchPollTimer);
-      _researchPollTimer = null;
-      _setResearchStatus('Run polling timed out (10 min). Click Refresh manually.', 'error');
-      return;
-    }
-    try {
-      const res = await fetch(`${DEKA_RESEARCH.apiBase}/agents/status`);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const secs = Math.round((Date.now() - startedAt) / 1000);
-      if (data.state === 'running') {
-        _setResearchStatus(`⏳ Agents running... (${secs}s elapsed) — auto-refresh when done`, 'ok');
-      } else {
-        // Done — fetch fresh inbox
-        clearInterval(_researchPollTimer);
-        _researchPollTimer = null;
-        _setResearchStatus(`✓ Run finished in ${secs}s. Loading new prospects...`, 'ok');
-        _researchCacheTs = 0;  // force re-fetch after agent run
-        await loadResearchInbox();
-      }
-    } catch (e) {
-      clearInterval(_researchPollTimer);
-      _researchPollTimer = null;
-      _setResearchStatus(`Lost connection to agent API. Click Refresh manually.`, 'error');
-    }
-  }, 5000);
-}
-
-async function triggerAgentRun() {
-  const btn = document.getElementById('research-run-btn');
-  if (!btn || btn.disabled) return;
-  btn.disabled = true;
-  const originalLabel = btn.innerHTML;
-  btn.textContent = '⏳ Triggering...';
-
-  const filters = _readRunFilters();
-  const hasFilters = Object.keys(filters).length > 0;
-
-  try {
-    const res = await fetch(`${DEKA_RESEARCH.apiBase}/agents/run`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify(filters),  // empty {} is fine — server treats as default sweep
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    if (data.error === 'run_in_progress') {
-      _setResearchStatus(`A run is already in progress (started ${data.started_at}). Polling for completion...`, 'ok');
-    } else {
-      const filterNote = hasFilters ? ` (${Object.keys(filters).length} filter${Object.keys(filters).length===1?'':'s'})` : '';
-      _setResearchStatus(`Agent run started${filterNote}. Polling every 5s — inbox will auto-refresh when done.`, 'ok');
-    }
-    btn.textContent = '⏳ Running...';
-    _startRunPolling();
-    // Re-enable the button after 5s so user could trigger another run if needed,
-    // but leave the polling running independently.
-    setTimeout(() => { btn.disabled = false; btn.innerHTML = originalLabel; }, 5000);
-  } catch (e) {
-    _setResearchStatus(
-      `Agent API not reachable. <span style="color:var(--text-dim)">Run manually: ` +
-      `<code>cd ~/deka-agentic-workflow && python3 runtime/orchestrator.py --run-now</code></span>`,
-      'error'
-    );
-    btn.disabled = false;
-    btn.innerHTML = originalLabel;
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// ── ICP PROFILE VIEW (editable ideal customer profile) ──────────────────────
-// ════════════════════════════════════════════════════════════════════════════
-let _icpData = null;  // cached ICP from API
-let _icpDirty = false; // true when unsaved edits exist
-
-async function _loadIcp() {
-  try {
-    const res = await fetch(`${DEKA_RESEARCH.apiBase}/curator/icp`);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    _icpData = await res.json();
-    if (!_icpData || Object.keys(_icpData).length === 0) _icpData = null;
-  } catch (e) {
-    _icpData = null;
-  }
-}
-
-async function _saveIcp() {
-  if (!_icpData) return;
-  // Attach conversion history so the curator can read it on next refresh
-  const convData = JSON.parse(localStorage.getItem('deka_conversion_data') || '[]');
-  if (convData.length) _icpData.conversion_history = convData;
-  try {
-    const res = await fetch(`${DEKA_RESEARCH.apiBase}/curator/icp`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(_icpData),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    _icpDirty = false;
-    showToast('✓ ICP saved');
-    _renderIcpProfile();
-  } catch (e) {
-    showToast('Failed to save ICP: ' + e.message, 'var(--accent)');
-  }
-}
-
-function _renderIcpProfile() {
-  const listEl = document.getElementById('research-list');
-  if (!listEl) return;
-  listEl.innerHTML = '';
-
-  if (!_icpData) {
-    listEl.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim);background:var(--card);border:1px dashed var(--border);border-radius:10px">
-      <h3 style="font-size:16px;color:var(--text);margin-bottom:8px">No Ideal Customer Profile yet</h3>
-      <p style="margin-bottom:14px">Click <strong>🧠 Refresh ICP</strong> above to generate your first profile using Claude.<br>
-      It will analyze your affiliates, pipeline, and feedback to build a target persona.</p>
-    </div>`;
-    return;
-  }
-
-  const icp = _icpData;
-  const dirtyBadge = _icpDirty ? `<span style="background:var(--yellow);color:#000;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;margin-left:8px">UNSAVED</span>` : '';
-
-  let html = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div>
-        <span style="font-size:11px;color:var(--text-dim)">Last refreshed: <strong style="color:var(--text)">${esc(icp.last_refreshed || 'never')}</strong></span>
-        ${dirtyBadge}
-      </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="_saveIcp()" ${_icpDirty?'':'disabled'} style="${_icpDirty?'border-color:var(--green);color:var(--green)':''}">💾 Save Changes</button>
-      </div>
-    </div>`;
-
-  // Confidence notes
-  if (icp.confidence_notes) {
-    html += `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text-mid);line-height:1.5">
-      <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-right:6px">Claude's notes:</span>
-      ${esc(icp.confidence_notes)}
-    </div>`;
-  }
-
-  // Operator notes (personal strategy notes)
-  const opNotes = icp.operator_notes || '';
-  html += `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:8px;padding:14px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--yellow);font-weight:700">Your Strategy Notes</span>
-      <span style="font-size:10px;color:var(--text-dim)">(Claude reads these on every ICP refresh)</span>
-    </div>
-    <textarea id="icp-operator-notes" oninput="_icpNotesChanged()" placeholder="Add your own observations, priorities, or overrides here. For example:\n• Focus more on gyms that run charity events\n• Avoid university rec centers — too much red tape\n• I'm seeing more success in NH lately"
-      style="width:100%;min-height:100px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text);font-size:12px;line-height:1.5;resize:vertical;outline:none">${esc(opNotes)}</textarea>
-  </div>`;
-
-  // Editable list sections
-  const sections = [
-    {key: 'core_traits',       label: 'Core Traits',          color: 'var(--green)',  icon: '🎯'},
-    {key: 'facility_types',    label: 'Facility Types',        color: 'var(--blue)',   icon: '🏋️'},
-    {key: 'positive_signals',  label: 'Positive Signals',      color: 'var(--green)',  icon: '✅'},
-    {key: 'negative_signals',  label: 'Negative Signals',      color: 'var(--accent)', icon: '⚠️'},
-    {key: 'disqualifiers',     label: 'Disqualifiers',         color: 'var(--accent)', icon: '🚫'},
-    {key: 'recommended_search_adjustments', label: 'Search Recommendations', color: 'var(--purple)', icon: '🔍'},
-  ];
-
-  sections.forEach(sec => {
-    const items = icp[sec.key] || [];
-    html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:${sec.color};font-weight:700">${sec.icon} ${esc(sec.label)} <span style="color:var(--text-dim);font-weight:400">(${items.length})</span></span>
-        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="_icpAddItem('${sec.key}')">+ Add</button>
-      </div>
-      <div id="icp-sec-${sec.key}" style="display:flex;flex-direction:column;gap:4px">
-        ${items.map((item, i) => `
-          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)">
-            <span contenteditable="true" onblur="_icpEditItem('${sec.key}',${i},this.textContent)" style="flex:1;font-size:12px;color:var(--text);outline:none;min-height:18px;padding:2px 4px;border-radius:4px;cursor:text" onfocus="this.style.background='var(--bg)'" onblur="this.style.background='';_icpEditItem('${sec.key}',${i},this.textContent)">${esc(item)}</span>
-            <button onclick="_icpDeleteItem('${sec.key}',${i})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0" title="Remove">×</button>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
-  });
-
-  // Geographic priorities (nested object — render as sub-sections)
-  const geo = icp.geographic_priorities || {};
-  html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px">
-    <span style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--purple);font-weight:700;display:block;margin-bottom:10px">📍 Geographic Priorities</span>`;
-
-  ['primary_states', 'secondary_states', 'hot_cities'].forEach(geoKey => {
-    const geoItems = geo[geoKey] || [];
-    const geoLabel = geoKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    html += `<div style="margin-bottom:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:10px;color:var(--text-dim);font-weight:600">${esc(geoLabel)} (${geoItems.length})</span>
-        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 6px" onclick="_icpAddGeoItem('${geoKey}')">+</button>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px">
-        ${geoItems.map((item, i) => `
-          <span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--text)">
-            ${esc(item)}
-            <button onclick="_icpDeleteGeoItem('${geoKey}',${i})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;padding:0;line-height:1" title="Remove">×</button>
-          </span>
-        `).join('')}
-      </div>
-    </div>`;
-  });
-  html += `</div>`;
-
-  // ── Conversion Insights (from signed affiliates) ────────────────────────
-  const convData = JSON.parse(localStorage.getItem('deka_conversion_data') || '[]');
-  html += `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:8px;padding:14px;margin-bottom:10px">
-    <span style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--green);font-weight:700;display:block;margin-bottom:10px">📊 Conversion Insights <span style="color:var(--text-dim);font-weight:400">(${convData.length} signed affiliate${convData.length===1?'':'s'} tracked)</span></span>`;
-
-  if (convData.length === 0) {
-    html += `<p style="font-size:12px;color:var(--text-dim);margin:0">No conversion data yet. When you mark a prospect as Signed, their traits are captured here so the system can learn what a successful affiliate looks like.</p>`;
-  } else {
-    // Aggregate traits
-    const stateCounts = {};
-    const sourceCounts = {};
-    const typeCounts = {};
-    let totalDays = 0, daysCount = 0;
-    let withEmail = 0, withPhone = 0;
-    const scores = [];
-
-    convData.forEach(c => {
-      if (c.state) stateCounts[c.state] = (stateCounts[c.state]||0) + 1;
-      if (c.source) sourceCounts[c.source] = (sourceCounts[c.source]||0) + 1;
-      if (c.gym_type) typeCounts[c.gym_type] = (typeCounts[c.gym_type]||0) + 1;
-      if (c.days_in_pipeline != null) { totalDays += c.days_in_pipeline; daysCount++; }
-      if (c.had_email) withEmail++;
-      if (c.had_phone) withPhone++;
-      if (c.fit_score) scores.push(Number(c.fit_score));
-    });
-
-    const avgDays = daysCount ? Math.round(totalDays / daysCount) : '—';
-    const avgScore = scores.length ? (scores.reduce((a,b)=>a+b,0) / scores.length).toFixed(1) : '—';
-    const topStates = Object.entries(stateCounts).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([s,n])=>`${s} (${n})`).join(', ');
-    const topSources = Object.entries(sourceCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([s,n])=>`${s} (${n})`).join(', ');
-    const topTypes = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([s,n])=>`${s} (${n})`).join(', ');
-
-    html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px">
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Avg Days to Close</div>
-        <div style="font-size:16px;font-weight:700;color:var(--green)">${avgDays}</div>
-      </div>
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Avg Fit Score</div>
-        <div style="font-size:16px;font-weight:700;color:var(--blue)">${avgScore}</div>
-      </div>
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Had Email</div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">${withEmail}/${convData.length}</div>
-      </div>
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Had Phone</div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">${withPhone}/${convData.length}</div>
-      </div>
-    </div>
-    <div style="font-size:12px;color:var(--text-mid);line-height:1.6">
-      ${topStates ? `<div><strong style="color:var(--text-dim)">Top states:</strong> ${esc(topStates)}</div>` : ''}
-      ${topSources ? `<div><strong style="color:var(--text-dim)">Top sources:</strong> ${esc(topSources)}</div>` : ''}
-      ${topTypes ? `<div><strong style="color:var(--text-dim)">Top gym types:</strong> ${esc(topTypes)}</div>` : ''}
-    </div>
-    <details style="margin-top:10px">
-      <summary style="font-size:11px;color:var(--text-dim);cursor:pointer">Show all ${convData.length} signed affiliates</summary>
-      <div style="margin-top:6px;font-size:11px;color:var(--text-mid)">
-        ${convData.map(c => `<div style="padding:3px 0;border-bottom:1px solid var(--border)">${esc(c.gym_name)} · ${esc(c.city||'')}, ${esc(c.state||'')} · score ${esc(c.fit_score||'?')} · ${esc(c.source||'?')} · ${c.days_in_pipeline != null ? c.days_in_pipeline+'d' : '?'} · signed ${esc(c.signed_at||'')}</div>`).join('')}
-      </div>
-    </details>`;
-  }
-  html += `</div>`;
-
-  listEl.innerHTML = html;
-}
-
-function _icpNotesChanged() {
-  if (!_icpData) return;
-  _icpData.operator_notes = document.getElementById('icp-operator-notes')?.value || '';
-  _icpDirty = true;
-  // Update the save button state without full re-render
-  _renderIcpProfile();
-}
-
-function _icpEditItem(sectionKey, index, newValue) {
-  if (!_icpData || !_icpData[sectionKey]) return;
-  const trimmed = (newValue || '').trim();
-  if (!trimmed) { _icpDeleteItem(sectionKey, index); return; }
-  if (_icpData[sectionKey][index] === trimmed) return;
-  _icpData[sectionKey][index] = trimmed;
-  _icpDirty = true;
-  _renderIcpProfile();
-}
-
-function _icpDeleteItem(sectionKey, index) {
-  if (!_icpData || !_icpData[sectionKey]) return;
-  _icpData[sectionKey].splice(index, 1);
-  _icpDirty = true;
-  _renderIcpProfile();
-}
-
-function _icpAddItem(sectionKey) {
-  if (!_icpData) _icpData = {};
-  if (!_icpData[sectionKey]) _icpData[sectionKey] = [];
-  const val = prompt(`Add to ${sectionKey.replace(/_/g, ' ')}:`);
-  if (!val || !val.trim()) return;
-  _icpData[sectionKey].push(val.trim());
-  _icpDirty = true;
-  _renderIcpProfile();
-}
-
-function _icpAddGeoItem(geoKey) {
-  if (!_icpData) _icpData = {};
-  if (!_icpData.geographic_priorities) _icpData.geographic_priorities = {};
-  if (!_icpData.geographic_priorities[geoKey]) _icpData.geographic_priorities[geoKey] = [];
-  const val = prompt(`Add to ${geoKey.replace(/_/g, ' ')}:`);
-  if (!val || !val.trim()) return;
-  _icpData.geographic_priorities[geoKey].push(val.trim());
-  _icpDirty = true;
-  _renderIcpProfile();
-}
-
-function _icpDeleteGeoItem(geoKey, index) {
-  if (!_icpData?.geographic_priorities?.[geoKey]) return;
-  _icpData.geographic_priorities[geoKey].splice(index, 1);
-  _icpDirty = true;
-  _renderIcpProfile();
-}
-
-// ── Persona Curator trigger ─────────────────────────────────────────────────
-async function triggerCuratorRun() {
-  const btn = document.getElementById('curator-run-btn');
-  if (!btn || btn.disabled) return;
-  btn.disabled = true;
-  const orig = btn.innerHTML;
-  btn.textContent = '⏳ Running...';
-  try {
-    const res = await fetch(`${DEKA_RESEARCH.apiBase}/curator/run`, {method: 'POST'});
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    showToast('🧠 Persona curator started — ICP will update in ~15 seconds');
-    // Poll curator status until it finishes
-    const poll = setInterval(async () => {
-      try {
-        const sr = await fetch(`${DEKA_RESEARCH.apiBase}/curator/status`);
-        const sd = await sr.json();
-        if (sd.last_refreshed) {
-          clearInterval(poll);
-          btn.disabled = false;
-          btn.innerHTML = orig;
-          showToast(`✓ ICP refreshed (${sd.last_refreshed}). Next agent run will use it.`);
-        }
-      } catch (e) { /* keep polling */ }
-    }, 3000);
-    // Safety timeout
-    setTimeout(() => { clearInterval(poll); btn.disabled = false; btn.innerHTML = orig; }, 60000);
-  } catch (e) {
-    _setResearchStatus('Curator API not reachable.', 'error');
-    btn.disabled = false;
-    btn.innerHTML = orig;
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// ── EMAIL CONVERSION SYSTEM (Day 1/3/7 sequence + outcome buttons) ──────────
-// ════════════════════════════════════════════════════════════════════════════
-// Hybrid: agents find prospects, dashboard drafts emails, human approves & sends.
-// Tracks email step per prospect: 1 → 2 → 3 → 'awaiting_reply' → 'done'.
-
-const EMAIL_TEMPLATES = [
-  {
-    step: 1,
-    label: 'Day 1 — Cold Intro',
-    subject: 'I have a random question about your gym...',
-    body:
-`Hi {ownerName},
-
-This might be a little random, but I wanted to ask...
-
-I work with DEKA (the fitness event series Spartan created) and part of my role is helping identify gyms that might be a good fit to host our official DEKA Hybrid fitness events locally.
-
-When I came across your facility, it looked like the kind of facility that could actually pull something like that off.
-
-Not every gym can.
-
-I'm currently looking for a few new affiliates in the region, specifically in Massachusetts, New York, Philadelphia, and New Jersey and wanted to reach out before we start approaching more facilities in those areas.
-
-For the gyms that move quickly, there's also a small incentive I can extend to make getting started much easier, but that's only for a limited number of gyms.
-
-If you're curious, just reply "tell me more."
-
-Or if you'd rather talk it through quickly, you can grab a 20-30-minute call here:
-
-Book A Call Here: https://calendar.app.google/1qWyeyAtsdsdvASk9
-
-Worst case, you'll leave the conversation knowing whether something like this would make sense for your gym or not.
-
-Looking forward to connecting,
-Anthony Passamonte
-DEKA Affiliate Manager | Northeast US
-
-P.S. If hosting events isn't something your gym is interested in, no worries; just let me know and I won't keep bothering you.`,
-    nextAction: 'Send Day 3 follow-up',
-    nextDays: 3,
-  },
-  {
-    step: 2,
-    label: 'Day 3 — Follow-Up',
-    subject: 'Re: Quick question about {gymName}',
-    body:
-`Hi {ownerName},
-
-Just bumping this up — I think {gymName} could be a great fit for what we're doing with DEKA.
-
-Other gyms in {state} are using DEKA events to drive community engagement and bring in new members. It's been a solid win for facilities with a strong group fitness culture.
-
-Worth a quick 5-minute call this week?
-
-Anthony Passamonte
-DEKA Affiliate Manager | Northeast US`,
-    nextAction: 'Send Day 7 final follow-up',
-    nextDays: 4,
-  },
-  {
-    step: 3,
-    label: 'Day 7 — Final',
-    subject: 'Last note from me, {ownerName}',
-    body:
-`Hi {ownerName},
-
-I don't want to be a pest — if the timing isn't right, no worries at all.
-
-But if you're curious about how gyms like yours are using DEKA to drive community events and revenue, I'd love to share what's working. No pressure, just a quick conversation.
-
-Either way, keep up the great work at {gymName}.
-
-Best,
-Anthony Passamonte
-DEKA Affiliate Manager | Northeast US`,
-    nextAction: 'Check for reply',
-    nextDays: 3,
-  },
-];
-
-function _fillTemplate(template, p) {
-  const ownerName = p.ownerName || 'team';
-  const cityNote = p.city ? ` in ${p.city}` : '';
-  const descNote = p.notes && p.notes.startsWith('Agent description:')
-    ? p.notes.replace('Agent description: ', '') : '';
-  return template
-    .replace(/\{gymName\}/g,    p.gymName || 'your gym')
-    .replace(/\{ownerName\}/g,  ownerName)
-    .replace(/\{city\}/g,       p.city || '')
-    .replace(/\{state\}/g,      p.state || 'your area')
-    .replace(/\{cityNote\}/g,   cityNote)
-    .replace(/\{descNote\}/g,   descNote ? descNote : '')
-    .replace(/\{description\}/g, descNote);
-}
-
-function _getEmailStep(p) {
-  // Returns 1, 2, 3, 'awaiting_reply', or 'done'
-  return p.emailStep || 1;
-}
-
-function _getEmailTemplate(p) {
-  const step = _getEmailStep(p);
-  if (typeof step !== 'number' || step < 1 || step > 3) return null;
-  return EMAIL_TEMPLATES[step - 1];
-}
-
-function draftEmail(prospectId) {
-  const p = pipelineData.prospects.find(x => x.id === prospectId);
-  if (!p) return;
-  if (!p.email) { showToast('No email on file for this prospect.'); return; }
-
-  const tmpl = _getEmailTemplate(p);
-  if (!tmpl) {
-    showToast('Email sequence complete for this prospect.'); return;
-  }
-
-  const subject = _fillTemplate(tmpl.subject, p);
-  const body    = _fillTemplate(tmpl.body, p);
-  const url = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(p.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-  // Open Gmail compose
-  openGmail(url);
-
-  // Log activity + advance step
-  const today = new Date().toISOString().slice(0,10);
-  if (!p.activities) p.activities = [];
-  p.activities.unshift({date: today, type: 'email', notes: `${tmpl.label} sent via Gmail`});
-  p.lastActivity = today;
-
-  // Stamp email date
-  if (tmpl.step === 1) p.email1Date = today;
-  else if (tmpl.step === 2) p.email2Date = today;
-  else if (tmpl.step === 3) p.email3Date = today;
-
-  // Move to contacted if still in lead
-  if (p.stage === 'lead') {
-    p.stage = 'contacted';
-    p.activities.unshift({date: today, type: 'stage', notes: 'Moved to Contacted'});
-  }
-
-  // Advance to next step
-  const nextDate = new Date();
-  nextDate.setDate(nextDate.getDate() + tmpl.nextDays);
-  p.nextAction = tmpl.nextAction;
-  p.nextActionDate = nextDate.toISOString().slice(0,10);
-
-  // Advance emailStep
-  if (tmpl.step < 3) {
-    p.emailStep = tmpl.step + 1;
-  } else {
-    p.emailStep = 'awaiting_reply';
-  }
-
-  savePipeline();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
-  renderActionQueue();
-
-  // Refresh detail panel if open
-  if (currentDetailId === prospectId) openDetail(prospectId);
-
-  showToast(`✉ ${tmpl.label} — Gmail opened, logged to prospect`);
-}
-
-// ── Outcome handlers (called from action queue "Check for reply" rows) ──────
-function handleNoReply(prospectId) {
-  const p = pipelineData.prospects.find(x => x.id === prospectId);
-  if (!p) return;
-  const today = new Date().toISOString().slice(0,10);
-
-  p.stage = 'nurture';  // maps to STAGE_LABELS.nurture = "Follow Up Later"
-  p.emailStep = 'done';
-
-  const revisitDate = new Date();
-  revisitDate.setDate(revisitDate.getDate() + 90);
-  p.nextAction = 'Revisit outreach';
-  p.nextActionDate = revisitDate.toISOString().slice(0,10);
-  p.lastActivity = today;
-
-  if (!p.activities) p.activities = [];
-  p.activities.unshift({date: today, type: 'stage', notes: 'No reply after 3-email sequence. Moved to Follow Up Later, revisit in 90 days.'});
-
-  savePipeline();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
-  renderActionQueue();
-  if (currentDetailId === prospectId) openDetail(prospectId);
-  showToast('😶 Moved to Follow Up Later — revisit in 90 days');
-}
-
-function handleReplied(prospectId) {
-  const p = pipelineData.prospects.find(x => x.id === prospectId);
-  if (!p) return;
-  const today = new Date().toISOString().slice(0,10);
-
-  p.stage = 'discovery';  // maps to STAGE_LABELS.discovery = "Discovery Call"
-  p.emailStep = 'done';
-
-  const callDate = new Date();
-  callDate.setDate(callDate.getDate() + 2);
-  p.nextAction = 'Schedule discovery call';
-  p.nextActionDate = callDate.toISOString().slice(0,10);
-  p.lastActivity = today;
-
-  if (!p.activities) p.activities = [];
-  p.activities.unshift({date: today, type: 'stage', notes: 'Replied to email sequence. Moving to discovery.'});
-
-  savePipeline();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
-  renderActionQueue();
-  if (currentDetailId === prospectId) openDetail(prospectId);
-  showToast('💬 Replied! Moved to Discovery Call — schedule in 2 days');
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// ── PROFILE SYNC (forward feedback: dashboard → agents via Target Profile tab)
-// ════════════════════════════════════════════════════════════════════════════
-// Pushes a snapshot of the affiliate roster + pipeline prospects to the API,
-// which writes it to the "Target Profile" sheet tab. Agents read this at the
-// start of each run to understand what a good prospect looks like.
-//
-// Runs on init (debounced 3s so it doesn't block page load) and after any
-// pipeline save. Silently no-ops if the API is offline.
-
-let _profileSyncTimer = null;
-let _lastProfileSyncPayload = '';  // change detection for profile sync
-
-function _scheduleProfileSync() {
-  if (_profileSyncTimer) clearTimeout(_profileSyncTimer);
-  _profileSyncTimer = setTimeout(_doProfileSync, 3000);
-}
-
-async function _doProfileSync() {
-  const entries = [];
-
-  // 1) Affiliates from the roster
-  try {
-    const roster = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]');
-    roster.forEach(r => {
-      if (!r.name) return;
-      entries.push({
-        type:     'affiliate',
-        gym_name: r.name,
-        city:     '',
-        state:    r.state || '',
-        website:  '',
-        notes:    `tier=${r.tier || '?'}`,
-      });
-    });
-  } catch (e) { /* empty roster is fine */ }
-
-  // 2) Pipeline prospects — only meaningful stages
-  const stageToType = {
-    signed:      'signed',
-    negotiating: 'hot',
-    discovery:   'hot',
-    proposal:    'warm',
-    contacted:   'warm',
-    lead:        'cold',
-    nurture:     'cold',
-  };
-
-  if (pipelineData && Array.isArray(pipelineData.prospects)) {
-    pipelineData.prospects.forEach(p => {
-      if (!p.gymName || p.stage === 'lost') return;
-      const type = stageToType[p.stage] || 'cold';
-      entries.push({
-        type,
-        gym_name: p.gymName,
-        city:     p.city || '',
-        state:    p.state || '',
-        website:  p.website || '',
-        notes:    `priority=${p.priority||'?'} stage=${p.stage||'?'} source=${p.source||'?'}`,
-      });
-    });
-  }
-
-  if (entries.length === 0) return;
-
-  // Change detection: skip POST if payload is identical to last sync
-  const payload = JSON.stringify({entries});
-  if (payload === _lastProfileSyncPayload) {
-    console.debug('[deka] Profile sync skipped (no changes)');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${DEKA_RESEARCH.apiBase}/profile/sync`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    payload,
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    _lastProfileSyncPayload = payload;
-    const data = await res.json();
-    console.log(`[deka] Profile sync: ${data.written} entries pushed to Target Profile tab`);
-  } catch (e) {
-    console.debug('[deka] Profile sync skipped (API offline):', e.message);
-  }
-}
-
 // ── BOOT ──
 init();
-_scheduleProfileSync(); // initial sync on page load
 </script>
 
 <!-- BULK ACTION BAR -->
 <div class="bulk-bar hidden" id="bulk-bar">
   <span class="bulk-count" id="bulk-count">0 selected</span>
   <button class="btn btn-blue" onclick="batchEmail()">&#9993; Send Batch Email &rarr; Contacted</button>
-  <button class="btn btn-ghost" onclick="openBulkLogAndMove()" style="border-color:var(--purple,#a78bfa);color:var(--purple,#a78bfa)">&#128221; Log & Move</button>
   <button class="btn btn-ghost btn-sm" onclick="clearSelection()">&#10005; Clear</button>
 </div>
-
-<!-- LOG & MOVE MODAL -->
-<div id="lm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1200;overflow-y:auto;padding:20px" onclick="if(event.target.id==='lm-modal')closeBulkLogAndMove()">
-  <div style="max-width:560px;margin:40px auto;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--text)">&#128221; Log & Move</div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:2px" id="lm-count">0 prospects selected</div>
-      </div>
-      <button onclick="closeBulkLogAndMove()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">&#10005;</button>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <div>
-        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Activity Type</label>
-        <select id="lm-type" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-          <option value="call">📞 Phone Call</option>
-          <option value="email">✉ Email</option>
-          <option value="text">💬 Text / SMS</option>
-          <option value="meeting">🤝 Meeting</option>
-          <option value="note">📝 Note</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Follow-up</label>
-        <select id="lm-followup" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-          <option value="7">1 week</option>
-          <option value="14">2 weeks</option>
-          <option value="30">1 month</option>
-          <option value="90">3 months</option>
-          <option value="180">6 months</option>
-          <option value="0">No follow-up</option>
-        </select>
-      </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <div>
-        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Move to Stage</label>
-        <select id="lm-stage" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-          <option value="">— Keep current stage —</option>
-          <option value="lead">Lead</option>
-          <option value="contacted">Contacted</option>
-          <option value="nurture">Follow Up Later</option>
-          <option value="discovery">Discovery Call</option>
-          <option value="proposal">Proposal</option>
-          <option value="negotiating">Negotiating</option>
-          <option value="signed">Signed</option>
-          <option value="lost">Closed Lost</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">Priority</label>
-        <select id="lm-priority" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:12px">
-          <option value="">— Keep current priority —</option>
-          <option value="hot">🔥 Hot</option>
-          <option value="warm">😊 Warm</option>
-          <option value="cold">❄ Cold</option>
-        </select>
-      </div>
-    </div>
-
-    <input id="lm-action" type="text" placeholder="Next action (e.g. Follow up, Send proposal...)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-size:12px;box-sizing:border-box;margin-bottom:8px">
-    <textarea id="lm-notes" rows="3" placeholder="Log details (e.g. Called, left voicemail. Owner interested but busy until April...)" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-size:12px;box-sizing:border-box;resize:vertical;margin-bottom:14px"></textarea>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="submitLogAndMove(false)" style="flex:1;min-width:180px">&#10003; Log & Move</button>
-      <button class="btn btn-blue" onclick="submitLogAndMove(true)" style="flex:1;min-width:220px">&#9993; Log, Move, & Batch Email</button>
-      <button class="btn btn-ghost" onclick="closeBulkLogAndMove()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<script>
-function openBulkLogAndMove() {
-  if (selectedIds.size === 0) return;
-  document.getElementById('lm-count').textContent = selectedIds.size + ' prospect' + (selectedIds.size !== 1 ? 's' : '') + ' selected';
-  document.getElementById('lm-modal').style.display = 'block';
-  setTimeout(() => document.getElementById('lm-notes').focus(), 50);
-}
-function closeBulkLogAndMove() {
-  document.getElementById('lm-modal').style.display = 'none';
-}
-function submitLogAndMove(alsoEmail) {
-  if (selectedIds.size === 0) { closeBulkLogAndMove(); return; }
-  const logType = document.getElementById('lm-type').value;
-  const followDays = parseInt(document.getElementById('lm-followup').value) || 0;
-  const newStage = document.getElementById('lm-stage').value;
-  const newPriority = document.getElementById('lm-priority').value;
-  const nextAction = (document.getElementById('lm-action').value || '').trim() || 'Follow up';
-  const notes = (document.getElementById('lm-notes').value || '').trim();
-  const typeLabels = {call:'Phone call',email:'Email sent',text:'Text/SMS sent',meeting:'Meeting',note:'Note'};
-
-  const selected = [...selectedIds].map(id => pipelineData.prospects.find(x => x.id === id)).filter(Boolean);
-
-  // Open Gmail FIRST if requested — preserves user-gesture for popup
-  if (alsoEmail) {
-    const withEmail = selected.filter(p => !!(p.email || '').trim());
-    if (withEmail.length) _sendGmailForProspects(withEmail);
-  }
-
-  const today = new Date().toISOString().slice(0,10);
-  const fu = followDays > 0 ? new Date(Date.now() + followDays * 86400000).toISOString().slice(0,10) : '';
-
-  selected.forEach(p => {
-    if (!p.activities) p.activities = [];
-    p.activities.unshift({
-      date: today, type: logType,
-      notes: `${typeLabels[logType]||logType}${notes ? ' — ' + notes : ''}${alsoEmail ? ' (batch email sent)' : ''}`
-    });
-    p.lastActivity = today;
-    if (fu) { p.nextActionDate = fu; p.nextAction = nextAction; }
-    if (newStage && newStage !== p.stage) {
-      p.activities.unshift({date:today, type:'stage', notes:`Moved to ${STAGE_LABELS[newStage]||newStage} (bulk action)`});
-      p.stage = newStage;
-    }
-    if (newPriority && newPriority !== p.priority) {
-      p.activities.unshift({date:today, type:'note', notes:`Priority changed to ${newPriority} (bulk action)`});
-      p.priority = newPriority;
-    }
-  });
-
-  savePipeline();
-  const count = selected.length;
-  clearSelection();
-  closeBulkLogAndMove();
-  if (currentView === 'board') renderBoard();
-  else if (currentView === 'list') renderList();
-  updateHeaderSub();
-
-  const emailSuffix = alsoEmail ? ' · Gmail opened' : '';
-  showToast(`📝 Logged ${typeLabels[logType]||logType} for ${count} prospect${count!==1?'s':''}${newStage?' · moved to '+(STAGE_LABELS[newStage]||newStage):''}${emailSuffix}`);
-}
-</script>
 </body>
 </html>

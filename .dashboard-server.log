@@ -1,0 +1,529 @@
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 197, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 1274, in <module>
+    parser.add_argument('--directory', '-d', default=os.getcwd(),
+PermissionError: [Errno 1] Operation not permitted
+127.0.0.1 - - [09/Apr/2026 08:30:21] "HEAD /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 08:33:01] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 08:33:01] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 08:38:35] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [09/Apr/2026 08:38:35] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 08:38:35] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 08:39:14] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 08:39:14] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 08:56:52] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 08:56:52] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 08:56:52] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 09:00:43] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 09:00:43] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 09:00:55] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [09/Apr/2026 09:00:55] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 09:00:55] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 09:09:29] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 09:09:35] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 09:09:35] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 10:13:48] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 10:30:10] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 10:36:58] "GET /kpi.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 12:58:52] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 12:58:52] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 12:58:52] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 12:58:52] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 14:26:26] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 14:26:26] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [09/Apr/2026 14:26:27] code 404, message File not found
+127.0.0.1 - - [09/Apr/2026 14:26:27] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [09/Apr/2026 14:26:32] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 09:47:29] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 09:47:29] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 09:47:29] code 404, message File not found
+127.0.0.1 - - [10/Apr/2026 09:47:29] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Apr/2026 10:07:09] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 10:35:15] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 10:50:11] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 11:44:08] "GET /kpi.html HTTP/1.1" 304 -
+127.0.0.1 - - [10/Apr/2026 11:47:44] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 11:49:46] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 11:49:46] code 404, message File not found
+127.0.0.1 - - [10/Apr/2026 11:49:46] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Apr/2026 11:49:49] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 11:49:49] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 11:49:50] code 404, message File not found
+127.0.0.1 - - [10/Apr/2026 11:49:50] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Apr/2026 13:00:40] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 13:00:40] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Apr/2026 13:00:41] code 404, message File not found
+127.0.0.1 - - [10/Apr/2026 13:00:41] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [10/Apr/2026 13:01:22] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 07:56:06] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 07:56:06] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 07:56:07] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 07:56:07] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 08:04:20] "GET /kpi.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 08:09:51] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Apr/2026 09:42:20] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 10:00:32] "GET /pipeline.html HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 50982)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 660, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 434, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 422, in handle_one_request
+    method()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 667, in do_GET
+    self.copyfile(f, self.wfile)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 867, in copyfile
+    shutil.copyfileobj(source, outputfile)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/shutil.py", line 208, in copyfileobj
+    fdst_write(buf)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+----------------------------------------
+127.0.0.1 - - [13/Apr/2026 10:40:14] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 10:40:14] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 10:40:16] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 10:40:16] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 14:38:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 17:01:08] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 17:23:54] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 17:46:29] "GET / HTTP/1.1" 200 -
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 53580)
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 683, in process_request_thread
+    self.finish_request(request, client_address)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 360, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 660, in __init__
+    super().__init__(*args, **kwargs)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 747, in __init__
+    self.handle()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 434, in handle
+    self.handle_one_request()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 422, in handle_one_request
+    method()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 667, in do_GET
+    self.copyfile(f, self.wfile)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/server.py", line 867, in copyfile
+    shutil.copyfileobj(source, outputfile)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/shutil.py", line 208, in copyfileobj
+    fdst_write(buf)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socketserver.py", line 826, in write
+    self._sock.sendall(b)
+BrokenPipeError: [Errno 32] Broken pipe
+----------------------------------------
+127.0.0.1 - - [13/Apr/2026 17:52:26] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 17:52:26] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 17:52:26] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 17:52:26] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 17:52:29] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 18:04:38] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 18:05:02] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Apr/2026 18:06:04] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 18:06:04] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 18:06:04] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 18:06:04] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 18:27:00] "GET /_check.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 18:28:51] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:02:29] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:02:29] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:02:29] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 19:02:29] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 19:06:39] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:06:39] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:06:39] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 19:06:39] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 19:07:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:07:02] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:07:02] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 19:07:02] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 19:08:55] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [13/Apr/2026 19:10:24] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:10:26] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:10:26] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:10:26] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 19:10:26] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 19:10:42] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:10:42] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:10:42] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 19:10:42] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 19:29:47] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [13/Apr/2026 19:29:47] code 404, message File not found
+127.0.0.1 - - [13/Apr/2026 19:29:47] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [13/Apr/2026 19:51:24] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [14/Apr/2026 12:36:03] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [14/Apr/2026 12:36:03] code 404, message File not found
+127.0.0.1 - - [14/Apr/2026 12:36:03] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [15/Apr/2026 11:25:19] "HEAD /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 11:25:26] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 11:25:30] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [15/Apr/2026 11:26:26] "GET /kpi.html HTTP/1.1" 304 -
+127.0.0.1 - - [15/Apr/2026 12:35:25] "GET /auth.js HTTP/1.1" 304 -
+127.0.0.1 - - [15/Apr/2026 12:35:30] "GET /pipeline.html?onboard=Submit%202%20Fitness HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 12:36:25] "GET /pipeline.html?onboard=RUSH%20Functional%20Fit HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 12:38:34] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 12:51:16] "GET /_check.html HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 13:08:18] code 404, message File not found
+127.0.0.1 - - [15/Apr/2026 13:08:18] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [15/Apr/2026 13:08:31] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 13:08:31] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [15/Apr/2026 13:08:31] code 404, message File not found
+127.0.0.1 - - [15/Apr/2026 13:08:31] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [15/Apr/2026 13:57:08] code 404, message File not found
+127.0.0.1 - - [15/Apr/2026 13:57:08] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [16/Apr/2026 08:14:25] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 08:14:25] code 404, message File not found
+127.0.0.1 - - [16/Apr/2026 08:14:25] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [16/Apr/2026 08:15:42] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 09:04:06] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 09:04:06] code 404, message File not found
+127.0.0.1 - - [16/Apr/2026 09:04:06] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [16/Apr/2026 09:04:12] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 09:04:13] code 404, message File not found
+127.0.0.1 - - [16/Apr/2026 09:04:13] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [16/Apr/2026 09:14:23] "GET /kpi.html HTTP/1.1" 304 -
+127.0.0.1 - - [16/Apr/2026 10:13:49] "HEAD /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 10:13:49] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [16/Apr/2026 10:15:01] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [16/Apr/2026 10:39:11] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [16/Apr/2026 10:39:11] code 404, message File not found
+127.0.0.1 - - [16/Apr/2026 10:39:11] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [16/Apr/2026 13:21:47] "GET /pipeline.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 10:10:00] "HEAD /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 10:10:18] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 10:10:18] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 10:10:18] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 10:11:16] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 10:11:16] "GET /auth.js HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 11:34:47] "GET /kpi.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 11:34:47] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 11:34:47] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 12:12:11] "GET /pipeline.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:14:06] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:14:06] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:14:06] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 12:14:06] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 12:15:59] "GET /pipeline.html?onboard=FitZone%20Personal%20Training%20and%20Wellness HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:26:02] "GET /pipeline.html?onboard=FitZone%20Personal%20Training%20and%20Wellness HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:26:31] "GET /pipeline.html?onboard=FitZone%20Personal%20Training%20and%20Wellness HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 12:42:03] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:42:03] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:42:04] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 12:42:04] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 12:42:39] "GET /pipeline.html?onboard=Fit%20Results%20Skippack HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:44:14] "GET /pipeline.html?onboard=FitZone%20Personal%20Training%20and%20Wellness HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 12:46:06] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 12:46:58] "GET /pipeline.html?onboard=Fit%20Results%20Skippack HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 12:48:18] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 12:48:56] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 12:52:30] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 13:15:49] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 13:15:49] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 13:15:50] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 13:15:50] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 13:34:03] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 13:34:44] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 13:47:27] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 13:47:27] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 13:47:27] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 13:47:27] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 14:06:48] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 14:06:48] "GET /auth.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 14:06:49] code 404, message File not found
+127.0.0.1 - - [20/Apr/2026 14:06:49] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [20/Apr/2026 14:09:12] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 14:09:17] "GET /directory.html HTTP/1.1" 200 -
+127.0.0.1 - - [20/Apr/2026 15:18:07] "GET /index.html HTTP/1.1" 304 -
+127.0.0.1 - - [20/Apr/2026 15:21:04] "GET /pipeline.html HTTP/1.1" 200 -

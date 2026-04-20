@@ -470,12 +470,8 @@ input,textarea,select,button{font-family:'DM Sans',sans-serif;}
     <div class="bar-chart" id="revenue-bars"></div>
     <div class="insight-box"><strong>Revenue per Participant:</strong> Avg ~$44/participant across portfolio. Top performers like Spooky Nook ($49.47/pp) and Fitness Appeal ($49.56/pp) show strong per-head economics. Every additional 10 participants ≈ $440–$500 in revenue.</div>
     <div class="section-title">Revenue Projection Scenarios <span class="badge">What If</span></div>
-    <div class="scenario-grid">
-      <div class="scenario-card"><h4 style="color:var(--text-dim)">Current Trajectory</h4><div class="big-num" style="color:var(--accent)">$38,957</div><div class="detail">42 events &bull; 884 participants<br>0 affiliates at $10K target</div></div>
-      <div class="scenario-card"><h4 style="color:var(--yellow)">Conservative Growth</h4><div class="big-num" style="color:var(--yellow)">$96,000</div><div class="detail">All 32 host 2 events<br>Avg 30 participants/event</div></div>
-      <div class="scenario-card"><h4 style="color:var(--green)">Stretch Target</h4><div class="big-num" style="color:var(--green)">$370,000</div><div class="detail">All 37 affiliates hit $10K<br>4 events × 50+ participants</div></div>
-    </div>
-    <div class="insight-box"><strong>Key Math:</strong> To hit $10K/year at ~$44/participant, each affiliate needs ~227 total annual participants. At 4 events/year, that's ~57 per event. Your top 3 are already in that range — proving the model works. Replicate the playbook.</div>
+    <div class="scenario-grid" id="projection-scenarios"></div>
+    <div class="insight-box" id="projection-insight"></div>
   </div>
 
   <!-- TAB: QUADRANT -->
@@ -1566,6 +1562,69 @@ function affiliateRow(a) {
 }
 
 // Revenue bar chart
+function renderProjections() {
+  const el = document.getElementById('projection-scenarios');
+  const insightEl = document.getElementById('projection-insight');
+  if (!el) return;
+
+  const data = APP_DATA || [];
+  const totalAffiliates = data.length;
+  const activeAffiliates = data.filter(a => a.events > 0);
+  const totalEvents = data.reduce((s, a) => s + (a.events || 0), 0);
+  const totalParticipants = data.reduce((s, a) => s + (a.participants || 0), 0);
+  const totalRevenue = data.reduce((s, a) => s + (a.revenue || 0), 0);
+  const atTarget = data.filter(a => a.revenue >= 10000).length;
+  const avgRevPerEvent = totalEvents > 0 ? Math.round(totalRevenue / totalEvents) : 0;
+  const avgParticipantsPerEvent = totalEvents > 0 ? Math.round(totalParticipants / totalEvents) : 0;
+  const revenuePerParticipant = totalParticipants > 0 ? Math.round(totalRevenue / totalParticipants) : 44;
+
+  // Scenario 1: Current Trajectory (actual YTD data)
+  const currentRev = totalRevenue;
+
+  // Scenario 2: Conservative Growth (all affiliates host 2 events, avg 30 participants)
+  const consEvents = 2;
+  const consParticipants = 30;
+  const consRev = totalAffiliates * consEvents * consParticipants * revenuePerParticipant;
+
+  // Scenario 3: Stretch Target (all affiliates hit $10K)
+  const stretchRev = totalAffiliates * 10000;
+  const stretchEvents = 4;
+  const stretchParticipants = 50;
+
+  // Participants needed per affiliate to hit $10K
+  const participantsForTarget = revenuePerParticipant > 0 ? Math.ceil(10000 / revenuePerParticipant) : 227;
+  const eventsPerYear = 4;
+  const perEventNeeded = Math.ceil(participantsForTarget / eventsPerYear);
+
+  const dormant = data.filter(a => a.events === 0 && a.revenue === 0).length;
+  const dormantPct = totalAffiliates > 0 ? Math.round((dormant / totalAffiliates) * 100) : 0;
+  const topPerformer = data.slice().sort((a, b) => b.revenue - a.revenue)[0];
+  const topName = topPerformer ? topPerformer.name : 'N/A';
+  const topRev = topPerformer ? topPerformer.revenue : 0;
+  const topPct = Math.round((topRev / 10000) * 100);
+
+  el.innerHTML = `
+    <div class="scenario-card">
+      <h4 style="color:var(--text-dim)">Current Trajectory</h4>
+      <div class="big-num" style="color:var(--accent)">$${currentRev.toLocaleString()}</div>
+      <div class="detail">${totalEvents} events &bull; ${totalParticipants.toLocaleString()} participants<br>${atTarget} affiliate${atTarget !== 1 ? 's' : ''} at $10K target</div>
+    </div>
+    <div class="scenario-card">
+      <h4 style="color:var(--yellow)">Conservative Growth</h4>
+      <div class="big-num" style="color:var(--yellow)">$${consRev.toLocaleString()}</div>
+      <div class="detail">All ${totalAffiliates} host ${consEvents} events<br>Avg ${consParticipants} participants/event</div>
+    </div>
+    <div class="scenario-card">
+      <h4 style="color:var(--green)">Stretch Target</h4>
+      <div class="big-num" style="color:var(--green)">$${stretchRev.toLocaleString()}</div>
+      <div class="detail">All ${totalAffiliates} affiliates hit $10K<br>${stretchEvents} events × ${stretchParticipants}+ participants</div>
+    </div>`;
+
+  if (insightEl) {
+    insightEl.innerHTML = `<strong>Key Math:</strong> To hit $10K/year at ~$${revenuePerParticipant}/participant, each affiliate needs ~${participantsForTarget} total annual participants. At ${eventsPerYear} events/year, that's ~${perEventNeeded} per event. ${topName !== 'N/A' ? `Your top performer (${topName}) is at $${topRev.toLocaleString()} — ${topPct}% of target.` : ''} ${dormantPct}% of the portfolio has hosted zero events and generated zero revenue. The biggest lever is activating the ${dormant} dormant affiliates and increasing event count + participant volume across the board.`;
+  }
+}
+
 function renderRevenueBars() {
   const container = document.getElementById('revenue-bars');
   container.innerHTML = ''; // always re-render with fresh data
@@ -2445,18 +2504,55 @@ function buildSupport(a) {
 
 // ─── Inline Onboarding Checklist (reads from Sales Pipeline data) ─────────────
 
+function removeFromOnboarding(gymName) {
+  if (!confirm(`Remove "${gymName}" from onboarding?\n\nThis will NOT remove them from your affiliate roster — it just clears them from the onboarding section.`)) return;
+  const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const target = norm(gymName);
+
+  // Add to persistent dismissal list so they don't come back on re-import
+  const dismissed = JSON.parse(localStorage.getItem('deka_onboarding_dismissed') || '[]');
+  if (!dismissed.some(n => norm(n) === target)) {
+    dismissed.push(gymName);
+    localStorage.setItem('deka_onboarding_dismissed', JSON.stringify(dismissed));
+  }
+
+  // Also clean up the source data so it doesn't accumulate
+  const added = JSON.parse(localStorage.getItem('deka_affiliates_added') || '[]');
+  localStorage.setItem('deka_affiliates_added', JSON.stringify(added.filter(a => norm(a.name) !== target)));
+
+  const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
+  Object.entries(crm).forEach(([id, v]) => {
+    if (norm(v.name) === target && v.source === 'pipeline') delete v.source;
+  });
+  localStorage.setItem('deka_crm', JSON.stringify(crm));
+
+  // Force immediate DOM update
+  renderOnboardingSection();
+  showToast(`Removed "${gymName}" from onboarding`);
+}
+
 function openInlineOnboarding(gymName) {
   const pipeline = JSON.parse(localStorage.getItem('deka_pipeline')||'{"prospects":[]}');
   if (!pipeline.prospects) pipeline.prospects = [];
   const normName = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   let p = pipeline.prospects.find(x => normName(x.gymName) === normName(gymName));
 
-  // If prospect was pruned from the pipeline, recreate it from CRM so the checklist works
+  // If prospect was pruned from the pipeline, recreate it from CRM or affiliate roster
   if (!p) {
     const crm = JSON.parse(localStorage.getItem('deka_crm')||'{}');
-    const crmEntry = Object.values(crm).find(v => normName(v.name) === normName(gymName));
+    let crmEntry = Object.values(crm).find(v => normName(v.name) === normName(gymName));
+
+    // Also check the affiliate roster as a fallback source
     if (!crmEntry) {
-      window.open('pipeline.html?onboard=' + encodeURIComponent(gymName), '_blank');
+      const roster = JSON.parse(localStorage.getItem('deka_affiliate_roster')||'[]');
+      const rosterMatch = roster.find(r => normName(r.name) === normName(gymName));
+      if (rosterMatch) {
+        crmEntry = { name: rosterMatch.name, state: rosterMatch.state || '', city: '', gymType: '', contactName: '', email: '', phone: '' };
+      }
+    }
+
+    if (!crmEntry) {
+      alert(`"${gymName}" was not found in your CRM or affiliate roster. You may need to add them first.`);
       return;
     }
     p = {
@@ -4470,6 +4566,7 @@ function dmApplyMapping() {
       name:         String(get(mapping.name) || '').trim(),
       state:        String(get(mapping.state) || '').trim().toUpperCase(),
       region:       String(get(mapping.region) || '').trim(),
+      salesRep:     String(get(mapping.salesRep) || get(mapping['Sales Rep']) || '').trim(),
       signYear:     get(mapping.signYear),
       events:       get(mapping.events),
       participants: get(mapping.participants),
@@ -4620,6 +4717,7 @@ function dmParseWorkbook(wb) {
       revenue2025:      rev2025Idx !== undefined ? parseFloat(String(row[rev2025Idx]||'').replace(/[$,€£]/g,'')) || 0 : 0,
       stripeStatus:     get(row,'Stripe Status'),
       eventNotes:       get(row,'Event Notes'),
+      salesRep:         get(row,'Sales Rep') || get(row,'SALES REP') || get(row,'Account Manager') || '',
       // Monthly planned events (Jan–Dec 2026)
       monthlyEvents:    NAM_MONTHS.map(m => ({ month:m, value: get(row,m) })).filter(m => m.value),
     }));
@@ -4924,7 +5022,7 @@ function dmConfirmImport() {
   // Re-render affected sections
   document.getElementById('revenue-bars').innerHTML = '';
   document.getElementById('quadrant').querySelectorAll('.q-dot').forEach(d=>d.remove());
-  renderTierGrid();
+  renderTierGrid(); renderProjections();
   renderRevenueBars();
 
   const now = new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -5119,7 +5217,7 @@ function dmMergePair(keepId, loseId, cardIdx) {
   // Refresh UI
   APP_DATA = loadAppData();
   renderHeaderKPIs();
-  renderTierGrid();
+  renderTierGrid(); renderProjections();
   renderOnboardingSection();
   dmRefreshStatus();
 
@@ -7363,7 +7461,7 @@ function gsCommitSync() {
   ));
 
   renderHeaderKPIs();
-  renderTierGrid();
+  renderTierGrid(); renderProjections();
   if (typeof renderActionPlan === 'function') renderActionPlan();
 
   gsStatus(`\u2705 Dashboard updated — ${affRows.length} affiliates \u00b7 ${evCount} events imported \u00b7 ${APP_DATA.length} total in portfolio${deduped ? ` \u00b7 ${deduped} duplicate${deduped>1?'s':''} merged` : ''}`, 'var(--green)');
@@ -7507,6 +7605,17 @@ function renderOnboardingSection() {
   const added = JSON.parse(localStorage.getItem('deka_affiliates_added') || '[]');
   const crm = JSON.parse(localStorage.getItem('deka_crm') || '{}');
 
+  // Established affiliates already in the main roster — these should NOT
+  // show in onboarding even if they appear in deka_affiliates_added or CRM.
+  // This prevents long-time affiliates from showing as "new" after re-import.
+  const roster = JSON.parse(localStorage.getItem('deka_affiliate_roster') || '[]');
+  const rosterNames = new Set(roster.map(r => norm(r.name)));
+
+  // Also build a dismissal list — affiliates the user explicitly removed from onboarding.
+  // Persists across re-imports so removed gyms don't come back.
+  const dismissed = JSON.parse(localStorage.getItem('deka_onboarding_dismissed') || '[]');
+  const dismissedNames = new Set(dismissed.map(n => norm(n)));
+
   // CRM entries flagged as pipeline-sourced
   const crmPipeline = Object.entries(crm)
     .filter(([,v]) => v.source === 'pipeline' && v.name)
@@ -7515,8 +7624,19 @@ function renderOnboardingSection() {
   // Merge and dedupe (prefer CRM entry if both exist)
   const seen = new Set();
   const allOnboarding = [];
-  crmPipeline.forEach(a => { seen.add(norm(a.name)); allOnboarding.push(a); });
-  added.forEach(a => { if (!seen.has(norm(a.name))) { seen.add(norm(a.name)); allOnboarding.push(a); } });
+  crmPipeline.forEach(a => {
+    if (rosterNames.has(norm(a.name))) return;     // already in portfolio — skip
+    if (dismissedNames.has(norm(a.name))) return;   // user dismissed — skip
+    seen.add(norm(a.name));
+    allOnboarding.push(a);
+  });
+  added.forEach(a => {
+    if (seen.has(norm(a.name))) return;
+    if (rosterNames.has(norm(a.name))) return;
+    if (dismissedNames.has(norm(a.name))) return;
+    seen.add(norm(a.name));
+    allOnboarding.push(a);
+  });
 
   if (!allOnboarding.length) { el.innerHTML = ''; return; }
 
@@ -7569,6 +7689,7 @@ function renderOnboardingSection() {
             <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
               <a href="#" onclick="openInlineOnboarding('${aff.name.replace(/'/g,"\\'")}');return false" class="ob-card-link">Onboarding Checklist \u2192</a>
               <a href="#" onclick="openEventPlanner('${aff.name.replace(/'/g,'')}');return false" class="ob-card-link" style="border-color:#1DB954;color:#1DB954">&#127939; Plan First Event</a>
+              <a href="#" onclick="removeFromOnboarding('${aff.name.replace(/'/g,"\\'")}');return false" class="ob-card-link" style="border-color:var(--text-dim);color:var(--text-dim);font-size:10px">✕ Remove</a>
             </div>
           </div>
         `).join('')}
@@ -7660,7 +7781,7 @@ async function initDashboard() {
 
   renderHeaderKPIs();
   renderOnboardingSection();
-  renderTierGrid();
+  renderTierGrid(); renderProjections();
   renderRevenueBars();
   renderActionPlan();
   gsInit();
@@ -7698,7 +7819,7 @@ function resetDashboardData() {
 
   APP_DATA = [];
   renderHeaderKPIs();
-  renderTierGrid();
+  renderTierGrid(); renderProjections();
 
   alert('Data cleared. A JSON backup has been downloaded.\n\nNow sync from Google Sheets:\n1. Go to Data Manager tab\n2. Click Sync Now (or use Paste mode)\n3. After sync, your CRM entries will be restored automatically.');
 }
