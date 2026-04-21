@@ -695,6 +695,21 @@ function loadPipeline() {
   if (raw) { try { pipelineData = JSON.parse(raw); } catch(e) {} }
   if (!pipelineData.prospects) pipelineData.prospects = [];
   if (!pipelineData.goals) pipelineData.goals = {newAffiliates2026:8, targetStates:[]};
+
+  // One-time migration: initialize emailStep for existing prospects so the
+  // Draft Email button works for all prospects, not just Research-accepted ones.
+  let migrated = 0;
+  pipelineData.prospects.forEach(p => {
+    if (!p.emailStep && p.email && (p.stage === 'lead' || p.stage === 'contacted')) {
+      p.emailStep = 1;
+      migrated++;
+    }
+  });
+  if (migrated) {
+    console.log(`[deka] Migrated emailStep=1 for ${migrated} existing prospects`);
+    localStorage.setItem(PIPELINE_KEY, JSON.stringify(pipelineData));
+  }
+
   prunePortfolioMembers();
 }
 
@@ -4061,6 +4076,7 @@ function _renderMaybeCard(key, entry, sheetRow) {
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
           <strong style="font-size:14px;color:var(--text)">${esc(entry.gymName || sheetRow?.['Gym Name'] || '(unknown)')}</strong>
           <span style="background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:var(--yellow);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">MAYBE</span>
+          ${entry.at && (Date.now() - new Date(entry.at).getTime()) > 14*86400000 ? `<span style="background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.3);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">STALE — 14+ days</span>` : ''}
           ${fitBadge}
         </div>
         <div style="font-size:12px;color:var(--text-mid)">
@@ -4072,6 +4088,7 @@ function _renderMaybeCard(key, entry, sheetRow) {
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-green btn-sm" onclick='promoteMaybeToAccept(${JSON.stringify(key)})' title="I've researched it — add to pipeline">&#10003; Accept</button>
         <button class="btn btn-sm" style="background:rgba(230,57,70,0.15);border:1px solid rgba(230,57,70,0.3);color:var(--accent)" onclick='demoteMaybeToReject(${JSON.stringify(key)})' title="I've researched it — not a fit">&#10005; Reject</button>
+        <button class="btn btn-ghost btn-sm" onclick='moveMaybeToInbox(${JSON.stringify(key)})' title="Move back to Inbox for fresh review">&#8634; Back to Inbox</button>
       </div>
     </div>
     ${desc ? `<div style="font-size:12px;color:var(--text-dim);line-height:1.4">${esc(desc)}</div>` : ''}
@@ -4183,6 +4200,15 @@ function confirmMaybeProspect() {
 }
 
 // From the Maybe archive: promote to accepted (creates real pipeline prospect)
+function moveMaybeToInbox(key) {
+  const reviewed = _loadReviewed();
+  delete reviewed[key];
+  _saveReviewed(reviewed);
+  _researchCacheTs = 0; // force re-fetch
+  setResearchSubtab('inbox');
+  loadResearchInbox();
+}
+
 function promoteMaybeToAccept(key) {
   const row = _findResearchRowByKey(key);
   if (!row) {
@@ -4523,6 +4549,7 @@ async function triggerAgentRun() {
 // ════════════════════════════════════════════════════════════════════════════
 let _icpData = null;  // cached ICP from API
 let _icpDirty = false; // true when unsaved edits exist
+let _icpAutoSaveTimer = null; // debounced auto-save
 
 async function _loadIcp() {
   try {
@@ -4722,12 +4749,19 @@ function _renderIcpProfile() {
   listEl.innerHTML = html;
 }
 
+// Schedule auto-save 3s after last edit (same pattern as profile sync debounce)
+function _scheduleIcpAutoSave() {
+  if (_icpAutoSaveTimer) clearTimeout(_icpAutoSaveTimer);
+  _icpAutoSaveTimer = setTimeout(() => {
+    if (_icpDirty) _saveIcp();
+  }, 3000);
+}
+
 function _icpNotesChanged() {
   if (!_icpData) return;
   _icpData.operator_notes = document.getElementById('icp-operator-notes')?.value || '';
   _icpDirty = true;
-  // Update the save button state without full re-render
-  _renderIcpProfile();
+  _scheduleIcpAutoSave();
 }
 
 function _icpEditItem(sectionKey, index, newValue) {
@@ -4737,6 +4771,7 @@ function _icpEditItem(sectionKey, index, newValue) {
   if (_icpData[sectionKey][index] === trimmed) return;
   _icpData[sectionKey][index] = trimmed;
   _icpDirty = true;
+  _scheduleIcpAutoSave();
   _renderIcpProfile();
 }
 
@@ -4744,6 +4779,7 @@ function _icpDeleteItem(sectionKey, index) {
   if (!_icpData || !_icpData[sectionKey]) return;
   _icpData[sectionKey].splice(index, 1);
   _icpDirty = true;
+  _scheduleIcpAutoSave();
   _renderIcpProfile();
 }
 
